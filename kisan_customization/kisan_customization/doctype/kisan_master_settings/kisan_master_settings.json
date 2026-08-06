@@ -1,0 +1,58 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-08-05 12:00:00",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "bag_wise_deduction_section",
+  "bag_wise_deductions"
+ ],
+ "fields": [
+  {
+   "fieldname": "bag_wise_deduction_section",
+   "fieldtype": "Section Break",
+   "label": "Bag Wise Deduction"
+  },
+  {
+   "fieldname": "bag_wise_deductions",
+   "fieldtype": "Table",
+   "label": "Bag Wise Deductions",
+   "options": "Kisan Bag Wise Deduction"
+  }
+ ],
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-08-06 20:25:17.962872",
+ "modified_by": "Administrator",
+ "module": "Kisan Customization",
+ "name": "Kisan Master Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Accounts Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

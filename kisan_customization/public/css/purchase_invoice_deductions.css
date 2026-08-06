@@ -1,0 +1,376 @@
+/* Kisan Purchase Invoice Deductions Dialog */
+
+.kisan-deduction-dialog .modal-dialog {
+	max-width: 720px;
+}
+
+.kisan-deduction-dialog .modal-body {
+	padding: 0 !important;
+	background: var(--bg-light-gray, #f4f5f6);
+}
+
+.kisan-deduction-wrap {
+	font-family: inherit;
+}
+
+/* ── Header ── */
+.kd-header {
+	background: linear-gradient(135deg, #1a472a 0%, #2d6a4f 55%, #40916c 100%);
+	color: #fff;
+	padding: 20px 24px 18px;
+	position: relative;
+	overflow: hidden;
+}
+
+.kd-header::after {
+	content: "";
+	position: absolute;
+	right: -30px;
+	top: -30px;
+	width: 140px;
+	height: 140px;
+	border-radius: 50%;
+	background: rgba(255, 255, 255, 0.07);
+	pointer-events: none;
+}
+
+.kd-header-top {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 12px;
+	position: relative;
+	z-index: 1;
+}
+
+.kd-header-title {
+	font-size: 18px;
+	font-weight: 700;
+	margin: 0 0 4px;
+	letter-spacing: -0.02em;
+}
+
+.kd-header-sub {
+	font-size: 12px;
+	opacity: 0.82;
+	margin: 0;
+}
+
+.kd-total-badge {
+	background: rgba(255, 255, 255, 0.15);
+	border: 1px solid rgba(255, 255, 255, 0.25);
+	border-radius: 10px;
+	padding: 10px 16px;
+	text-align: right;
+	min-width: 130px;
+	backdrop-filter: blur(4px);
+}
+
+.kd-total-label {
+	font-size: 10px;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	opacity: 0.75;
+	margin-bottom: 2px;
+}
+
+.kd-total-value {
+	font-size: 22px;
+	font-weight: 700;
+	line-height: 1.1;
+}
+
+.kd-stats {
+	display: flex;
+	gap: 10px;
+	margin-top: 14px;
+	position: relative;
+	z-index: 1;
+}
+
+.kd-stat {
+	flex: 1;
+	background: rgba(255, 255, 255, 0.1);
+	border-radius: 8px;
+	padding: 8px 12px;
+	font-size: 12px;
+}
+
+.kd-stat strong {
+	display: block;
+	font-size: 16px;
+	font-weight: 700;
+	margin-bottom: 1px;
+}
+
+/* ── Toolbar ── */
+.kd-toolbar {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 12px 16px;
+	background: #fff;
+	border-bottom: 1px solid var(--border-color, #d1d8dd);
+}
+
+.kd-search-wrap {
+	flex: 1;
+	position: relative;
+}
+
+.kd-search-wrap .icon {
+	position: absolute;
+	left: 10px;
+	top: 50%;
+	transform: translateY(-50%);
+	color: var(--text-muted, #74808b);
+	font-size: 13px;
+	pointer-events: none;
+}
+
+.kd-search {
+	width: 100%;
+	padding: 7px 12px 7px 32px;
+	border: 1px solid var(--border-color, #d1d8dd);
+	border-radius: 8px;
+	font-size: 13px;
+	outline: none;
+	transition: border-color 0.15s, box-shadow 0.15s;
+	background: var(--bg-light-gray, #f4f5f6);
+}
+
+.kd-search:focus {
+	border-color: #40916c;
+	box-shadow: 0 0 0 3px rgba(64, 145, 108, 0.15);
+	background: #fff;
+}
+
+.kd-clear-btn {
+	font-size: 12px;
+	padding: 6px 12px;
+	border-radius: 8px;
+	border: 1px solid var(--border-color, #d1d8dd);
+	background: #fff;
+	color: var(--text-muted, #74808b);
+	cursor: pointer;
+	white-space: nowrap;
+	transition: all 0.15s;
+}
+
+.kd-clear-btn:hover {
+	border-color: #e74c3c;
+	color: #e74c3c;
+	background: #fdf0ef;
+}
+
+/* ── List ── */
+.kd-list {
+	max-height: 380px;
+	overflow-y: auto;
+	padding: 12px 16px;
+	scroll-behavior: smooth;
+}
+
+.kd-list::-webkit-scrollbar {
+	width: 5px;
+}
+
+.kd-list::-webkit-scrollbar-thumb {
+	background: #c8d0d8;
+	border-radius: 4px;
+}
+
+.kd-row {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	background: #fff;
+	border: 1.5px solid var(--border-color, #d1d8dd);
+	border-radius: 10px;
+	padding: 10px 14px;
+	margin-bottom: 8px;
+	transition: border-color 0.18s, box-shadow 0.18s, transform 0.12s;
+}
+
+.kd-row:last-child {
+	margin-bottom: 0;
+}
+
+.kd-row:hover {
+	border-color: #95b8a8;
+	box-shadow: 0 2px 8px rgba(26, 71, 42, 0.07);
+}
+
+.kd-row.has-value {
+	border-color: #40916c;
+	background: linear-gradient(to right, #f0faf4 0%, #fff 40%);
+	box-shadow: 0 2px 10px rgba(64, 145, 108, 0.1);
+}
+
+.kd-row.hidden {
+	display: none;
+}
+
+.kd-badge {
+	width: 38px;
+	height: 38px;
+	border-radius: 10px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 11px;
+	font-weight: 800;
+	letter-spacing: -0.03em;
+	flex-shrink: 0;
+	color: #fff;
+	text-transform: uppercase;
+}
+
+.kd-info {
+	flex: 1;
+	min-width: 0;
+}
+
+.kd-type-name {
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--text-color, #1f272e);
+	margin: 0 0 2px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.kd-account {
+	font-size: 11px;
+	color: var(--text-muted, #74808b);
+	margin: 0;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.kd-amount-wrap {
+	display: flex;
+	align-items: center;
+	border: 1.5px solid var(--border-color, #d1d8dd);
+	border-radius: 8px;
+	overflow: hidden;
+	background: #fff;
+	transition: border-color 0.15s, box-shadow 0.15s;
+	flex-shrink: 0;
+	width: 148px;
+}
+
+.kd-row.has-value .kd-amount-wrap {
+	border-color: #40916c;
+}
+
+.kd-amount-wrap:focus-within {
+	border-color: #40916c;
+	box-shadow: 0 0 0 3px rgba(64, 145, 108, 0.12);
+}
+
+.kd-currency {
+	padding: 0 8px;
+	font-size: 13px;
+	font-weight: 600;
+	color: #40916c;
+	background: #f0faf4;
+	border-right: 1px solid var(--border-color, #d1d8dd);
+	height: 34px;
+	display: flex;
+	align-items: center;
+}
+
+.kd-amount {
+	border: none !important;
+	box-shadow: none !important;
+	text-align: right;
+	font-size: 14px !important;
+	font-weight: 600 !important;
+	padding: 6px 10px !important;
+	height: 34px !important;
+	width: 100%;
+	outline: none;
+	background: transparent;
+}
+
+.kd-amount::-webkit-inner-spin-button,
+.kd-amount::-webkit-outer-spin-button {
+	opacity: 0.5;
+}
+
+/* ── Empty / no results ── */
+.kd-empty {
+	text-align: center;
+	padding: 40px 20px;
+	color: var(--text-muted, #74808b);
+}
+
+.kd-empty-icon {
+	font-size: 36px;
+	margin-bottom: 10px;
+	opacity: 0.4;
+}
+
+/* ── Footer ── */
+.kd-footer {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 12px 16px;
+	background: #fff;
+	border-top: 1px solid var(--border-color, #d1d8dd);
+}
+
+.kd-footer-note {
+	font-size: 11px;
+	color: var(--text-muted, #74808b);
+}
+
+.kd-footer-note strong {
+	color: #40916c;
+}
+
+/* Badge colors cycling */
+.kd-badge-0 { background: linear-gradient(135deg, #1a472a, #40916c); }
+.kd-badge-1 { background: linear-gradient(135deg, #7b2d26, #c0392b); }
+.kd-badge-2 { background: linear-gradient(135deg, #1a3a5c, #2980b9); }
+.kd-badge-3 { background: linear-gradient(135deg, #5a3e1b, #d68910); }
+.kd-badge-4 { background: linear-gradient(135deg, #4a235a, #8e44ad); }
+.kd-badge-5 { background: linear-gradient(135deg, #1a4748, #17a589); }
+.kd-badge-6 { background: linear-gradient(135deg, #4a3728, #784212); }
+.kd-badge-7 { background: linear-gradient(135deg, #1b2631, #566573); }
+.kd-badge-8 { background: linear-gradient(135deg, #641e16, #e74c3c); }
+
+/* Dialog primary button override */
+.kisan-deduction-dialog .btn-primary {
+	background: #2d6a4f !important;
+	border-color: #2d6a4f !important;
+}
+
+.kisan-deduction-dialog .btn-primary:hover {
+	background: #1a472a !important;
+	border-color: #1a472a !important;
+}
+
+/* Dark mode support */
+[data-theme="dark"] .kisan-deduction-dialog .modal-body,
+[data-theme="dark"] .kd-list {
+	background: var(--bg-color, #1e1e1e);
+}
+
+[data-theme="dark"] .kd-row,
+[data-theme="dark"] .kd-toolbar,
+[data-theme="dark"] .kd-footer {
+	background: var(--card-bg, #2a2a2a);
+}
+
+[data-theme="dark"] .kd-row.has-value {
+	background: linear-gradient(to right, rgba(64, 145, 108, 0.12) 0%, var(--card-bg, #2a2a2a) 40%);
+}
+
+[data-theme="dark"] .kd-search {
+	background: var(--bg-color, #1e1e1e);
+}

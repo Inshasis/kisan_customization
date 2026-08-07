@@ -1,3 +1,5 @@
+kisan_customization.delivery_payment_days.bind("Purchase Order");
+
 frappe.ui.form.on('Purchase Order', {
     
     setup: function(frm) {

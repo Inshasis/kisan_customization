@@ -8,6 +8,12 @@ from kisan_customization.utils.deduction_utils import evaluate_calculation
 
 
 class DeductionType(Document):
+	def before_insert(self):
+		if not self.company:
+			self.company = _get_default_company()
+		if not self.related_account:
+			self.flags.ignore_mandatory = ["related_account"]
+
 	def validate(self):
 		if self.related_account and not frappe.db.exists(
 			"Account", {"name": self.related_account, "company": self.company}
@@ -33,3 +39,8 @@ class DeductionType(Document):
 			)
 		except Exception as exc:
 			frappe.throw(frappe._("Invalid Calculation formula: {0}").format(str(exc)))
+
+
+def _get_default_company():
+	company = frappe.db.get_single_value("Kisan Master Settings", "default_company")
+	return company or frappe.defaults.get_global_default("company")

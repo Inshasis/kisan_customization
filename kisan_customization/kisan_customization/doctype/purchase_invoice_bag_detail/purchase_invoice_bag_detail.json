@@ -1,0 +1,80 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-08-07 15:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "bag_type",
+  "no_of_bags",
+  "charges",
+  "deduct_weight_kg",
+  "gross_weight_kg",
+  "arrival_qty_kg"
+ ],
+ "fields": [
+  {
+   "fieldname": "bag_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Bag Type",
+   "reqd": 1
+  },
+  {
+   "fieldname": "no_of_bags",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "No. of Bags",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "charges",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Charges",
+   "non_negative": 1,
+   "precision": "2",
+   "read_only": 1
+  },
+  {
+   "fieldname": "deduct_weight_kg",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Deduct Weight (kg)",
+   "non_negative": 1,
+   "precision": "2",
+   "read_only": 1
+  },
+  {
+   "fieldname": "gross_weight_kg",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Gross Weight (kg)",
+   "non_negative": 1,
+   "precision": "2",
+   "read_only": 1
+  },
+  {
+   "fieldname": "arrival_qty_kg",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Arrival Qty (kg)",
+   "non_negative": 1,
+   "precision": "2",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-08-07 15:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Kisan Customization",
+ "name": "Purchase Invoice Bag Detail",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

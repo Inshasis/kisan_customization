@@ -4,3 +4,6 @@
 [post_model_sync]
 kisan_customization.patches.v1_0.migrate_app_settings_data
 kisan_customization.patches.v1_0.set_deduction_type_formulas
+kisan_customization.patches.v1_0.set_qty_deduction_formulas
+kisan_customization.patches.v1_0.fix_deduction_tier_flags
+kisan_customization.patches.v1_0.set_pp_deduction_formula

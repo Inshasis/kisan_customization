@@ -7,6 +7,13 @@ app_license = "mit"
 
 required_apps = ["erpnext"]
 
+fixtures = [
+	{
+		"dt": "Custom Field",
+		"filters": [["name", "in", ["Purchase Invoice-custom_total_bags"]]],
+	}
+]
+
 # Apps
 # ------------------
 

@@ -5,10 +5,48 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "general_settings_section",
+  "default_company",
+  "column_break_general",
+  "broker_commission",
+  "deduction_settings_section",
+  "deduction_tier_range",
   "bag_wise_deduction_section",
   "bag_wise_deductions"
  ],
  "fields": [
+  {
+   "fieldname": "general_settings_section",
+   "fieldtype": "Section Break",
+   "label": "General Settings"
+  },
+  {
+   "fieldname": "default_company",
+   "fieldtype": "Link",
+   "label": "Default Company",
+   "options": "Company"
+  },
+  {
+   "fieldname": "column_break_general",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "broker_commission",
+   "fieldtype": "Percent",
+   "label": "Broker Commission (%)",
+   "precision": "2"
+  },
+  {
+   "fieldname": "deduction_settings_section",
+   "fieldtype": "Section Break",
+   "label": "Deduction Settings"
+  },
+  {
+   "fieldname": "deduction_tier_range",
+   "fieldtype": "Table",
+   "label": "Deduction Tier Range",
+   "options": "Kisan Deduction Tier Range"
+  },
   {
    "fieldname": "bag_wise_deduction_section",
    "fieldtype": "Section Break",
@@ -23,7 +61,7 @@
  ],
  "issingle": 1,
  "links": [],
- "modified": "2026-08-06 20:25:17.962872",
+ "modified": "2026-08-06 20:45:24.527127",
  "modified_by": "Administrator",
  "module": "Kisan Customization",
  "name": "Kisan Master Settings",

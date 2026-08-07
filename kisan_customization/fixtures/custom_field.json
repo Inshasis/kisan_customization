@@ -1,0 +1,12 @@
+[
+ {
+  "doctype": "Custom Field",
+  "name": "Purchase Invoice-custom_total_bags",
+  "dt": "Purchase Invoice",
+  "fieldname": "custom_total_bags",
+  "fieldtype": "Int",
+  "insert_after": "total_qty",
+  "label": "Total Bags",
+  "non_negative": 1
+ }
+]

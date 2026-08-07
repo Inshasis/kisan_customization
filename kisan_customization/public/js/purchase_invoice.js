@@ -1,8 +1,13 @@
+kisan_customization.delivery_payment_days.bind("Purchase Invoice");
+
 frappe.ui.form.on("Purchase Invoice", {
 	onload(frm) {
 		load_bag_type_options(frm);
 		if (frm.is_new() && !frm.doc.custom_bag_details?.length) {
 			load_default_bag_rows(frm);
+		}
+		if (frm.doc.custom_delivery_days || frm.doc.custom_payment_days) {
+			kisan_customization.delivery_payment_days.apply_all(frm);
 		}
 	},
 

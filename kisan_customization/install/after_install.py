@@ -2,95 +2,9 @@
 
 import frappe
 
-DEFAULT_DEDUCTION_TYPES = [
-	{
-		"deduction_type_name": "Moise",
-		"required_value": 10.0,
-		"charges_per_unit": 0.0,
-		"calculation": "difference * total_amount / 100",
-		"deduction_category": "multiple",
-		"tiered_calculation": 1,
-		"qty_deducation": 1,
-		"is_active": 1,
-	},
-	{
-		"deduction_type_name": "Damage",
-		"required_value": 2.0,
-		"charges_per_unit": 15.0,
-		"calculation": "difference * charges_per_unit * total_gross_weight / 100",
-		"deduction_category": "multiple",
-		"tiered_calculation": 0,
-		"qty_deducation": 1,
-		"is_active": 1,
-	},
-	{
-		"deduction_type_name": "S/S",
-		"required_value": 2.0,
-		"charges_per_unit": 0.0,
-		"calculation": "difference * total_amount / 100",
-		"deduction_category": "multiple",
-		"tiered_calculation": 0,
-		"qty_deducation": 1,
-		"is_active": 1,
-	},
-	{
-		"deduction_type_name": "PP",
-		"required_value": 0.0,
-		"charges_per_unit": 10.0,
-		"calculation": "plastic_gross_weight * charges_per_unit / 100",
-		"deduction_category": "single",
-		"tiered_calculation": 0,
-		"qty_deducation": 0,
-		"is_active": 1,
-	},
-	{
-		"deduction_type_name": "UNLOADING",
-		"required_value": 0.0,
-		"charges_per_unit": 12.0,
-		"calculation": "total_bags * charges_per_unit",
-		"deduction_category": "single",
-		"tiered_calculation": 0,
-		"qty_deducation": 0,
-		"is_active": 1,
-	},
-	{
-		"deduction_type_name": "Others",
-		"required_value": 0.0,
-		"charges_per_unit": 1.5,
-		"calculation": "net_amount * charges_per_unit / 100",
-		"deduction_category": "single",
-		"tiered_calculation": 0,
-		"qty_deducation": 0,
-		"is_active": 1,
-	},
-	{
-		"deduction_type_name": "Weighbridge",
-		"required_value": 0.0,
-		"charges_per_unit": 100.0,
-		"deduction_category": "single",
-		"tiered_calculation": 0,
-		"qty_deducation": 0,
-		"is_active": 1,
-	},
-	{
-		"deduction_type_name": "RTGS",
-		"required_value": 0.0,
-		"charges_per_unit": 60.0,
-		"deduction_category": "single",
-		"tiered_calculation": 0,
-		"qty_deducation": 0,
-		"is_active": 1,
-	},
-	{
-		"deduction_type_name": "Miscellaneous",
-		"required_value": 0.0,
-		"charges_per_unit": 0.0,
-		"deduction_category": "single",
-		"tiered_calculation": 0,
-		"qty_deducation": 0,
-		"is_active": 1,
-	},
-]
+from kisan_customization.fixtures.deduction_types import get_default_deduction_types
+
+DEFAULT_DEDUCTION_TYPES = get_default_deduction_types()
 
 DEFAULT_BAG_DEDUCTIONS = [
 	{"bag_type": "plastic", "charges": 0.2},

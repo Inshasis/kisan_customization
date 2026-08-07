@@ -61,5 +61,64 @@
   "insert_after": "custom_bag_details_section",
   "label": "Bag Details",
   "options": "Purchase Invoice Bag Detail"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Purchase Invoice-custom_section_break_delivery_payment",
+  "dt": "Purchase Invoice",
+  "fieldname": "custom_section_break_delivery_payment",
+  "fieldtype": "Section Break",
+  "insert_after": "due_date",
+  "label": "Delivery & Payment Days"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Purchase Invoice-custom_delivery_days",
+  "dt": "Purchase Invoice",
+  "fieldname": "custom_delivery_days",
+  "fieldtype": "Int",
+  "insert_after": "custom_section_break_delivery_payment",
+  "label": "Delivery Days",
+  "non_negative": 1
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Purchase Invoice-custom_payment_days",
+  "dt": "Purchase Invoice",
+  "fieldname": "custom_payment_days",
+  "fieldtype": "Int",
+  "insert_after": "custom_delivery_days",
+  "label": "Payment Days",
+  "non_negative": 1
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Purchase Invoice-custom_required_by",
+  "dt": "Purchase Invoice",
+  "fieldname": "custom_required_by",
+  "fieldtype": "Date",
+  "insert_after": "custom_payment_days",
+  "label": "Required By",
+  "read_only": 1
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Purchase Order-custom_delivery_days",
+  "dt": "Purchase Order",
+  "fieldname": "custom_delivery_days",
+  "fieldtype": "Int",
+  "insert_after": "custom_broker_commission_amount",
+  "label": "Delivery Days",
+  "non_negative": 1
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Purchase Order-custom_payment_days",
+  "dt": "Purchase Order",
+  "fieldname": "custom_payment_days",
+  "fieldtype": "Int",
+  "insert_after": "custom_delivery_days",
+  "label": "Payment Days",
+  "non_negative": 1
  }
 ]

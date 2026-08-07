@@ -21,10 +21,36 @@ fixtures = [
 					"Purchase Invoice-custom_total_bags",
 					"Purchase Invoice-custom_total_gross_weight",
 					"Purchase Invoice-custom_total_arrival_weight",
+					"Purchase Invoice-custom_section_break_delivery_payment",
+					"Purchase Invoice-custom_delivery_days",
+					"Purchase Invoice-custom_payment_days",
+					"Purchase Invoice-custom_required_by",
+					"Purchase Order-custom_delivery_days",
+					"Purchase Order-custom_payment_days",
 				],
 			]
 		],
-	}
+	},
+	{
+		"dt": "Deduction Type",
+		"filters": [
+			[
+				"deduction_type_name",
+				"in",
+				[
+					"Moise",
+					"Damage",
+					"S/S",
+					"PP",
+					"UNLOADING",
+					"Others",
+					"Weighbridge",
+					"RTGS",
+					"Miscellaneous",
+				],
+			]
+		],
+	},
 ]
 
 # Apps
@@ -64,9 +90,15 @@ fixtures = [
 
 # include js in doctype views
 doctype_js = {
-    "Purchase Invoice": "public/js/purchase_invoice.js",
-    "Purchase Order": "public/js/purchase_order.js"
-    }
+	"Purchase Invoice": [
+		"public/js/delivery_payment_days.js",
+		"public/js/purchase_invoice.js",
+	],
+	"Purchase Order": [
+		"public/js/delivery_payment_days.js",
+		"public/js/purchase_order.js",
+	],
+}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}

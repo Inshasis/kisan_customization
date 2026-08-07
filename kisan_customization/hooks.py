@@ -21,10 +21,14 @@ fixtures = [
 					"Purchase Invoice-custom_total_bags",
 					"Purchase Invoice-custom_total_gross_weight",
 					"Purchase Invoice-custom_total_arrival_weight",
-					"Purchase Invoice-custom_section_break_delivery_payment",
-					"Purchase Invoice-custom_delivery_days",
-					"Purchase Invoice-custom_payment_days",
-					"Purchase Invoice-custom_required_by",
+					"Purchase Invoice-custom_section_break_lqipi",
+					"Purchase Invoice-custom_broker",
+					"Purchase Invoice-custom_column_break_1ked0",
+					"Purchase Invoice-custom_commission_type",
+					"Purchase Invoice-custom_column_break_y5zpm",
+					"Purchase Invoice-custom_commission_percent",
+					"Purchase Invoice-custom_commission_amount",
+					"Purchase Invoice-custom_broker_commission_amount",
 					"Purchase Order-custom_delivery_days",
 					"Purchase Order-custom_payment_days",
 				],
@@ -91,11 +95,12 @@ fixtures = [
 # include js in doctype views
 doctype_js = {
 	"Purchase Invoice": [
-		"public/js/delivery_payment_days.js",
+		"public/js/broker_commission.js",
 		"public/js/purchase_invoice.js",
 	],
 	"Purchase Order": [
 		"public/js/delivery_payment_days.js",
+		"public/js/broker_commission.js",
 		"public/js/purchase_order.js",
 	],
 }
@@ -227,9 +232,11 @@ doc_events = {
 # Overriding Methods
 # ------------------------------
 #
-# override_whitelisted_methods = {
-# 	"frappe.desk.doctype.event.event.get_events": "kisan_customization.event.get_events"
-# }
+override_whitelisted_methods = {
+	"erpnext.buying.doctype.purchase_order.purchase_order.make_purchase_invoice": (
+		"kisan_customization.purchase_order.purchase_order.make_purchase_invoice"
+	),
+}
 #
 # each overriding function accepts a `data` argument;
 # generated from the base implementation of the doctype dashboard,

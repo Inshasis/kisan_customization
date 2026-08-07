@@ -10,7 +10,20 @@ required_apps = ["erpnext"]
 fixtures = [
 	{
 		"dt": "Custom Field",
-		"filters": [["name", "in", ["Purchase Invoice-custom_total_bags"]]],
+		"filters": [
+			[
+				"name",
+				"in",
+				[
+					"Purchase Invoice-custom_bag_details_section",
+					"Purchase Invoice-custom_bag_details",
+					"Purchase Invoice-custom_weight_info_section",
+					"Purchase Invoice-custom_total_bags",
+					"Purchase Invoice-custom_total_gross_weight",
+					"Purchase Invoice-custom_total_arrival_weight",
+				],
+			]
+		],
 	}
 ]
 
@@ -147,13 +160,11 @@ after_install = "kisan_customization.install.after_install.after_install"
 # ---------------
 # Hook on document methods and events
 
-# doc_events = {
-# 	"*": {
-# 		"on_update": "method",
-# 		"on_cancel": "method",
-# 		"on_trash": "method"
-# 	}
-# }
+doc_events = {
+	"Purchase Invoice": {
+		"validate": "kisan_customization.purchase_invoice.purchase_invoice.validate",
+	},
+}
 
 # Scheduled Tasks
 # ---------------

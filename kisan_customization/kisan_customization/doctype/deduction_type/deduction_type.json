@@ -76,8 +76,7 @@
    "precision": "2"
   },
   {
-   "depends_on": "eval:!doc.qty_deducation",
-   "description": "Use variables: net_amount, total_bags, total_qty, charges_per_unit, required_value, actual, difference. Example: total_bags * charges_per_unit or net_amount * charges_per_unit / 100. Leave empty to use Charges per Unit directly.",
+   "description": "Variables: net_amount, total_amount, total_bags, total_qty, total_gross_weight, charges_per_unit (or charges), required_value, actual, difference. Qty Deducation: difference is computed first (tiered for Moise), then formula runs. Non-qty: leave empty to use Charges per Unit directly.",
    "fieldname": "calculation",
    "fieldtype": "Small Text",
    "label": "Calculation"
@@ -90,6 +89,7 @@
    "default": "single",
    "fieldname": "deduction_category",
    "fieldtype": "Select",
+   "hidden": 1,
    "label": "Deduction Category",
    "options": "single\nmultiple"
   },
@@ -107,7 +107,7 @@
   }
  ],
  "links": [],
- "modified": "2026-08-06 20:55:55.798310",
+ "modified": "2026-08-07 17:56:50.070451",
  "modified_by": "Administrator",
  "module": "Kisan Customization",
  "name": "Deduction Type",

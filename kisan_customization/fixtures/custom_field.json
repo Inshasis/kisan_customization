@@ -1,12 +1,65 @@
 [
  {
   "doctype": "Custom Field",
+  "name": "Purchase Invoice-custom_weight_info_section",
+  "dt": "Purchase Invoice",
+  "fieldname": "custom_weight_info_section",
+  "fieldtype": "Section Break",
+  "insert_after": "items",
+  "label": "Weight Information"
+ },
+ {
+  "doctype": "Custom Field",
   "name": "Purchase Invoice-custom_total_bags",
   "dt": "Purchase Invoice",
   "fieldname": "custom_total_bags",
   "fieldtype": "Int",
-  "insert_after": "total_qty",
+  "insert_after": "custom_weight_info_section",
   "label": "Total Bags",
-  "non_negative": 1
+  "non_negative": 1,
+  "reqd": 0
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Purchase Invoice-custom_total_gross_weight",
+  "dt": "Purchase Invoice",
+  "fieldname": "custom_total_gross_weight",
+  "fieldtype": "Float",
+  "insert_after": "custom_total_bags",
+  "label": "Total Gross Weight (kg)",
+  "non_negative": 1,
+  "precision": "2",
+  "reqd": 0
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Purchase Invoice-custom_total_arrival_weight",
+  "dt": "Purchase Invoice",
+  "fieldname": "custom_total_arrival_weight",
+  "fieldtype": "Float",
+  "insert_after": "custom_total_gross_weight",
+  "label": "Total Arr. Weight (kg)",
+  "non_negative": 1,
+  "precision": "2",
+  "read_only": 1
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Purchase Invoice-custom_bag_details_section",
+  "dt": "Purchase Invoice",
+  "fieldname": "custom_bag_details_section",
+  "fieldtype": "Section Break",
+  "insert_after": "custom_total_arrival_weight",
+  "label": "Bag Details"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Purchase Invoice-custom_bag_details",
+  "dt": "Purchase Invoice",
+  "fieldname": "custom_bag_details",
+  "fieldtype": "Table",
+  "insert_after": "custom_bag_details_section",
+  "label": "Bag Details",
+  "options": "Purchase Invoice Bag Detail"
  }
 ]

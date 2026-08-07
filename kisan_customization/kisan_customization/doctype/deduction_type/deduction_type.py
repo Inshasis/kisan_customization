@@ -1,7 +1,6 @@
 # Copyright (c) 2026, Hidayatali and contributors
 
 import frappe
-from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt
 
@@ -14,16 +13,23 @@ class DeductionType(Document):
 			"Account", {"name": self.related_account, "company": self.company}
 		):
 			frappe.throw(
-				_("Account {0} does not belong to company {1}").format(
+				frappe._("Account {0} does not belong to company {1}").format(
 					self.related_account, self.company
 				)
 			)
 
-		if self.qty_deducation and (self.calculation or "").strip():
-			frappe.throw(_("Clear Calculation when Qty Deducation is enabled."))
+		if not (self.calculation or "").strip():
+			return
 
-		if not self.qty_deducation and (self.calculation or "").strip():
-			try:
-				evaluate_calculation(self, net_amount=100, total_qty=10, total_bags=10)
-			except Exception as exc:
-				frappe.throw(_("Invalid Calculation formula: {0}").format(str(exc)))
+		try:
+			evaluate_calculation(
+				self,
+				net_amount=1000,
+				total_qty=10,
+				total_bags=10,
+				total_gross_weight=500,
+				actual=12,
+				difference=2,
+			)
+		except Exception as exc:
+			frappe.throw(frappe._("Invalid Calculation formula: {0}").format(str(exc)))

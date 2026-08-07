@@ -1,6 +1,16 @@
 frappe.ui.form.on("Purchase Invoice", {
+	onload(frm) {
+		load_bag_type_options(frm);
+		if (frm.is_new() && !frm.doc.custom_bag_details?.length) {
+			load_default_bag_rows(frm);
+		}
+	},
+
 	refresh(frm) {
+		load_bag_type_options(frm);
+
 		if (frm.is_new()) return;
+		if (!can_show_deduction_button(frm)) return;
 
 		const total = get_existing_deduction_total(frm);
 		const currency = frm.doc.currency || frappe.defaults.get_global_default("currency");
@@ -11,14 +21,197 @@ frappe.ui.form.on("Purchase Invoice", {
 	},
 
 	custom_total_bags(frm) {
-		if (!frm.is_new() && frm.doc.custom_total_bags) {
-			frappe.show_alert({
-				message: __("Total Bags updated. Open Deductions to refresh calculated amounts."),
-				indicator: "blue",
-			});
+		recalculate_all_bag_rows(frm);
+	},
+
+	custom_total_gross_weight(frm) {
+		recalculate_all_bag_rows(frm);
+	},
+
+	items_add(frm) {
+		recalculate_all_bag_rows(frm);
+	},
+
+	items_remove(frm) {
+		recalculate_all_bag_rows(frm);
+	},
+
+	validate(frm) {
+		const total_bags = flt(frm.doc.custom_total_bags);
+		const child_sum = get_child_bag_sum(frm);
+
+		if (!total_bags || !child_sum) return;
+
+		if (child_sum !== total_bags) {
+			frappe.throw(
+				__("Sum of No. of Bags ({0}) must equal Total Bags ({1}).", [child_sum, total_bags])
+			);
 		}
 	},
 });
+
+frappe.ui.form.on("Purchase Invoice Item", {
+	rate(frm) {
+		recalculate_all_bag_rows(frm);
+	},
+});
+
+frappe.ui.form.on("Purchase Invoice Bag Detail", {
+	bag_type(frm, cdt, cdn) {
+		set_bag_charges_from_master(frm, cdt, cdn);
+	},
+
+	no_of_bags(frm, cdt, cdn) {
+		if (!flt(frm.doc.custom_total_bags)) {
+			frappe.msgprint({
+				title: __("Total Bags Required"),
+				message: __("Please enter Total Bags first, then enter No. of Bags in Bag Details."),
+				indicator: "orange",
+			});
+			frappe.model.set_value(cdt, cdn, "no_of_bags", 0);
+			return;
+		}
+
+		if (!validate_bag_count(frm, cdt, cdn)) return;
+
+		calculate_bag_row(frm, cdt, cdn);
+	},
+
+	custom_bag_details_remove(frm) {
+		recalculate_all_bag_rows(frm);
+	},
+});
+
+function can_show_deduction_button(frm) {
+	const total_bags = flt(frm.doc.custom_total_bags);
+	const child_sum = get_child_bag_sum(frm);
+	return (
+		total_bags > 0 &&
+		flt(frm.doc.custom_total_gross_weight) > 0 &&
+		child_sum === total_bags
+	);
+}
+
+function get_child_bag_sum(frm) {
+	return (frm.doc.custom_bag_details || []).reduce((sum, row) => sum + flt(row.no_of_bags), 0);
+}
+
+function validate_bag_count(frm, cdt, cdn) {
+	const total_bags = flt(frm.doc.custom_total_bags);
+	if (!total_bags) return true;
+
+	let child_sum = get_child_bag_sum(frm);
+
+	if (cdt && cdn) {
+		const current = flt(locals[cdt][cdn].no_of_bags);
+		const saved = flt((frm.doc.custom_bag_details || []).find((r) => r.name === cdn)?.no_of_bags);
+		child_sum = child_sum - saved + current;
+	}
+
+	if (child_sum > total_bags) {
+		frappe.msgprint({
+			title: __("Bag Count Exceeded"),
+			message: __("Sum of No. of Bags ({0}) cannot be greater than Total Bags ({1}).", [
+				child_sum,
+				total_bags,
+			]),
+			indicator: "red",
+		});
+		if (cdt && cdn) frappe.model.set_value(cdt, cdn, "no_of_bags", 0);
+		return false;
+	}
+
+	if (child_sum < total_bags && cdt && cdn) {
+		frappe.show_alert({
+			message: __("Remaining bags to assign: {0}", [total_bags - child_sum]),
+			indicator: "orange",
+		});
+	}
+
+	return true;
+}
+
+function calculate_bag_row(frm, cdt, cdn) {
+	const row = locals[cdt][cdn];
+	const total_bags = flt(frm.doc.custom_total_bags);
+	const total_gross = flt(frm.doc.custom_total_gross_weight);
+	const average_weight = total_bags ? total_gross / total_bags : 0;
+
+	const bags = flt(row.no_of_bags);
+	const deduct = bags * flt(row.charges);
+	const gross = bags * average_weight;
+	const arrival = Math.max(0, gross - deduct);
+
+	frappe.model.set_value(cdt, cdn, "deduct_weight_kg", deduct);
+	frappe.model.set_value(cdt, cdn, "gross_weight_kg", gross);
+	frappe.model.set_value(cdt, cdn, "arrival_qty_kg", arrival).then(() => {
+		update_arrival_total(frm);
+	});
+}
+
+function recalculate_all_bag_rows(frm) {
+	(frm.doc.custom_bag_details || []).forEach((row) => {
+		calculate_bag_row(frm, row.doctype, row.name);
+	});
+	update_arrival_total(frm);
+}
+
+function update_arrival_total(frm) {
+	const total_arrival = (frm.doc.custom_bag_details || []).reduce(
+		(sum, row) => sum + flt(row.arrival_qty_kg),
+		0
+	);
+	frm.set_value("custom_total_arrival_weight", total_arrival);
+}
+
+function load_bag_type_options(frm) {
+	frappe.call({
+		method: "kisan_customization.purchase_invoice.bags.get_bag_type_options",
+		callback(r) {
+			if (!r.message?.length) return;
+
+			const options = r.message.map((row) => row.bag_type).join("\n");
+			if (frm.fields_dict.custom_bag_details?.grid) {
+				frm.fields_dict.custom_bag_details.grid.update_docfield_property(
+					"bag_type",
+					"options",
+					options
+				);
+			}
+		},
+	});
+}
+
+function load_default_bag_rows(frm) {
+	frappe.call({
+		method: "kisan_customization.purchase_invoice.bags.get_bag_type_options",
+		callback(r) {
+			if (!r.message?.length) return;
+
+			r.message.forEach((bag) => {
+				const row = frm.add_child("custom_bag_details");
+				row.bag_type = bag.bag_type;
+				row.charges = bag.charges;
+			});
+			frm.refresh_field("custom_bag_details");
+		},
+	});
+}
+
+function set_bag_charges_from_master(frm, cdt, cdn) {
+	const row = locals[cdt][cdn];
+	if (!row.bag_type) return;
+
+	frappe.call({
+		method: "kisan_customization.purchase_invoice.bags.get_bag_charges",
+		args: { bag_type: row.bag_type },
+		callback(r) {
+			frappe.model.set_value(cdt, cdn, "charges", flt(r.message));
+			calculate_bag_row(frm, cdt, cdn);
+		},
+	});
+}
+
 
 const AUTO_CALC_MODES = new Set(["formula", "direct"]);
 
@@ -29,12 +222,21 @@ function get_existing_deduction_total(frm) {
 }
 
 function open_deductions_dialog(frm) {
-	if (!flt(frm.doc.custom_total_bags) && frm.doc.items?.length) {
+	if (!can_show_deduction_button(frm)) {
+		const total_bags = flt(frm.doc.custom_total_bags);
+		const child_sum = get_child_bag_sum(frm);
+		let message = __("Please enter Total Bags and Total Gross Weight, and distribute all bags in Bag Details.");
+
+		if (total_bags && child_sum !== total_bags) {
+			message = __("Sum of No. of Bags ({0}) must equal Total Bags ({1}).", [child_sum, total_bags]);
+		}
+
 		frappe.msgprint({
-			title: __("Total Bags"),
-			message: __("Please enter Total Bags on Purchase Invoice before opening deductions."),
+			title: __("Bag & Weight Required"),
+			message,
 			indicator: "orange",
 		});
+		return;
 	}
 
 	frappe.call({
@@ -79,6 +281,7 @@ function show_deductions_dialog(frm, deductions) {
 function build_deductions_html(deductions, frm, currency) {
 	const netAmount = flt(deductions[0]?.net_amount);
 	const totalBags = flt(frm.doc.custom_total_bags || deductions[0]?.total_bags);
+	const totalGrossWeight = flt(frm.doc.custom_total_gross_weight || deductions[0]?.total_gross_weight);
 
 	return `
 		<style>${get_deduction_styles()}</style>
@@ -99,6 +302,7 @@ function build_deductions_html(deductions, frm, currency) {
 					<div class="kd-stat"><b>${deductions.length}</b>${__("Types")}</div>
 					<div class="kd-stat"><b>${format_currency(netAmount, currency)}</b>${__("Net Amount")}</div>
 					<div class="kd-stat"><b>${totalBags || 0}</b>${__("Total Bags")}</div>
+					<div class="kd-stat"><b>${totalGrossWeight || 0}</b>${__("Gross Weight")}</div>
 				</div>
 			</div>
 			<div class="kd-toolbar">
@@ -109,10 +313,8 @@ function build_deductions_html(deductions, frm, currency) {
 			</div>
 			<div class="kd-list">${build_deduction_rows(deductions, currency)}</div>
 			<div class="kd-footer">
-				<strong>${__("Qty Deducation")}:</strong> ${__("Actual − Required → calculated amount")} &nbsp;|&nbsp;
-				<strong>${__("Calculation")}:</strong> ${__("Formula from Deduction Type (e.g. total_bags * charges_per_unit)")} &nbsp;|&nbsp;
-				<strong>${__("Direct")}:</strong> ${__("Charges per Unit when no formula")} &nbsp;|&nbsp;
-				<strong>${__("Manual")}:</strong> ${__("Enter amount when no formula and no charges")}
+				<strong>${__("Damage")}:</strong> ${__("difference × charges × total_gross_weight / 100")} &nbsp;|&nbsp;
+				<strong>${__("S/S / Moise")}:</strong> ${__("difference × total_amount / 100")}
 			</div>
 		</div>`;
 }
@@ -130,6 +332,7 @@ function build_deduction_rows(deductions, currency) {
 					deduction_type: row.deduction_type,
 					qty_deducation: row.qty_deducation ? 1 : 0,
 					calculation_mode: row.calculation_mode,
+					bag_type: row.bag_type || "",
 				})
 			);
 
@@ -147,12 +350,17 @@ function build_deduction_rows(deductions, currency) {
 }
 
 function build_qty_deducation_row(row, idx, abbr, active, search_key, data, currency) {
+	const formula = row.formula
+		? `<p class="kd-formula">${frappe.utils.escape_html(row.formula)}</p>`
+		: "";
+
 	return `
 		<div class="kd-row ${active} kd-row-qty" data-search="${search_key}" data-row='${data}'>
 			<div class="kd-badge b${idx % 9}">${frappe.utils.escape_html(abbr)}</div>
 			<div class="kd-info">
 				<p class="kd-name">${frappe.utils.escape_html(row.deduction_type_name)}</p>
 				<p class="kd-acct">${frappe.utils.escape_html(row.related_account || "")}</p>
+				${formula}
 			</div>
 			<div class="kd-qty-fields">
 				<div class="kd-field">
@@ -247,12 +455,21 @@ function recalculate_qty_row($row, frm, currency) {
 			purchase_invoice: frm.doc.name,
 			deduction_type: rowData.deduction_type,
 			actual,
+			bag_type: rowData.bag_type || null,
 		},
 		callback(r) {
 			if (!r.message) return;
 			$row.find(".deduction-required").val(r.message.required_value);
 			$row.find(".deduction-diff").val(r.message.difference);
 			$row.find(".deduction-amount").val(format_currency(r.message.amount, currency));
+			if (r.message.formula) {
+				let $formula = $row.find(".kd-formula");
+				if (!$formula.length) {
+					$row.find(".kd-info").append(`<p class="kd-formula">${frappe.utils.escape_html(r.message.formula)}</p>`);
+				} else {
+					$formula.text(r.message.formula);
+				}
+			}
 			r.message.amount > 0 ? $row.addClass("active") : $row.removeClass("active");
 		},
 	});
@@ -298,6 +515,7 @@ function apply_deductions(dialog, frm) {
 				deduction_type: rowData.deduction_type,
 				qty_deducation: 1,
 				actual: flt($row.find(".deduction-actual").val()),
+				bag_type: rowData.bag_type || "",
 			});
 		} else if (AUTO_CALC_MODES.has(rowData.calculation_mode)) {
 			deductions.push({

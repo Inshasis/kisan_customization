@@ -200,6 +200,8 @@ after_install = "kisan_customization.install.after_install.after_install"
 doc_events = {
 	"Purchase Invoice": {
 		"validate": "kisan_customization.purchase_invoice.purchase_invoice.validate",
+		"on_submit": "kisan_customization.purchase_invoice.broker_commission.on_submit",
+		"on_cancel": "kisan_customization.purchase_invoice.broker_commission.on_cancel",
 	},
 }
 

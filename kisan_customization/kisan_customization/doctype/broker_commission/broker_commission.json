@@ -1,0 +1,173 @@
+{
+ "actions": [],
+ "autoname": "naming_series:",
+ "creation": "2026-08-08 12:00:00",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "purchase_invoice",
+  "posting_date",
+  "company",
+  "column_break_1",
+  "broker",
+  "commission_section",
+  "commission_type",
+  "commission_percent",
+  "commission_amount",
+  "column_break_comm",
+  "broker_commission_amount",
+  "accounting_section",
+  "journal_entry",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "BC-.YYYY.-",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "purchase_invoice",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Purchase Invoice",
+   "options": "Purchase Invoice",
+   "read_only": 1,
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Posting Date",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Company",
+   "options": "Company",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "broker",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Broker",
+   "options": "Supplier",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "commission_section",
+   "fieldtype": "Section Break",
+   "label": "Commission Details"
+  },
+  {
+   "fieldname": "commission_type",
+   "fieldtype": "Select",
+   "label": "Commission Type",
+   "options": "\nPercentage\nTotal Qty",
+   "read_only": 1
+  },
+  {
+   "fieldname": "commission_percent",
+   "fieldtype": "Float",
+   "label": "Commission Percent",
+   "read_only": 1
+  },
+  {
+   "fieldname": "commission_amount",
+   "fieldtype": "Currency",
+   "label": "Commission Rate / Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_comm",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "broker_commission_amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Broker Commission Amount",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "accounting_section",
+   "fieldtype": "Section Break",
+   "label": "Accounting"
+  },
+  {
+   "fieldname": "journal_entry",
+   "fieldtype": "Link",
+   "label": "Journal Entry",
+   "no_copy": 1,
+   "options": "Journal Entry",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Broker Commission",
+   "print_hide": 1,
+   "read_only": 1
+  }
+ ],
+ "in_create": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2026-08-08 12:00:00",
+ "modified_by": "Administrator",
+ "module": "Kisan Customization",
+ "name": "Broker Commission",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts User"
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager"
+  },
+  {
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager"
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

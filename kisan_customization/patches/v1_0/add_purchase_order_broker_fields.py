@@ -8,7 +8,7 @@ CUSTOM_FIELDS = {
 		{
 			"fieldname": "custom_section_break_lqipi",
 			"fieldtype": "Section Break",
-			"insert_after": "base_tax_withholding_net_total",
+			"insert_after": "total_net_weight",
 			"label": "Broker Commission",
 		},
 		{

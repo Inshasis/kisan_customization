@@ -179,12 +179,17 @@ def _set_schedule_date_after_payment_days():
 	if not frappe.db.exists("Custom Field", "Purchase Order-custom_payment_days"):
 		return
 
+	from frappe.custom.doctype.property_setter.property_setter import delete_property_setter
+
+	delete_property_setter("Purchase Order", "insert_after", "schedule_date")
 	frappe.make_property_setter(
-		"Purchase Order",
-		"schedule_date",
-		"insert_after",
-		"custom_payment_days",
-		"Data",
-		force=True,
+		{
+			"doctype": "Purchase Order",
+			"doctype_or_field": "DocField",
+			"fieldname": "schedule_date",
+			"property": "insert_after",
+			"value": "custom_payment_days",
+			"property_type": "Data",
+		},
 		validate_fields_for_doctype=False,
 	)

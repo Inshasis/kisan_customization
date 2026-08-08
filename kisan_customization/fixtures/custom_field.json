@@ -136,6 +136,78 @@
  },
  {
   "doctype": "Custom Field",
+  "name": "Purchase Order-custom_section_break_lqipi",
+  "dt": "Purchase Order",
+  "fieldname": "custom_section_break_lqipi",
+  "fieldtype": "Section Break",
+  "insert_after": "base_tax_withholding_net_total",
+  "label": "Broker Commission"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Purchase Order-custom_broker",
+  "dt": "Purchase Order",
+  "fieldname": "custom_broker",
+  "fieldtype": "Link",
+  "insert_after": "custom_section_break_lqipi",
+  "label": "Broker",
+  "options": "Supplier"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Purchase Order-custom_column_break_1ked0",
+  "dt": "Purchase Order",
+  "fieldname": "custom_column_break_1ked0",
+  "fieldtype": "Column Break",
+  "insert_after": "custom_broker"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Purchase Order-custom_commission_type",
+  "dt": "Purchase Order",
+  "fieldname": "custom_commission_type",
+  "fieldtype": "Select",
+  "insert_after": "custom_column_break_1ked0",
+  "label": "Commission Type",
+  "options": "\nPercentage\nTotal Qty"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Purchase Order-custom_column_break_y5zpm",
+  "dt": "Purchase Order",
+  "fieldname": "custom_column_break_y5zpm",
+  "fieldtype": "Column Break",
+  "insert_after": "custom_commission_type"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Purchase Order-custom_commission_percent",
+  "dt": "Purchase Order",
+  "fieldname": "custom_commission_percent",
+  "fieldtype": "Float",
+  "insert_after": "custom_column_break_y5zpm",
+  "label": "Commission Percent"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Purchase Order-custom_commission_amount",
+  "dt": "Purchase Order",
+  "fieldname": "custom_commission_amount",
+  "fieldtype": "Currency",
+  "insert_after": "custom_commission_percent",
+  "label": "Commission Amount"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Purchase Order-custom_broker_commission_amount",
+  "dt": "Purchase Order",
+  "fieldname": "custom_broker_commission_amount",
+  "fieldtype": "Currency",
+  "insert_after": "custom_commission_amount",
+  "label": "Broker Commission Amount"
+ },
+ {
+  "doctype": "Custom Field",
   "name": "Purchase Order-custom_delivery_days",
   "dt": "Purchase Order",
   "fieldname": "custom_delivery_days",

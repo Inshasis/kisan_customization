@@ -89,7 +89,8 @@
   "fieldname": "custom_broker_commission_amount",
   "fieldtype": "Currency",
   "insert_after": "custom_commission_amount",
-  "label": "Broker Commission Amount"
+  "label": "Broker Commission Amount",
+  "read_only": 1
  },
  {
   "doctype": "Custom Field",
@@ -171,7 +172,8 @@
   "fieldtype": "Link",
   "insert_after": "custom_section_break_lqipi",
   "label": "Broker",
-  "options": "Supplier"
+  "options": "Supplier",
+  "read_only": 1
  },
  {
   "doctype": "Custom Field",
@@ -189,15 +191,8 @@
   "fieldtype": "Select",
   "insert_after": "custom_column_break_1ked0",
   "label": "Commission Type",
-  "options": "\nPercentage\nTotal Qty"
- },
- {
-  "doctype": "Custom Field",
-  "name": "Purchase Invoice-custom_column_break_y5zpm",
-  "dt": "Purchase Invoice",
-  "fieldname": "custom_column_break_y5zpm",
-  "fieldtype": "Column Break",
-  "insert_after": "custom_commission_type"
+  "options": "\nPercentage\nTotal Qty",
+  "read_only": 1
  },
  {
   "doctype": "Custom Field",
@@ -205,8 +200,9 @@
   "dt": "Purchase Invoice",
   "fieldname": "custom_commission_percent",
   "fieldtype": "Float",
-  "insert_after": "custom_column_break_y5zpm",
-  "label": "Commission Percent"
+  "insert_after": "custom_commission_type",
+  "label": "Commission Percent",
+  "read_only": 1
  },
  {
   "doctype": "Custom Field",
@@ -215,7 +211,8 @@
   "fieldname": "custom_commission_amount",
   "fieldtype": "Currency",
   "insert_after": "custom_commission_percent",
-  "label": "Commission Amount"
+  "label": "Commission Amount",
+  "read_only": 1
  },
  {
   "doctype": "Custom Field",
@@ -224,6 +221,7 @@
   "fieldname": "custom_broker_commission_amount",
   "fieldtype": "Currency",
   "insert_after": "custom_commission_amount",
-  "label": "Broker Commission Amount"
+  "label": "Broker Commission Amount",
+  "read_only": 1
  }
 ]

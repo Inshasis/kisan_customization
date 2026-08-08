@@ -25,7 +25,6 @@ fixtures = [
 					"Purchase Invoice-custom_broker",
 					"Purchase Invoice-custom_column_break_1ked0",
 					"Purchase Invoice-custom_commission_type",
-					"Purchase Invoice-custom_column_break_y5zpm",
 					"Purchase Invoice-custom_commission_percent",
 					"Purchase Invoice-custom_commission_amount",
 					"Purchase Invoice-custom_broker_commission_amount",

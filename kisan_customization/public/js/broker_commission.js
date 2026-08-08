@@ -1,5 +1,34 @@
 frappe.provide("kisan_customization.broker_commission");
 
+kisan_customization.broker_commission.toggle_fields = function (frm) {
+	const commission_type = frm.doc.custom_commission_type;
+	const show_percent = commission_type === "Percentage";
+	const show_amount = commission_type === "Total Qty";
+	const is_purchase_invoice = frm.doctype === "Purchase Invoice";
+
+	if (frm.fields_dict.custom_commission_percent) {
+		frm.toggle_display("custom_commission_percent", show_percent);
+	}
+	if (frm.fields_dict.custom_commission_amount) {
+		frm.toggle_display("custom_commission_amount", show_amount);
+	}
+
+	const broker_fields = [
+		"custom_broker",
+		"custom_commission_type",
+		"custom_commission_percent",
+		"custom_commission_amount",
+		"custom_broker_commission_amount",
+	];
+
+	broker_fields.forEach((fieldname) => {
+		if (!frm.fields_dict[fieldname]) return;
+
+		const read_only = is_purchase_invoice || fieldname === "custom_broker_commission_amount";
+		frm.set_df_property(fieldname, "read_only", read_only ? 1 : 0);
+	});
+};
+
 kisan_customization.broker_commission.calculate = function (frm) {
 	if (!frm.fields_dict.custom_broker_commission_amount) return;
 
@@ -29,11 +58,19 @@ kisan_customization.broker_commission.bind = function (doctype) {
 					},
 				};
 			});
+			kisan_customization.broker_commission.toggle_fields(frm);
 		},
 
 		custom_commission_type(frm) {
-			frm.set_value("custom_commission_percent", 0);
-			frm.set_value("custom_commission_amount", 0);
+			if (frm.doc.custom_commission_type === "Percentage") {
+				frm.set_value("custom_commission_amount", 0);
+			} else if (frm.doc.custom_commission_type === "Total Qty") {
+				frm.set_value("custom_commission_percent", 0);
+			} else {
+				frm.set_value("custom_commission_percent", 0);
+				frm.set_value("custom_commission_amount", 0);
+			}
+			kisan_customization.broker_commission.toggle_fields(frm);
 			kisan_customization.broker_commission.calculate(frm);
 		},
 
@@ -54,6 +91,7 @@ kisan_customization.broker_commission.bind = function (doctype) {
 		},
 
 		refresh(frm) {
+			kisan_customization.broker_commission.toggle_fields(frm);
 			kisan_customization.broker_commission.calculate(frm);
 		},
 	});

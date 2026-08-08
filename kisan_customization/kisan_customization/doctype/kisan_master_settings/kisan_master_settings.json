@@ -8,7 +8,7 @@
   "general_settings_section",
   "default_company",
   "column_break_general",
-  "broker_commission",
+  "broker_commission_expense_account",
   "deduction_settings_section",
   "deduction_tier_range",
   "bag_wise_deduction_section",
@@ -31,10 +31,10 @@
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "broker_commission",
-   "fieldtype": "Percent",
-   "label": "Broker Commission (%)",
-   "precision": "2"
+   "fieldname": "broker_commission_expense_account",
+   "fieldtype": "Link",
+   "label": "Broker Commission Expense Account",
+   "options": "Account"
   },
   {
    "fieldname": "deduction_settings_section",
@@ -61,7 +61,7 @@
  ],
  "issingle": 1,
  "links": [],
- "modified": "2026-08-06 20:45:24.527127",
+ "modified": "2026-08-08 10:04:46.575514",
  "modified_by": "Administrator",
  "module": "Kisan Customization",
  "name": "Kisan Master Settings",

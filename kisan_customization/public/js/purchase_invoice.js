@@ -11,6 +11,10 @@ frappe.ui.form.on("Purchase Invoice", {
 	refresh(frm) {
 		load_bag_type_options(frm);
 
+		if (!frm.is_new()) {
+			add_broker_commission_button(frm);
+		}
+
 		if (frm.is_new()) return;
 		if (!can_show_deduction_button(frm)) return;
 
@@ -83,6 +87,22 @@ frappe.ui.form.on("Purchase Invoice Bag Detail", {
 		recalculate_all_bag_rows(frm);
 	},
 });
+
+function add_broker_commission_button(frm) {
+	if (frm.doc.docstatus !== 1 || !frm.doc.custom_broker) return;
+
+	frappe.db.get_value(
+		"Broker Commission",
+		{ purchase_invoice: frm.doc.name, docstatus: 1 },
+		"name",
+		(r) => {
+			if (!r?.name) return;
+			frm.add_custom_button(__("Broker Commission"), () => {
+				frappe.set_route("Form", "Broker Commission", r.name);
+			});
+		}
+	);
+}
 
 function can_show_deduction_button(frm) {
 	const total_bags = flt(frm.doc.custom_total_bags);

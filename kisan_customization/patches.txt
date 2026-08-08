@@ -9,3 +9,5 @@ kisan_customization.patches.v1_0.fix_deduction_tier_flags
 kisan_customization.patches.v1_0.set_pp_deduction_formula
 kisan_customization.patches.v1_0.add_delivery_payment_days_fields
 kisan_customization.patches.v1_0.move_broker_commission_to_pi
+kisan_customization.patches.v1_0.add_broker_commission_settings
+kisan_customization.patches.v1_0.fix_broker_commission_permissions

@@ -8,7 +8,7 @@ CUSTOM_FIELDS = {
 		{
 			"fieldname": "custom_delivery_days",
 			"fieldtype": "Int",
-			"insert_after": "custom_broker_commission_amount",
+			"insert_after": "transaction_date",
 			"label": "Delivery Days",
 			"non_negative": 1,
 		},
@@ -25,4 +25,16 @@ CUSTOM_FIELDS = {
 
 def execute():
 	create_custom_fields(CUSTOM_FIELDS, update=True)
+
+	if frappe.db.exists("Custom Field", "Purchase Order-custom_payment_days"):
+		frappe.make_property_setter(
+			"Purchase Order",
+			"schedule_date",
+			"insert_after",
+			"custom_payment_days",
+			"Data",
+			force=True,
+			validate_fields_for_doctype=False,
+		)
+
 	frappe.clear_cache(doctype="Purchase Order")

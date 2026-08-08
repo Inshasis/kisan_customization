@@ -13,3 +13,4 @@ kisan_customization.patches.v1_0.move_broker_commission_to_pi
 kisan_customization.patches.v1_0.add_broker_commission_settings
 kisan_customization.patches.v1_0.fix_broker_commission_permissions
 kisan_customization.patches.v1_0.fix_purchase_order_custom_fields
+kisan_customization.patches.v1_0.fix_custom_field_layout

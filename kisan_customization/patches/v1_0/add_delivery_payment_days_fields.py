@@ -26,15 +26,9 @@ CUSTOM_FIELDS = {
 def execute():
 	create_custom_fields(CUSTOM_FIELDS, update=True)
 
-	if frappe.db.exists("Custom Field", "Purchase Order-custom_payment_days"):
-		frappe.make_property_setter(
-			"Purchase Order",
-			"schedule_date",
-			"insert_after",
-			"custom_payment_days",
-			"Data",
-			force=True,
-			validate_fields_for_doctype=False,
-		)
+	from kisan_customization.patches.v1_0.fix_custom_field_layout import (
+		_set_schedule_date_after_payment_days,
+	)
 
+	_set_schedule_date_after_payment_days()
 	frappe.clear_cache(doctype="Purchase Order")

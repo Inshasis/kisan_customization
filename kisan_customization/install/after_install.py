@@ -26,31 +26,33 @@ def after_install():
 def setup_master_settings():
 	settings = frappe.get_single("Kisan Master Settings")
 
-	if not settings.default_company:
+	if settings.meta.has_field("default_company") and not settings.default_company:
 		settings.default_company = frappe.defaults.get_global_default("company")
 
-	if not settings.bag_wise_deductions:
+	if settings.meta.has_field("bag_wise_deductions") and not settings.bag_wise_deductions:
 		for row in DEFAULT_BAG_DEDUCTIONS:
 			settings.append("bag_wise_deductions", row)
 
-	if not settings.deduction_tier_range:
+	if settings.meta.has_field("deduction_tier_range") and not settings.deduction_tier_range:
 		for row in DEFAULT_TIER_RANGES:
 			settings.append("deduction_tier_range", row)
 
-	if not settings.debit_note_cgst_rate:
-		settings.debit_note_cgst_rate = 2.5
-	if not settings.debit_note_sgst_rate:
-		settings.debit_note_sgst_rate = 2.5
-	if not settings.debit_note_igst_rate:
-		settings.debit_note_igst_rate = 5.0
-	if not settings.days_per_month:
-		settings.days_per_month = 30
-	if not settings.minimum_chargeable_days:
-		settings.minimum_chargeable_days = 15
-	if not settings.extra_days_after_minimum:
-		settings.extra_days_after_minimum = 2
+	_set_default_if_empty(settings, "debit_note_cgst_rate", 2.5)
+	_set_default_if_empty(settings, "debit_note_sgst_rate", 2.5)
+	_set_default_if_empty(settings, "debit_note_igst_rate", 5.0)
+	_set_default_if_empty(settings, "days_per_month", 30)
+	_set_default_if_empty(settings, "minimum_chargeable_days", 15)
+	_set_default_if_empty(settings, "extra_days_after_minimum", 2)
 
 	settings.save(ignore_permissions=True)
+
+
+def _set_default_if_empty(settings, fieldname, value):
+	if not settings.meta.has_field(fieldname):
+		return
+
+	if not settings.get(fieldname):
+		settings.set(fieldname, value)
 
 
 def setup_default_deduction_types():

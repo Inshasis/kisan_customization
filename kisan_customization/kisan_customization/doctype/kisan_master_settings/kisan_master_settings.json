@@ -8,7 +8,16 @@
   "general_settings_section",
   "default_company",
   "column_break_general",
+  "broker_commission",
   "broker_commission_expense_account",
+  "debit_note_settings_section",
+  "debit_note_cgst_rate",
+  "debit_note_sgst_rate",
+  "debit_note_igst_rate",
+  "days_settings_section",
+  "days_per_month",
+  "minimum_chargeable_days",
+  "extra_days_after_minimum",
   "deduction_settings_section",
   "deduction_tier_range",
   "bag_wise_deduction_section",
@@ -31,10 +40,65 @@
    "fieldtype": "Column Break"
   },
   {
+   "fieldname": "broker_commission",
+   "fieldtype": "Percent",
+   "label": "Broker Commission (%)",
+   "precision": "2"
+  },
+  {
    "fieldname": "broker_commission_expense_account",
    "fieldtype": "Link",
    "label": "Broker Commission Expense Account",
    "options": "Account"
+  },
+  {
+   "fieldname": "debit_note_settings_section",
+   "fieldtype": "Section Break",
+   "label": "Debit Note Tax Rates"
+  },
+  {
+   "default": "2.5",
+   "fieldname": "debit_note_cgst_rate",
+   "fieldtype": "Percent",
+   "label": "Debit Note CGST Rate",
+   "precision": "2"
+  },
+  {
+   "default": "2.5",
+   "fieldname": "debit_note_sgst_rate",
+   "fieldtype": "Percent",
+   "label": "Debit Note SGST Rate",
+   "precision": "2"
+  },
+  {
+   "default": "5",
+   "fieldname": "debit_note_igst_rate",
+   "fieldtype": "Percent",
+   "label": "Debit Note IGST Rate",
+   "precision": "2"
+  },
+  {
+   "fieldname": "days_settings_section",
+   "fieldtype": "Section Break",
+   "label": "Days Settings"
+  },
+  {
+   "default": "30",
+   "fieldname": "days_per_month",
+   "fieldtype": "Int",
+   "label": "Days Per Month"
+  },
+  {
+   "default": "15",
+   "fieldname": "minimum_chargeable_days",
+   "fieldtype": "Int",
+   "label": "Minimum Chargeable Days"
+  },
+  {
+   "default": "2",
+   "fieldname": "extra_days_after_minimum",
+   "fieldtype": "Int",
+   "label": "Extra Days After Minimum"
   },
   {
    "fieldname": "deduction_settings_section",
@@ -61,7 +125,7 @@
  ],
  "issingle": 1,
  "links": [],
- "modified": "2026-08-08 10:04:46.575514",
+ "modified": "2026-08-08 11:30:00.000000",
  "modified_by": "Administrator",
  "module": "Kisan Customization",
  "name": "Kisan Master Settings",

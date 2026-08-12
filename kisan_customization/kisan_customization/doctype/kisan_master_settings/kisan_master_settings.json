@@ -8,15 +8,12 @@
   "general_settings_section",
   "default_company",
   "column_break_general",
-  "broker_commission",
-  "broker_commission_expense_account",
-  "debit_note_settings_section",
-  "debit_note_cgst_rate",
-  "debit_note_sgst_rate",
-  "debit_note_igst_rate",
+  "rental_item",
   "days_settings_section",
   "days_per_month",
+  "column_break_djpq",
   "minimum_chargeable_days",
+  "column_break_pznx",
   "extra_days_after_minimum",
   "deduction_settings_section",
   "deduction_tier_range",
@@ -38,44 +35,6 @@
   {
    "fieldname": "column_break_general",
    "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "broker_commission",
-   "fieldtype": "Percent",
-   "label": "Broker Commission (%)",
-   "precision": "2"
-  },
-  {
-   "fieldname": "broker_commission_expense_account",
-   "fieldtype": "Link",
-   "label": "Broker Commission Expense Account",
-   "options": "Account"
-  },
-  {
-   "fieldname": "debit_note_settings_section",
-   "fieldtype": "Section Break",
-   "label": "Debit Note Tax Rates"
-  },
-  {
-   "default": "2.5",
-   "fieldname": "debit_note_cgst_rate",
-   "fieldtype": "Percent",
-   "label": "Debit Note CGST Rate",
-   "precision": "2"
-  },
-  {
-   "default": "2.5",
-   "fieldname": "debit_note_sgst_rate",
-   "fieldtype": "Percent",
-   "label": "Debit Note SGST Rate",
-   "precision": "2"
-  },
-  {
-   "default": "5",
-   "fieldname": "debit_note_igst_rate",
-   "fieldtype": "Percent",
-   "label": "Debit Note IGST Rate",
-   "precision": "2"
   },
   {
    "fieldname": "days_settings_section",
@@ -121,11 +80,25 @@
    "fieldtype": "Table",
    "label": "Bag Wise Deductions",
    "options": "Kisan Bag Wise Deduction"
+  },
+  {
+   "fieldname": "column_break_djpq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_pznx",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "rental_item",
+   "fieldtype": "Link",
+   "label": "Rental Item",
+   "options": "Item"
   }
  ],
  "issingle": 1,
  "links": [],
- "modified": "2026-08-08 11:30:00.000000",
+ "modified": "2026-08-12 16:20:42.175757",
  "modified_by": "Administrator",
  "module": "Kisan Customization",
  "name": "Kisan Master Settings",

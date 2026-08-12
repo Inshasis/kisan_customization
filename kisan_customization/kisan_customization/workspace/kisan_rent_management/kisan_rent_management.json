@@ -1,0 +1,86 @@
+{
+ "charts": [],
+ "content": "[{\"id\":\"s1XDB4Ga6O\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Kisan Rent Management</span>\",\"col\":12}},{\"id\":\"Sgxp0qEg5p\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Customer\",\"col\":4}},{\"id\":\"w6Ze4duU6Z\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Commodity\",\"col\":4}},{\"id\":\"YX5-6CsqpK\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Godown\",\"col\":4}},{\"id\":\"acjPdqydYE\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Godown Floor\",\"col\":4}},{\"id\":\"ymWZQzDCTU\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Floor Chamber\",\"col\":4}},{\"id\":\"p2MQUXjs8I\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"GRpNRwgz-0\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Inward Aawak\",\"col\":4}},{\"id\":\"J6Jv-mANqL\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Outward Jawak\",\"col\":4}}]",
+ "creation": "2026-08-12 13:21:23.207552",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "income",
+ "idx": 0,
+ "indicator_color": "green",
+ "is_hidden": 0,
+ "label": "Kisan Rent Management",
+ "links": [],
+ "modified": "2026-08-12 17:26:13.876844",
+ "modified_by": "Administrator",
+ "module": "Kisan Customization",
+ "name": "Kisan Rent Management",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [],
+ "sequence_id": 1.0,
+ "shortcuts": [
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Customer",
+   "link_to": "Customer",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Godown",
+   "link_to": "Godown",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Outward Jawak",
+   "link_to": "Outward Jawak",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Inward Aawak",
+   "link_to": "Inward Aawak",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Commodity",
+   "link_to": "Item",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Godown Floor",
+   "link_to": "Godown Floor",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Floor Chamber",
+   "link_to": "Floor Chamber",
+   "stats_filter": "[]",
+   "type": "DocType"
+  }
+ ],
+ "title": "Kisan Rent Management"
+}

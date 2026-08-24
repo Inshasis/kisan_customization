@@ -9,6 +9,8 @@
   "default_company",
   "column_break_general",
   "rental_item",
+  "broker_settings_section",
+  "broker_commission_expense_account",
   "days_settings_section",
   "days_per_month",
   "column_break_djpq",
@@ -94,6 +96,17 @@
    "fieldtype": "Link",
    "label": "Rental Item",
    "options": "Item"
+  },
+  {
+   "fieldname": "broker_settings_section",
+   "fieldtype": "Section Break",
+   "label": "Broker Commission Settings"
+  },
+  {
+   "fieldname": "broker_commission_expense_account",
+   "fieldtype": "Link",
+   "label": "Broker Commission Expense Account",
+   "options": "Account"
   }
  ],
  "issingle": 1,

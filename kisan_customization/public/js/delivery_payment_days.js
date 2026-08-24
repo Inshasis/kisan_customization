@@ -1,6 +1,9 @@
 frappe.provide("kisan_customization.delivery_payment_days");
 
 kisan_customization.delivery_payment_days.get_base_date = function (frm) {
+	if (frm.doc.doctype === "Purchase Invoice") {
+		return frm.doc.posting_date || frm.doc.bill_date || frappe.datetime.get_today();
+	}
 	return frm.doc.transaction_date || frm.doc.posting_date || frappe.datetime.get_today();
 };
 
@@ -75,6 +78,9 @@ kisan_customization.delivery_payment_days.apply_payment_days = function (frm) {
 		row.invoice_portion = 100;
 		kisan_customization.delivery_payment_days.set_row_amounts(row, totals);
 		frm.refresh_field("payment_schedule");
+		if (frm.fields_dict.due_date) {
+			frm.set_value("due_date", date);
+		}
 		return;
 	}
 
@@ -83,6 +89,10 @@ kisan_customization.delivery_payment_days.apply_payment_days = function (frm) {
 		kisan_customization.delivery_payment_days.set_row_amounts(row, totals);
 	});
 	frm.refresh_field("payment_schedule");
+
+	if (frm.fields_dict.due_date) {
+		frm.set_value("due_date", date);
+	}
 };
 
 kisan_customization.delivery_payment_days.apply_all = function (frm) {
@@ -121,6 +131,20 @@ kisan_customization.delivery_payment_days.bind = function (doctype) {
 	if (doctype === "Purchase Order") {
 		handlers.transaction_date = function (frm) {
 			kisan_customization.delivery_payment_days.apply_all(frm);
+		};
+	}
+
+	if (doctype === "Purchase Invoice") {
+		handlers.posting_date = function (frm) {
+			kisan_customization.delivery_payment_days.apply_payment_days(frm);
+		};
+		handlers.bill_date = function (frm) {
+			kisan_customization.delivery_payment_days.apply_payment_days(frm);
+		};
+		handlers.onload = function (frm) {
+			if (frm.doc.custom_payment_days) {
+				kisan_customization.delivery_payment_days.apply_payment_days(frm);
+			}
 		};
 	}
 

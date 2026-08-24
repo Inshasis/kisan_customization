@@ -29,6 +29,17 @@ def get_pi_item_rate(doc):
 	return 0
 
 
+def sync_arrival_qty_to_items(doc):
+	arrival_weight = flt(doc.get("custom_total_arrival_weight"))
+	if not arrival_weight:
+		return
+
+	qty = flt(arrival_weight / 100, 3)
+	for item in doc.get("items") or []:
+		item.qty = qty
+		item.amount = flt(qty) * flt(item.rate)
+
+
 def get_child_bag_sum(doc):
 	return sum(flt(row.no_of_bags) for row in doc.get("custom_bag_details") or [])
 

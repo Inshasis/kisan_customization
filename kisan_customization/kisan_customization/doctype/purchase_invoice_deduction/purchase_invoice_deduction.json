@@ -1,0 +1,113 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-08-24 23:30:00",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "deduction_type",
+  "deduction_type_name",
+  "bag_type",
+  "related_account",
+  "is_weight_deduction",
+  "actual",
+  "required_value",
+  "difference",
+  "weight_deduction_kg",
+  "item_rate",
+  "amount"
+ ],
+ "fields": [
+  {
+   "fieldname": "deduction_type",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Deduction Type",
+   "options": "Deduction Type"
+  },
+  {
+   "fetch_from": "deduction_type.deduction_type_name",
+   "fieldname": "deduction_type_name",
+   "fieldtype": "Data",
+   "label": "Deduction Type Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "bag_type",
+   "fieldtype": "Data",
+   "label": "Bag Type"
+  },
+  {
+   "fetch_from": "deduction_type.related_account",
+   "fieldname": "related_account",
+   "fieldtype": "Link",
+   "label": "Related Account",
+   "options": "Account",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_weight_deduction",
+   "fieldtype": "Check",
+   "label": "Is Weight Deduction"
+  },
+  {
+   "fieldname": "actual",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Actual",
+   "precision": "2"
+  },
+  {
+   "fieldname": "required_value",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Required Value",
+   "precision": "2",
+   "read_only": 1
+  },
+  {
+   "fieldname": "difference",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Difference",
+   "precision": "2",
+   "read_only": 1
+  },
+  {
+   "fieldname": "weight_deduction_kg",
+   "fieldtype": "Float",
+   "label": "Weight Deduction (kg)",
+   "precision": "2",
+   "read_only": 1
+  },
+  {
+   "fieldname": "item_rate",
+   "fieldtype": "Float",
+   "label": "Item Rate",
+   "precision": "2",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Amount",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-08-25 01:00:44.482362",
+ "modified_by": "Administrator",
+ "module": "Kisan Customization",
+ "name": "Purchase Invoice Deduction",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

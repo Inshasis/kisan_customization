@@ -8,7 +8,7 @@ CUSTOM_FIELDS = {
 		{
 			"fieldname": "broker_commission_expense_account",
 			"fieldtype": "Link",
-			"insert_after": "broker_commission",
+			"insert_after": "rental_item",
 			"label": "Broker Commission Expense Account",
 			"options": "Account",
 		},

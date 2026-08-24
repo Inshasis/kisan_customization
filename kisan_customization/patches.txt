@@ -21,3 +21,4 @@ kisan_customization.patches.v1_0.add_aggregator_booking_po_field
 kisan_customization.patches.v1_0.add_outward_jawak_si_field
 kisan_customization.patches.v1_0.remove_outward_jawak_si_field
 kisan_customization.patches.v1_0.add_inward_delivery_tracking
+kisan_customization.patches.v1_0.fix_broker_commission_expense_account

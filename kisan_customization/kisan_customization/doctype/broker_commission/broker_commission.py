@@ -45,20 +45,7 @@ class BrokerCommission(Document):
 
 
 def create_broker_commission_journal_entry(doc):
-	expense_account = frappe.db.get_single_value(
-		"Kisan Master Settings", "broker_commission_expense_account"
-	)
-	if not expense_account:
-		frappe.throw(
-			_("Set Broker Commission Expense Account in {0}").format(
-				frappe.bold(_("Kisan Master Settings"))
-			)
-		)
-
-	if not frappe.db.exists("Account", {"name": expense_account, "company": doc.company}):
-		frappe.throw(
-			_("Account {0} does not belong to company {1}").format(expense_account, doc.company)
-		)
+	expense_account = _get_broker_commission_expense_account(doc.company)
 
 	payable_account = get_party_account("Supplier", doc.broker, doc.company)
 	amount = flt(doc.broker_commission_amount)
@@ -94,6 +81,32 @@ def create_broker_commission_journal_entry(doc):
 	je.submit()
 
 	return je.name
+
+
+def _get_broker_commission_expense_account(company):
+	meta = frappe.get_meta("Kisan Master Settings", cached=False)
+	if not meta.has_field("broker_commission_expense_account"):
+		frappe.throw(
+			_(
+				"Broker Commission Expense Account field is missing on {0}. "
+				"Please update kisan_customization and run bench migrate."
+			).format(frappe.bold(_("Kisan Master Settings")))
+		)
+
+	expense_account = frappe.db.get_single_value(
+		"Kisan Master Settings", "broker_commission_expense_account"
+	)
+	if not expense_account:
+		frappe.throw(
+			_("Set Broker Commission Expense Account in {0}").format(
+				frappe.bold(_("Kisan Master Settings"))
+			)
+		)
+
+	if not frappe.db.exists("Account", {"name": expense_account, "company": company}):
+		frappe.throw(_("Account {0} does not belong to company {1}").format(expense_account, company))
+
+	return expense_account
 
 
 def _get_cost_center(doc):

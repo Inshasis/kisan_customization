@@ -14,11 +14,9 @@
   "aawak_date",
   "column_break_4",
   "commodities",
-  "column_break_wzcm",
   "storage_customer",
-  "column_break_wtvz",
+  "column_break_wzcm",
   "vehicle_number",
-  "column_break_eioe",
   "status",
   "section_break_mkdx",
   "receiver_name",
@@ -101,10 +99,6 @@
    "reqd": 1
   },
   {
-   "fieldname": "column_break_wtvz",
-   "fieldtype": "Column Break"
-  },
-  {
    "fieldname": "vehicle_number",
    "fieldtype": "Data",
    "in_list_view": 1,
@@ -113,14 +107,12 @@
    "reqd": 1
   },
   {
-   "fieldname": "column_break_eioe",
-   "fieldtype": "Column Break"
-  },
-  {
+   "bold": 1,
    "default": "Submitted",
    "fieldname": "status",
    "fieldtype": "Select",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Status",
    "options": "Submitted\nPartially Delivered\nFully Delivered",
    "read_only": 1
@@ -275,7 +267,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-08-12 13:40:39.652248",
+ "modified": "2026-08-15 17:35:33.560541",
  "modified_by": "Administrator",
  "module": "Kisan Customization",
  "name": "Inward Aawak",
@@ -300,6 +292,19 @@
  "search_fields": "lot_number,firm,storage_customer,vehicle_number",
  "sort_field": "aawak_date",
  "sort_order": "DESC",
- "states": [],
+ "states": [
+  {
+   "color": "Blue",
+   "title": "Submitted"
+  },
+  {
+   "color": "Orange",
+   "title": "Partially Delivered"
+  },
+  {
+   "color": "Green",
+   "title": "Fully Delivered"
+  }
+ ],
  "track_changes": 1
 }

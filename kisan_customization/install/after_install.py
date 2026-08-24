@@ -65,12 +65,6 @@ def setup_default_deduction_types():
 	for row in DEFAULT_DEDUCTION_TYPES:
 		name = row["deduction_type_name"]
 		if frappe.db.exists("Deduction Type", name):
-			doc = frappe.get_doc("Deduction Type", name)
-			for field, value in row.items():
-				if field != "deduction_type_name":
-					setattr(doc, field, value)
-			doc.company = company
-			doc.save(ignore_permissions=True)
 			continue
 
 		doc = frappe.get_doc({"doctype": "Deduction Type", "company": company, **row})

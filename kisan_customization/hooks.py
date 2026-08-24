@@ -21,6 +21,9 @@ fixtures = [
 					"Purchase Invoice-custom_total_bags",
 					"Purchase Invoice-custom_total_gross_weight",
 					"Purchase Invoice-custom_total_arrival_weight",
+					"Purchase Invoice-custom_weight_deduction",
+					"Purchase Invoice-custom_deductions_section",
+					"Purchase Invoice-custom_deductions",
 					"Purchase Invoice-custom_section_break_lqipi",
 					"Purchase Invoice-custom_broker",
 					"Purchase Invoice-custom_column_break_1ked0",
@@ -28,6 +31,7 @@ fixtures = [
 					"Purchase Invoice-custom_commission_percent",
 					"Purchase Invoice-custom_commission_amount",
 					"Purchase Invoice-custom_broker_commission_amount",
+					"Purchase Invoice-custom_payment_days",
 					"Purchase Order-custom_section_break_lqipi",
 					"Purchase Order-custom_broker",
 					"Purchase Order-custom_column_break_1ked0",
@@ -38,26 +42,6 @@ fixtures = [
 					"Purchase Order-custom_broker_commission_amount",
 					"Purchase Order-custom_delivery_days",
 					"Purchase Order-custom_payment_days",
-				],
-			]
-		],
-	},
-	{
-		"dt": "Deduction Type",
-		"filters": [
-			[
-				"deduction_type_name",
-				"in",
-				[
-					"Moise",
-					"Damage",
-					"S/S",
-					"PP",
-					"UNLOADING",
-					"Others",
-					"Weighbridge",
-					"RTGS",
-					"Miscellaneous",
 				],
 			]
 		],
@@ -103,6 +87,7 @@ fixtures = [
 doctype_js = {
 	"Purchase Invoice": [
 		"public/js/broker_commission.js",
+		"public/js/delivery_payment_days.js",
 		"public/js/purchase_invoice.js",
 	],
 	"Purchase Order": [
@@ -110,6 +95,9 @@ doctype_js = {
 		"public/js/broker_commission.js",
 		"public/js/purchase_order.js",
 	],
+}
+doctype_list_js = {
+	"Purchase Order": "public/js/purchase_order_list.js",
 }
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}

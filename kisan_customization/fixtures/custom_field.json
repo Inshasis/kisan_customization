@@ -173,7 +173,7 @@
   "insert_after": "custom_section_break_lqipi",
   "label": "Broker",
   "options": "Supplier",
-  "read_only": 1
+  "read_only": 0
  },
  {
   "doctype": "Custom Field",
@@ -192,7 +192,7 @@
   "insert_after": "custom_column_break_1ked0",
   "label": "Commission Type",
   "options": "\nPercentage\nTotal Qty",
-  "read_only": 1
+  "read_only": 0
  },
  {
   "doctype": "Custom Field",
@@ -202,7 +202,7 @@
   "fieldtype": "Float",
   "insert_after": "custom_commission_type",
   "label": "Commission Percent",
-  "read_only": 1
+  "read_only": 0
  },
  {
   "doctype": "Custom Field",
@@ -212,7 +212,7 @@
   "fieldtype": "Currency",
   "insert_after": "custom_commission_percent",
   "label": "Commission Amount",
-  "read_only": 1
+  "read_only": 0
  },
  {
   "doctype": "Custom Field",
@@ -223,5 +223,47 @@
   "insert_after": "custom_commission_amount",
   "label": "Broker Commission Amount",
   "read_only": 1
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Purchase Invoice-custom_weight_deduction",
+  "dt": "Purchase Invoice",
+  "fieldname": "custom_weight_deduction",
+  "fieldtype": "Float",
+  "insert_after": "custom_total_arrival_weight",
+  "label": "Weight Deduction (kg)",
+  "precision": "2",
+  "read_only": 1
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Purchase Invoice-custom_deductions_section",
+  "dt": "Purchase Invoice",
+  "fieldname": "custom_deductions_section",
+  "fieldtype": "Section Break",
+  "insert_after": "custom_weight_deduction",
+  "label": "Deductions"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Purchase Invoice-custom_deductions",
+  "dt": "Purchase Invoice",
+  "fieldname": "custom_deductions",
+  "fieldtype": "Table",
+  "insert_after": "custom_deductions_section",
+  "label": "Deduction Details",
+  "options": "Purchase Invoice Deduction",
+  "read_only": 1
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Purchase Invoice-custom_payment_days",
+  "dt": "Purchase Invoice",
+  "fieldname": "custom_payment_days",
+  "fieldtype": "Int",
+  "insert_after": "due_date",
+  "label": "Payment Days",
+  "non_negative": 1,
+  "read_only": 0
  }
 ]

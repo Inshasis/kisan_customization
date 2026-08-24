@@ -4,7 +4,6 @@ kisan_customization.broker_commission.toggle_fields = function (frm) {
 	const commission_type = frm.doc.custom_commission_type;
 	const show_percent = commission_type === "Percentage";
 	const show_amount = commission_type === "Total Qty";
-	const is_purchase_invoice = frm.doctype === "Purchase Invoice";
 
 	if (frm.fields_dict.custom_commission_percent) {
 		frm.toggle_display("custom_commission_percent", show_percent);
@@ -24,7 +23,7 @@ kisan_customization.broker_commission.toggle_fields = function (frm) {
 	broker_fields.forEach((fieldname) => {
 		if (!frm.fields_dict[fieldname]) return;
 
-		const read_only = is_purchase_invoice || fieldname === "custom_broker_commission_amount";
+		const read_only = fieldname === "custom_broker_commission_amount";
 		frm.set_df_property(fieldname, "read_only", read_only ? 1 : 0);
 	});
 };

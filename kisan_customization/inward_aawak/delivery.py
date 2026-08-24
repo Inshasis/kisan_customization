@@ -161,7 +161,7 @@ def get_available_inward_lots(firm):
 	records = frappe.get_all(
 		"Inward Aawak",
 		filters={"firm": firm, "docstatus": 1},
-		fields=["name", "lot_number", "status", "remaining_bags", "total_bags"],
+		fields=["name", "lot_number", "status", "remaining_bags", "total_bags", "released_bags"],
 		order_by="lot_number asc",
 		limit_page_length=500,
 	)
@@ -177,10 +177,16 @@ def get_available_inward_lots(firm):
 		record = frappe.db.get_value(
 			"Inward Aawak",
 			record.name,
-			["lot_number", "status", "remaining_bags"],
+			["lot_number", "status", "remaining_bags", "total_bags", "released_bags"],
 			as_dict=True,
 		)
+
 		remaining = cint(record.remaining_bags)
+		if remaining <= 0:
+			total_inward = cint(record.total_bags)
+			released = cint(record.released_bags)
+			if total_inward > released:
+				remaining = total_inward - released
 
 		if record.status == STATUS_FULLY_DELIVERED or remaining <= 0:
 			continue

@@ -258,7 +258,7 @@ function onFirmOrLotChange(frm) {
 	clearForm(frm);
 
 	// Refresh lot options for the selected firm
-	// loadLotOptions(frm);
+	loadLotOptions(frm);
 
 	// Only fetch when both Firm and Inward Lot No are present
 	if (frm.doc.firm && frm.doc.inward_lot_no) {

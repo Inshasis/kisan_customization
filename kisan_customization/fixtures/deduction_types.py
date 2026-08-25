@@ -13,6 +13,7 @@ DEDUCTION_TYPE_NAMES = [
 	"Weighbridge",
 	"RTGS",
 	"Miscellaneous",
+	"Weight Deduction",
 ]
 
 

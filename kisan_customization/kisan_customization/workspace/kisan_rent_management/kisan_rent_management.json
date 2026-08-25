@@ -13,7 +13,7 @@
  "is_hidden": 0,
  "label": "Kisan Rent Management",
  "links": [],
- "modified": "2026-08-12 17:26:13.876844",
+ "modified": "2026-08-25 09:37:09.492548",
  "modified_by": "Administrator",
  "module": "Kisan Customization",
  "name": "Kisan Rent Management",
@@ -28,17 +28,17 @@
   {
    "color": "Grey",
    "doc_view": "List",
-   "label": "Customer",
-   "link_to": "Customer",
+   "label": "Godown",
+   "link_to": "Godown",
    "stats_filter": "[]",
    "type": "DocType"
   },
   {
    "color": "Grey",
    "doc_view": "List",
-   "label": "Godown",
-   "link_to": "Godown",
-   "stats_filter": "[]",
+   "label": "Customer",
+   "link_to": "Customer",
+   "stats_filter": "[[\"Customer\",\"customer_group\",\"=\",\"Cold Storage Customer\",false]]",
    "type": "DocType"
   },
   {

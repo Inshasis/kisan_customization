@@ -1,0 +1,16 @@
+[
+ {
+  "docstatus": 0,
+  "doctype": "Item Group",
+  "gst_hsn_code": null,
+  "image": null,
+  "is_group": 0,
+  "item_group_defaults": [],
+  "item_group_name": "Cold Storage Item",
+  "modified": "2026-08-25 09:37:40.681243",
+  "name": "Cold Storage Item",
+  "old_parent": "All Item Groups",
+  "parent_item_group": "All Item Groups",
+  "taxes": []
+ }
+]

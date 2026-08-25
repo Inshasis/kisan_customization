@@ -46,7 +46,25 @@ fixtures = [
 			]
 		],
 	},
+    {"dt": "Item Group", "filters": [
+		[
+			"name",
+		"in",
+		{
+			"Cold Storage Item"
+		}]
+	]},
+	{"dt": "Customer Group", "filters": [
+		[
+			"name",
+		"in",
+		{
+			"Cold Storage Customer"
+		}]
+	]},
 ]
+
+# bench --site kisan_custom export-fixtures --app kisan_customization
 
 # Apps
 # ------------------

@@ -1,0 +1,16 @@
+[
+ {
+  "accounts": [],
+  "credit_limits": [],
+  "customer_group_name": "Cold Storage Customer",
+  "default_price_list": null,
+  "docstatus": 0,
+  "doctype": "Customer Group",
+  "is_group": 0,
+  "modified": "2026-08-25 09:36:00.206235",
+  "name": "Cold Storage Customer",
+  "old_parent": "All Customer Groups",
+  "parent_customer_group": "All Customer Groups",
+  "payment_terms": null
+ }
+]

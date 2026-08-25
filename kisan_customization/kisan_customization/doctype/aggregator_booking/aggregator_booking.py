@@ -3,11 +3,15 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import flt, getdate
+from frappe.utils import flt
 
 from kisan_customization.aggregator_booking.purchase_orders import (
 	cancel_purchase_orders_for_booking,
 	create_purchase_orders_for_booking,
+)
+from kisan_customization.aggregator_booking.terms import (
+	apply_booking_dates,
+	calculate_booking_broker_commission,
 )
 
 
@@ -16,6 +20,8 @@ class AggregatorBooking(Document):
 		self._set_company_defaults()
 		self._validate_items()
 		self._calculate_totals()
+		apply_booking_dates(self)
+		calculate_booking_broker_commission(self)
 
 	def on_submit(self):
 		if self.purchase_orders:
@@ -59,16 +65,16 @@ class AggregatorBooking(Document):
 
 	def _calculate_totals(self):
 		total_qty = 0
-		grand_total = 0
+		total_amount = 0
 		suppliers = set()
 
 		for row in self.items:
 			row.amount = flt(row.qty) * flt(row.rate)
 			total_qty += flt(row.qty)
-			grand_total += flt(row.amount)
+			total_amount += flt(row.amount)
 			if row.supplier:
 				suppliers.add(row.supplier)
 
 		self.total_qty = total_qty
-		self.grand_total = grand_total
+		self.total_amount = total_amount
 		self.no_of_suppliers = len(suppliers)

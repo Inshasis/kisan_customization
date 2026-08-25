@@ -82,16 +82,22 @@ kisan_customization.broker_commission.bind = function (doctype) {
 		},
 
 		net_total(frm) {
-			kisan_customization.broker_commission.calculate(frm);
+			if (frm.doc.docstatus === 0) {
+				kisan_customization.broker_commission.calculate(frm);
+			}
 		},
 
 		total_qty(frm) {
-			kisan_customization.broker_commission.calculate(frm);
+			if (frm.doc.docstatus === 0) {
+				kisan_customization.broker_commission.calculate(frm);
+			}
 		},
 
 		refresh(frm) {
 			kisan_customization.broker_commission.toggle_fields(frm);
-			kisan_customization.broker_commission.calculate(frm);
+			if (frm.doc.docstatus === 0) {
+				kisan_customization.broker_commission.calculate(frm);
+			}
 		},
 	});
 };

@@ -2,20 +2,25 @@
 
 import frappe
 from frappe import _
-from frappe.utils import flt, getdate, get_link_to_form
+from frappe.utils import flt, get_link_to_form
+
+from kisan_customization.aggregator_booking.terms import (
+	apply_booking_terms_to_po,
+	compute_delivery_date,
+	persist_po_booking_terms,
+)
 
 
 def create_purchase_orders_for_booking(doc):
 	supplier_rows = _group_items_by_supplier(doc)
-	schedule_date = getdate(doc.required_by or doc.booking_date)
+	delivery_date = compute_delivery_date(doc)
 	po_rows = []
 
 	for supplier, rows in supplier_rows.items():
 		po = frappe.new_doc("Purchase Order")
 		po.supplier = supplier
 		po.company = doc.company
-		po.transaction_date = getdate(doc.booking_date)
-		po.schedule_date = schedule_date
+		po.transaction_date = doc.booking_date
 
 		if frappe.db.has_column("Purchase Order", "custom_aggregator_booking"):
 			po.custom_aggregator_booking = doc.name
@@ -29,13 +34,26 @@ def create_purchase_orders_for_booking(doc):
 					"qty": flt(row.qty),
 					"rate": flt(row.rate),
 					"uom": row.uom,
-					"schedule_date": schedule_date,
+					"schedule_date": delivery_date,
 				},
 			)
 
 		po.set_missing_values()
 		po.flags.ignore_permissions = True
 		po.insert()
+
+		persist_po_booking_terms(po.name, doc)
+
+		po = frappe.get_doc("Purchase Order", po.name)
+		apply_booking_terms_to_po(po, doc)
+		po.flags.ignore_permissions = True
+		po.save()
+
+		persist_po_booking_terms(po.name, doc)
+
+		po = frappe.get_doc("Purchase Order", po.name)
+		po.flags.ignore_permissions = True
+		po.flags.ignore_validate_update_after_submit = True
 		po.submit()
 
 		po_rows.append(
@@ -55,6 +73,8 @@ def create_purchase_orders_for_booking(doc):
 
 
 def _link_purchase_orders(docname, po_rows):
+	frappe.db.delete("Aggregator Booking Purchase Order", {"parent": docname})
+
 	for idx, row in enumerate(po_rows, start=1):
 		frappe.get_doc(
 			{

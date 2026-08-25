@@ -62,6 +62,15 @@ fixtures = [
 			"Cold Storage Customer"
 		}]
 	]},
+    {"dt": "Supplier Group", "filters": [
+		[
+			"name",
+		"in",
+		{
+			"Aggregator",
+            "Broker"
+		}]
+	]},
 ]
 
 # bench --site kisan_custom export-fixtures --app kisan_customization
@@ -215,6 +224,10 @@ doc_events = {
 		"validate": "kisan_customization.purchase_invoice.purchase_invoice.validate",
 		"on_submit": "kisan_customization.purchase_invoice.broker_commission.on_submit",
 		"on_cancel": "kisan_customization.purchase_invoice.broker_commission.on_cancel",
+	},
+	"Purchase Order": {
+		"validate": "kisan_customization.purchase_order.broker_commission.validate",
+		"before_submit": "kisan_customization.purchase_order.broker_commission.before_submit",
 	},
 	"Sales Invoice": {
 		"on_submit": "kisan_customization.outward_jawak.status.on_sales_invoice_update",

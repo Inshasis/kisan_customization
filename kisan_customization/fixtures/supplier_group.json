@@ -1,0 +1,26 @@
+[
+ {
+  "accounts": [],
+  "docstatus": 0,
+  "doctype": "Supplier Group",
+  "is_group": 0,
+  "modified": "2026-08-05 22:46:53.362483",
+  "name": "Broker",
+  "old_parent": "All Supplier Groups",
+  "parent_supplier_group": "All Supplier Groups",
+  "payment_terms": null,
+  "supplier_group_name": "Broker"
+ },
+ {
+  "accounts": [],
+  "docstatus": 0,
+  "doctype": "Supplier Group",
+  "is_group": 0,
+  "modified": "2026-08-25 10:59:02.852921",
+  "name": "Aggregator",
+  "old_parent": "All Supplier Groups",
+  "parent_supplier_group": "All Supplier Groups",
+  "payment_terms": null,
+  "supplier_group_name": "Aggregator"
+ }
+]

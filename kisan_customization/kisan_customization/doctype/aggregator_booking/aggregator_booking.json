@@ -1,7 +1,7 @@
 {
  "actions": [],
  "autoname": "naming_series:",
- "creation": "2026-08-12 09:00:00.000000",
+ "creation": "2026-08-12 09:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -10,14 +10,29 @@
   "booking_date",
   "column_break_1",
   "aggregator",
-  "required_by",
+  "section_break_terms",
+  "delivery_days",
+  "column_break_terms_1",
+  "payment_days",
+  "column_break_terms_2",
+  "delivery_date",
+  "column_break_terms_3",
+  "payment_date",
   "section_break_items",
   "items",
   "section_break_totals",
   "total_qty",
-  "column_break_totals",
-  "grand_total",
+  "column_break_rrsj",
   "no_of_suppliers",
+  "column_break_totals",
+  "total_amount",
+  "section_break_commission",
+  "commission_type",
+  "column_break_commission_1",
+  "commission_percent",
+  "column_break_commission_2",
+  "broker_commission_amount",
+  "commission_amount",
   "section_break_pos",
   "purchase_orders",
   "amended_from"
@@ -56,25 +71,48 @@
    "fieldname": "aggregator",
    "fieldtype": "Link",
    "in_list_view": 1,
-   "label": "Aggregator",
-   "options": "Supplier"
-  },
-  {
-   "fieldname": "required_by",
-   "fieldtype": "Date",
-   "label": "Required By"
-  },
-  {
-   "fieldname": "section_break_items",
-   "fieldtype": "Section Break",
-   "label": "Supplier Items"
-  },
-  {
-   "fieldname": "items",
-   "fieldtype": "Table",
-   "label": "Items",
-   "options": "Aggregator Booking Item",
+   "label": "Aggregator (Broker)",
+   "options": "Supplier",
    "reqd": 1
+  },
+  {
+   "fieldname": "section_break_terms",
+   "fieldtype": "Section Break",
+   "label": "Delivery and Payment Terms"
+  },
+  {
+   "fieldname": "delivery_days",
+   "fieldtype": "Int",
+   "label": "Delivery Days"
+  },
+  {
+   "fieldname": "column_break_terms_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "payment_days",
+   "fieldtype": "Int",
+   "label": "Payment Days"
+  },
+  {
+   "fieldname": "column_break_terms_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "delivery_date",
+   "fieldtype": "Date",
+   "label": "Delivery Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_terms_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "payment_date",
+   "fieldtype": "Date",
+   "label": "Payment Date",
+   "read_only": 1
   },
   {
    "fieldname": "section_break_totals",
@@ -92,16 +130,64 @@
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "grand_total",
+   "fieldname": "total_amount",
    "fieldtype": "Currency",
    "in_list_view": 1,
-   "label": "Grand Total",
+   "label": "Total Amount",
    "read_only": 1
   },
   {
    "fieldname": "no_of_suppliers",
    "fieldtype": "Int",
    "label": "No. of Suppliers",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_items",
+   "fieldtype": "Section Break",
+   "label": "Supplier Items"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "Aggregator Booking Item"
+  },
+  {
+   "fieldname": "section_break_commission",
+   "fieldtype": "Section Break",
+   "label": "Broker Commission"
+  },
+  {
+   "fieldname": "commission_type",
+   "fieldtype": "Select",
+   "label": "Commission Type",
+   "options": "\nPercentage\nTotal Qty"
+  },
+  {
+   "fieldname": "column_break_commission_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.commission_type=='Percentage'",
+   "fieldname": "commission_percent",
+   "fieldtype": "Float",
+   "label": "Commission Percent"
+  },
+  {
+   "fieldname": "column_break_commission_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.commission_type=='Total Qty'",
+   "fieldname": "commission_amount",
+   "fieldtype": "Currency",
+   "label": "Commission Amount"
+  },
+  {
+   "fieldname": "broker_commission_amount",
+   "fieldtype": "Currency",
+   "label": "Broker Commission Amount",
    "read_only": 1
   },
   {
@@ -127,11 +213,15 @@
    "options": "Aggregator Booking",
    "print_hide": 1,
    "read_only": 1
+  },
+  {
+   "fieldname": "column_break_rrsj",
+   "fieldtype": "Column Break"
   }
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2026-08-12 09:00:00.000000",
+ "modified": "2026-08-25 11:24:29.483295",
  "modified_by": "Administrator",
  "module": "Kisan Customization",
  "name": "Aggregator Booking",

@@ -2,7 +2,7 @@
 
 import frappe
 from frappe import _
-from frappe.utils import flt, getdate, get_link_to_form
+from frappe.utils import flt, get_datetime, getdate, get_link_to_form
 
 
 def get_rental_item():
@@ -28,11 +28,20 @@ def create_sales_invoice_for_jawak(doc):
 		"Item", rental_item, ["item_name", "stock_uom"], as_dict=True
 	)
 
+	if not doc.jawak_date:
+		frappe.throw(_("Jawak Date is required before creating Sales Invoice"))
+
+	jawak_posting_date = getdate(doc.jawak_date)
+	jawak_datetime = get_datetime(doc.jawak_date)
+
 	si = frappe.new_doc("Sales Invoice")
 	si.customer = doc.storage_customer
 	si.company = doc.firm
-	si.posting_date = getdate(doc.jawak_date)
-	si.due_date = getdate(doc.jawak_date)
+	si.set_posting_time = 1
+	si.posting_date = jawak_posting_date
+	si.due_date = jawak_posting_date
+	if jawak_datetime:
+		si.posting_time = jawak_datetime.strftime("%H:%M:%S")
 
 	si.append(
 		"items",
@@ -47,14 +56,22 @@ def create_sales_invoice_for_jawak(doc):
 	)
 
 	si.set_missing_values()
+	si.set_posting_time = 1
+	si.posting_date = jawak_posting_date
 	si.flags.ignore_permissions = True
 	si.insert()
-	si.submit()
+
+	if si.docstatus != 0:
+		frappe.throw(_("Sales Invoice {0} must remain in Draft").format(si.name))
 
 	doc.db_set("sales_invoice", si.name, update_modified=False)
 
+	from kisan_customization.outward_jawak.status import update_outward_jawak_status
+
+	update_outward_jawak_status(doc.name)
+
 	frappe.msgprint(
-		_("Created Sales Invoice {0}").format(get_link_to_form("Sales Invoice", si.name)),
+		_("Created draft Sales Invoice {0}").format(get_link_to_form("Sales Invoice", si.name)),
 		indicator="green",
 	)
 
@@ -63,20 +80,25 @@ def cancel_sales_invoice_for_jawak(doc):
 	if not doc.sales_invoice or not frappe.db.exists("Sales Invoice", doc.sales_invoice):
 		return
 
-	si = frappe.get_doc("Sales Invoice", doc.sales_invoice)
+	sales_invoice_name = doc.sales_invoice
+	si = frappe.get_doc("Sales Invoice", sales_invoice_name)
+
 	if si.docstatus == 2:
+		doc.db_set("sales_invoice", None, update_modified=False)
 		return
 
-	if si.docstatus == 1:
-		if flt(si.outstanding_amount) < flt(si.grand_total):
-			frappe.throw(
-				_("Cannot cancel because Sales Invoice {0} has linked payments").format(
-					get_link_to_form("Sales Invoice", si.name)
-				)
+	if si.docstatus == 1 and flt(si.outstanding_amount) < flt(si.grand_total):
+		frappe.throw(
+			_("Cannot cancel because Sales Invoice {0} has linked payments").format(
+				get_link_to_form("Sales Invoice", si.name)
 			)
+		)
 
-		si.flags.ignore_permissions = True
+	# Unlink first; otherwise Frappe blocks SI delete/cancel while Outward Jawak still references it.
+	doc.db_set("sales_invoice", None, update_modified=False)
+
+	si.flags.ignore_permissions = True
+	if si.docstatus == 1:
 		si.cancel()
 	elif si.docstatus == 0:
-		si.flags.ignore_permissions = True
 		si.delete()

@@ -64,11 +64,30 @@ function setupBagDetailsReadOnly(frm) {
 	console.log('Bag Details read-only logic applied');
 }
 
-// Copyright (c) 2025, Kisan Warehouse and contributors
-// For license information, please see license.txt
-
 frappe.ui.form.on('Inward Aawak', {
 	refresh: function (frm) {
+
+		//Item Group Filter
+		frm.set_query("commodities", () => {
+            return {
+                filters: {
+                    item_group: "Cold Storage Item",
+                    disabled: 0
+                }
+            };
+        });
+
+		//Customer Group Filter
+		frm.set_query("storage_customer", () => {
+            return {
+                filters: {
+                    customer_group: "Cold Storage Customer",
+                    disabled: 0
+                }
+            };
+        });
+
+
 		// Set default Aawak date if not set
 		if (!frm.doc.aawak_date) {
 			frm.set_value('aawak_date', frappe.datetime.now_datetime());

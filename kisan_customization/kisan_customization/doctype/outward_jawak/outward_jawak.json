@@ -16,10 +16,11 @@
   "inward_aawak",
   "column_break_vkog",
   "jawak_date",
-  "column_break_itcp",
   "vehicle_number",
   "section_break_si",
   "sales_invoice",
+  "column_break_mydh",
+  "status",
   "section_break_8",
   "storage_customer",
   "godown",
@@ -53,7 +54,8 @@
   "payment_reference",
   "section_break_34",
   "notes",
-  "column_break_36"
+  "column_break_36",
+  "amended_from"
  ],
  "fields": [
   {
@@ -82,7 +84,7 @@
    "fieldname": "firm",
    "fieldtype": "Link",
    "in_list_view": 1,
-   "label": "Firm",
+   "label": "Company",
    "options": "Company",
    "reqd": 1
   },
@@ -116,13 +118,22 @@
    "reqd": 1
   },
   {
-   "fieldname": "column_break_itcp",
-   "fieldtype": "Column Break"
-  },
-  {
    "fieldname": "vehicle_number",
    "fieldtype": "Data",
    "label": "Vehicle Number"
+  },
+  {
+   "allow_on_submit": 1,
+   "bold": 1,
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "no_copy": 1,
+   "options": "Draft\nSubmitted\nUnpaid\nPartially Paid\nPaid\nCancelled",
+   "read_only": 1
   },
   {
    "depends_on": "eval:doc.docstatus==1",
@@ -136,6 +147,7 @@
    "fieldname": "sales_invoice",
    "fieldtype": "Link",
    "label": "Sales Invoice",
+   "no_copy": 1,
    "options": "Sales Invoice",
    "read_only": 1
   },
@@ -164,10 +176,12 @@
    "fieldtype": "Column Break"
   },
   {
+   "bold": 1,
    "fieldname": "commodities",
    "fieldtype": "Table",
    "label": "Commodities",
    "options": "Inward Commodity",
+   "read_only": 1,
    "reqd": 1
   },
   {
@@ -334,12 +348,16 @@
    "options": "Outward Jawak",
    "print_hide": 1,
    "read_only": 1
+  },
+  {
+   "fieldname": "column_break_mydh",
+   "fieldtype": "Column Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-08-12 15:04:11.849369",
+ "modified": "2026-08-25 10:53:16.028124",
  "modified_by": "Administrator",
  "module": "Kisan Customization",
  "name": "Outward Jawak",
@@ -347,6 +365,8 @@
  "owner": "Administrator",
  "permissions": [
   {
+   "amend": 1,
+   "cancel": 1,
    "create": 1,
    "delete": 1,
    "email": 1,
@@ -357,11 +377,11 @@
    "role": "System Manager",
    "share": 1,
    "submit": 1,
-   "cancel": 1,
-   "amend": 1,
    "write": 1
   },
   {
+   "amend": 1,
+   "cancel": 1,
    "create": 1,
    "delete": 1,
    "email": 1,
@@ -372,11 +392,11 @@
    "role": "Accounts Manager",
    "share": 1,
    "submit": 1,
-   "cancel": 1,
-   "amend": 1,
    "write": 1
   },
   {
+   "amend": 1,
+   "cancel": 1,
    "create": 1,
    "delete": 1,
    "email": 1,
@@ -387,14 +407,37 @@
    "role": "Accounts User",
    "share": 1,
    "submit": 1,
-   "cancel": 1,
-   "amend": 1,
    "write": 1
   }
  ],
  "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": [],
+ "states": [
+  {
+   "color": "Gray",
+   "title": "Draft"
+  },
+  {
+   "color": "Blue",
+   "title": "Submitted"
+  },
+  {
+   "color": "Orange",
+   "title": "Unpaid"
+  },
+  {
+   "color": "Yellow",
+   "title": "Partially Paid"
+  },
+  {
+   "color": "Green",
+   "title": "Paid"
+  },
+  {
+   "color": "Red",
+   "title": "Cancelled"
+  }
+ ],
  "track_changes": 1
 }

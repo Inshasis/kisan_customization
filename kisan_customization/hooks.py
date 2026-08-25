@@ -216,6 +216,15 @@ doc_events = {
 		"on_submit": "kisan_customization.purchase_invoice.broker_commission.on_submit",
 		"on_cancel": "kisan_customization.purchase_invoice.broker_commission.on_cancel",
 	},
+	"Sales Invoice": {
+		"on_submit": "kisan_customization.outward_jawak.status.on_sales_invoice_update",
+		"on_cancel": "kisan_customization.outward_jawak.status.on_sales_invoice_update",
+		"on_update_after_submit": "kisan_customization.outward_jawak.status.on_sales_invoice_update",
+	},
+	"Payment Entry": {
+		"on_submit": "kisan_customization.outward_jawak.status.update_jawak_from_payment_entry",
+		"on_cancel": "kisan_customization.outward_jawak.status.update_jawak_from_payment_entry",
+	},
 }
 
 # Scheduled Tasks

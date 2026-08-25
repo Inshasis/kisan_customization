@@ -4,7 +4,7 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.model.naming import make_autoname
-from frappe.utils import flt
+from frappe.utils import cint, flt
 
 from kisan_customization.inward_aawak.delivery import (
 	get_available_inward_lots,
@@ -15,6 +15,11 @@ from kisan_customization.inward_aawak.delivery import (
 from kisan_customization.outward_jawak.sales_invoice import (
 	cancel_sales_invoice_for_jawak,
 	create_sales_invoice_for_jawak,
+)
+from kisan_customization.outward_jawak.status import (
+	STATUS_CANCELLED,
+	STATUS_DRAFT,
+	update_outward_jawak_status,
 )
 
 
@@ -75,6 +80,9 @@ class OutwardJawak(Document):
 		self._validate_commodities()
 		validate_outward_release_bags(self)
 
+		if self.docstatus == 0:
+			self.status = STATUS_DRAFT
+
 	def _validate_commodities(self):
 		if not self.commodities:
 			frappe.throw(_("Add at least one commodity"))
@@ -96,15 +104,24 @@ class OutwardJawak(Document):
 
 	def on_submit(self):
 		if self.sales_invoice:
-			frappe.throw(_("Sales Invoice is already linked with this Outward Jawak"))
+			if frappe.db.exists("Sales Invoice", self.sales_invoice):
+				si_docstatus = frappe.db.get_value("Sales Invoice", self.sales_invoice, "docstatus")
+				if cint(si_docstatus) != 2:
+					frappe.throw(_("Sales Invoice is already linked with this Outward Jawak"))
+			self.db_set("sales_invoice", None, update_modified=False)
 
 		create_sales_invoice_for_jawak(self)
+		update_outward_jawak_status(self.name)
 
 		if self.inward_aawak:
 			update_inward_delivery_status(self.inward_aawak)
 
 	def on_cancel(self):
 		cancel_sales_invoice_for_jawak(self)
+
+		frappe.db.set_value(
+			"Outward Jawak", self.name, "status", STATUS_CANCELLED, update_modified=False
+		)
 
 		if self.inward_aawak:
 			update_inward_delivery_status(self.inward_aawak)
@@ -118,3 +135,8 @@ def get_available_lots(firm):
 @frappe.whitelist()
 def get_remaining_bags(firm, inward_lot_no, exclude_jawak=None):
 	return get_remaining_bag_details(firm, inward_lot_no, exclude_jawak)
+
+
+@frappe.whitelist()
+def sync_status(name):
+	return update_outward_jawak_status(name)

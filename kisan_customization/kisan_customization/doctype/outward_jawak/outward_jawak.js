@@ -19,6 +19,10 @@ function shouldFetchAawak(frm) {
 		return false;
 	}
 
+	if (frm.doc.inward_aawak) {
+		return false;
+	}
+
 	const loadKey = getAawakLoadKey(frm);
 	if (!loadKey) {
 		return false;
@@ -52,27 +56,13 @@ frappe.ui.form.on('Outward Jawak', {
 		// Apply bold styling to specific field labels
 		applyBoldLabels(frm);
 
-		// Auto-populate when Firm and Inward Lot No are already present
-		if (shouldFetchAawak(frm)) {
-			console.log('Auto-populating from Firm and Inward Lot No on load');
-			fetchAawakByFirmAndLot(frm);
-		}
-
-		// Load lot options for selected firm on load
-		// loadLotOptions(frm);
+		initializeDraftForm(frm);
 	},
 	
 	refresh: function (frm) {
 		console.log('Outward Jawak refresh event called');
 
-		// Initialize form using Firm + Inward Lot No only when needed
-		if (shouldFetchAawak(frm)) {
-			console.log('Auto-populating from Firm and Inward Lot No on refresh');
-			fetchAawakByFirmAndLot(frm);
-		}
-
-		// Refresh lot number options based on firm
-		// loadLotOptions(frm);
+		initializeDraftForm(frm);
 
 		// Ensure all fields are visible and refreshed with actual names
 		console.log('Refreshing all fields');
@@ -101,6 +91,10 @@ frappe.ui.form.on('Outward Jawak', {
 			});
 		}
 
+		if (frm.doc.docstatus === 1) {
+			syncOutwardJawakStatus(frm);
+		}
+
 		// If form has data but amounts are not calculated, trigger calculation
 		if (frm.doc.jawak_bag_details && frm.doc.jawak_bag_details.length > 0 &&
 			(!frm.doc.total_amount || frm.doc.total_amount === 0)) {
@@ -116,12 +110,12 @@ frappe.ui.form.on('Outward Jawak', {
 
 	firm: function (frm) {
 		console.log('firm field changed to:', frm.doc.firm);
-		onFirmOrLotChange(frm);
+		onFirmChange(frm);
 	},
 
 	inward_lot_no: function (frm) {
 		console.log('inward_lot_no field changed to:', frm.doc.inward_lot_no);
-		onFirmOrLotChange(frm);
+		onLotChange(frm);
 	},
 
 	jawak_date: function (frm) {
@@ -216,10 +210,54 @@ frappe.ui.form.on('Jawak Bag Detail', {
 
 // Helper Functions
 
-function loadLotOptions(frm) {
+function syncOutwardJawakStatus(frm) {
+	if (!frm.doc.name || frm.doc.__islocal) {
+		return;
+	}
+
+	frappe.call({
+		method: 'kisan_customization.kisan_customization.doctype.outward_jawak.outward_jawak.sync_status',
+		args: { name: frm.doc.name },
+		async: true,
+		callback(r) {
+			if (r.message && r.message !== frm.doc.status) {
+				frm.set_value('status', r.message);
+				frm.refresh_field('status');
+			}
+		},
+	});
+}
+
+function initializeDraftForm(frm) {
+	if (frm.doc.docstatus !== 0) {
+		return;
+	}
+
+	if (frm.doc.firm) {
+		loadLotOptions(frm, { preserveValue: true });
+	}
+
+	if (frm.doc.inward_aawak) {
+		loadAawakContext(frm, frm.doc.inward_aawak);
+		return;
+	}
+
+	if (shouldFetchAawak(frm)) {
+		console.log('Auto-populating from Firm and Inward Lot No');
+		fetchAawakByFirmAndLot(frm);
+	}
+}
+
+function loadLotOptions(frm, opts = {}) {
+	const preserveValue = opts.preserveValue !== false;
+	const currentLot = opts.ensureLot || frm.doc.inward_lot_no;
+
 	if (!frm.doc.firm) {
-		frm.set_df_property('inward_lot_no', 'options', []);
-		frm.set_value('inward_lot_no', '');
+		frm.set_df_property('inward_lot_no', 'options', currentLot ? [currentLot] : []);
+		if (!preserveValue) {
+			frm.set_value('inward_lot_no', '');
+		}
+		frm.refresh_field('inward_lot_no');
 		return;
 	}
 
@@ -229,10 +267,17 @@ function loadLotOptions(frm) {
 		method: 'kisan_customization.kisan_customization.doctype.outward_jawak.outward_jawak.get_available_lots',
 		args: { firm },
 		callback: function (r) {
-			const lots = r.message || [];
-			frm.set_df_property('inward_lot_no', 'options', lots);
+			const lots = [...(r.message || [])];
 
-			if (frm.doc.inward_lot_no && !lots.includes(frm.doc.inward_lot_no)) {
+			// Keep the saved lot visible in Select options (amend / reload).
+			if (currentLot && !lots.includes(currentLot)) {
+				lots.unshift(currentLot);
+			}
+
+			frm.set_df_property('inward_lot_no', 'options', lots);
+			frm.refresh_field('inward_lot_no');
+
+			if (!preserveValue && currentLot && !lots.includes(currentLot)) {
 				frm.set_value('inward_lot_no', '');
 			}
 
@@ -247,24 +292,75 @@ function loadLotOptions(frm) {
 	});
 }
 
-function onFirmOrLotChange(frm) {
-	// Reset any previously fetched data to avoid stale values
+function onFirmChange(frm) {
 	currentAawak = null;
+	frm._aawak_loaded_key = '';
 
-	// Clear inward_charges first to ensure it doesn't retain old value
 	frm.set_value('inward_charges', 0);
+	frm.set_value('inward_lot_no', '');
+	clearForm(frm);
+	loadLotOptions(frm, { preserveValue: false });
+}
 
-	// Clear all auto-populated fields to prevent partial data
+function onLotChange(frm) {
+	currentAawak = null;
+	frm._aawak_loaded_key = '';
+
+	frm.set_value('inward_charges', 0);
 	clearForm(frm);
 
-	// Refresh lot options for the selected firm
-	loadLotOptions(frm);
-
-	// Only fetch when both Firm and Inward Lot No are present
 	if (frm.doc.firm && frm.doc.inward_lot_no) {
 		console.log('Attempting fetch using Firm and Inward Lot No');
 		fetchAawakByFirmAndLot(frm);
 	}
+}
+
+function loadAawakContext(frm, aawakName) {
+	if (!aawakName) {
+		return;
+	}
+
+	if (currentAawak && currentAawak.name === aawakName) {
+		return;
+	}
+
+	const fetchToken = ++aawakFetchToken;
+
+	frappe.call({
+		method: 'frappe.client.get',
+		args: {
+			doctype: 'Inward Aawak',
+			name: aawakName
+		},
+		callback: function (r) {
+			if (fetchToken !== aawakFetchToken) {
+				return;
+			}
+
+			if (!r.message) {
+				return;
+			}
+
+			currentAawak = r.message;
+			frm._aawak_loaded_key = getAawakLoadKey(frm);
+
+			if (!frm.doc.inward_lot_no && r.message.lot_number) {
+				frm.set_value('inward_lot_no', r.message.lot_number);
+			}
+
+			loadLotOptions(frm, {
+				preserveValue: true,
+				ensureLot: r.message.lot_number || frm.doc.inward_lot_no,
+			});
+
+			if (!frm.doc.jawak_bag_details || !frm.doc.jawak_bag_details.length) {
+				populateFromAawakData(frm, r.message);
+				return;
+			}
+
+			validateJawakDate(frm);
+		}
+	});
 }
 
 function fetchAawakByFirmAndLot(frm) {

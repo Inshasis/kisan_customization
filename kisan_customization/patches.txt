@@ -29,3 +29,4 @@ kisan_customization.patches.v1_0.add_pi_deduction_child_table
 kisan_customization.patches.v1_0.migrate_tax_deductions_to_child_table
 kisan_customization.patches.v1_0.restore_deduction_type_related_accounts
 kisan_customization.patches.v1_0.fix_deduction_type_related_accounts_v6
+kisan_customization.patches.v1_0.add_outward_jawak_status

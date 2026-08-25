@@ -108,13 +108,13 @@
   },
   {
    "bold": 1,
-   "default": "Submitted",
+   "default": "Draft",
    "fieldname": "status",
    "fieldtype": "Select",
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Status",
-   "options": "Submitted\nPartially Delivered\nFully Delivered",
+   "options": "Draft\nSubmitted\nPartially Delivered\nFully Delivered",
    "read_only": 1
   },
   {
@@ -212,7 +212,7 @@
    "fieldname": "firm",
    "fieldtype": "Link",
    "in_list_view": 1,
-   "label": "Firm",
+   "label": "Company",
    "options": "Company",
    "reqd": 1
   },
@@ -267,7 +267,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-08-15 17:35:33.560541",
+ "modified": "2026-08-25 10:02:02.844386",
  "modified_by": "Administrator",
  "module": "Kisan Customization",
  "name": "Inward Aawak",

@@ -18,6 +18,12 @@
   "delivery_date",
   "column_break_terms_3",
   "payment_date",
+  "section_break_commodity",
+  "commodity",
+  "column_break_commodity",
+  "rate",
+  "column_break_commodity_qty",
+  "aggregator_qty",
   "section_break_items",
   "items",
   "section_break_totals",
@@ -121,6 +127,49 @@
    "read_only": 1
   },
   {
+   "fieldname": "section_break_commodity",
+   "fieldtype": "Section Break",
+   "label": "Commodity Details"
+  },
+  {
+   "fieldname": "commodity",
+   "fieldtype": "Link",
+   "label": "Commodity",
+   "options": "Item"
+  },
+  {
+   "fieldname": "column_break_commodity",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "rate",
+   "fieldtype": "Currency",
+   "label": "Rate",
+   "non_negative": 1,
+   "options": "Company:company:default_currency"
+  },
+  {
+   "fieldname": "column_break_commodity_qty",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "aggregator_qty",
+   "fieldtype": "Float",
+   "label": "Aggregator Qty",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "section_break_items",
+   "fieldtype": "Section Break",
+   "label": "Supplier Items"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "Aggregator Booking Item"
+  },
+  {
    "fieldname": "section_break_totals",
    "fieldtype": "Section Break",
    "label": "Totals"
@@ -147,17 +196,6 @@
    "fieldtype": "Int",
    "label": "No. of Suppliers",
    "read_only": 1
-  },
-  {
-   "fieldname": "section_break_items",
-   "fieldtype": "Section Break",
-   "label": "Supplier Items"
-  },
-  {
-   "fieldname": "items",
-   "fieldtype": "Table",
-   "label": "Items",
-   "options": "Aggregator Booking Item"
   },
   {
    "fieldname": "section_break_discount",

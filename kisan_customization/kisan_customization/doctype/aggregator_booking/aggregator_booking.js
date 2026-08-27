@@ -1,25 +1,23 @@
 // Copyright (c) 2026, Hidayatali and contributors
 
+const BOOKING_SUPPLIER_GROUP = "Purchase";
+const BOOKING_ITEM_GROUP = "Products";
+
 frappe.ui.form.on("Aggregator Booking", {
 	setup(frm) {
-		frm.set_query("aggregator", () => ({
-			filters: {
-				disabled: 0,
-				supplier_group: "Aggregator",
-			},
-		}));
+		apply_booking_filters(frm);
+	},
+
+	onload(frm) {
+		apply_booking_filters(frm);
 	},
 
 	refresh(frm) {
-		frm.set_query("aggregator", () => ({
-			filters: {
-				disabled: 0,
-				supplier_group: "Aggregator",
-			},
-		}));
-
+		apply_booking_filters(frm);
 		toggle_commission_fields(frm);
+		toggle_discount_fields(frm);
 		apply_booking_dates(frm);
+		calculate_booking_discount(frm);
 		calculate_broker_commission(frm);
 
 		if (frm.doc.docstatus !== 1 || !frm.doc.purchase_orders?.length) return;
@@ -46,6 +44,23 @@ frappe.ui.form.on("Aggregator Booking", {
 		apply_booking_dates(frm);
 	},
 
+	additional_discount_percentage(frm) {
+		calculate_booking_discount(frm);
+		toggle_discount_fields(frm);
+	},
+
+	discount_amount(frm) {
+		if (frm._updating_discount_from_percent) {
+			return;
+		}
+		if (flt(frm.doc.discount_amount)) {
+			frm.doc.additional_discount_percentage = 0;
+			frm.refresh_field("additional_discount_percentage");
+		}
+		calculate_booking_discount(frm);
+		toggle_discount_fields(frm);
+	},
+
 	commission_type(frm) {
 		if (frm.doc.commission_type === "Percentage") {
 			frm.set_value("commission_amount", 0);
@@ -68,6 +83,7 @@ frappe.ui.form.on("Aggregator Booking", {
 	},
 
 	total_amount(frm) {
+		calculate_booking_discount(frm);
 		calculate_broker_commission(frm);
 	},
 
@@ -95,6 +111,31 @@ frappe.ui.form.on("Aggregator Booking Item", {
 	},
 });
 
+function apply_booking_filters(frm) {
+	frm.set_query("aggregator", () => ({
+		filters: {
+			disabled: 0,
+			supplier_group: "Aggregator",
+		},
+	}));
+
+	frm.set_query("supplier", "items", () => ({
+		filters: {
+			disabled: 0,
+			supplier_group: BOOKING_SUPPLIER_GROUP,
+		},
+	}));
+
+	frm.set_query("item_code", "items", () => ({
+		query: "erpnext.controllers.queries.item_query",
+		filters: {
+			item_group: BOOKING_ITEM_GROUP,
+			is_purchase_item: 1,
+			has_variants: 0,
+		},
+	}));
+}
+
 function get_booking_base_date(frm) {
 	return frm.doc.booking_date || frappe.datetime.get_today();
 }
@@ -121,6 +162,35 @@ function toggle_commission_fields(frm) {
 	const commission_type = frm.doc.commission_type;
 	frm.toggle_display("commission_percent", commission_type === "Percentage");
 	frm.toggle_display("commission_amount", commission_type === "Total Qty");
+}
+
+function toggle_discount_fields(frm) {
+	const use_percent = flt(frm.doc.additional_discount_percentage) > 0;
+	const use_amount = !use_percent && flt(frm.doc.discount_amount) > 0;
+
+	frm.toggle_enable("discount_amount", !use_percent);
+	frm.toggle_enable("additional_discount_percentage", !use_amount);
+}
+
+function calculate_booking_discount(frm) {
+	const total_amount = flt(frm.doc.total_amount) || 0;
+	const percent = flt(frm.doc.additional_discount_percentage) || 0;
+	let discount = 0;
+
+	if (percent > 0) {
+		discount = (total_amount * percent) / 100;
+	} else {
+		discount = flt(frm.doc.discount_amount) || 0;
+	}
+
+	const net_amount = Math.max(0, total_amount - discount);
+
+	frm._updating_discount_from_percent = true;
+	frm.doc.discount_amount = discount;
+	frm.doc.net_amount = net_amount;
+	frm.refresh_field("discount_amount");
+	frm.refresh_field("net_amount");
+	frm._updating_discount_from_percent = false;
 }
 
 function calculate_broker_commission(frm) {
@@ -165,6 +235,10 @@ function recalculate_totals(frm) {
 	const suppliers = new Set();
 
 	(frm.doc.items || []).forEach((row) => {
+		if (!row.supplier && !row.item_code && !flt(row.qty) && !flt(row.rate)) {
+			return;
+		}
+
 		total_qty += flt(row.qty);
 		total_amount += flt(row.amount);
 		if (row.supplier) suppliers.add(row.supplier);
@@ -173,6 +247,7 @@ function recalculate_totals(frm) {
 	frm.set_value("total_qty", total_qty);
 	frm.set_value("total_amount", total_amount);
 	frm.set_value("no_of_suppliers", suppliers.size);
+	calculate_booking_discount(frm);
 	calculate_broker_commission(frm);
 	apply_booking_dates(frm);
 }

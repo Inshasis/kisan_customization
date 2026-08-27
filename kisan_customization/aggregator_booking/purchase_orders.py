@@ -4,6 +4,7 @@ import frappe
 from frappe import _
 from frappe.utils import flt, get_link_to_form
 
+from kisan_customization.aggregator_booking.discount import apply_booking_discount_to_po
 from kisan_customization.aggregator_booking.terms import (
 	apply_booking_terms_to_po,
 	compute_delivery_date,
@@ -39,6 +40,7 @@ def create_purchase_orders_for_booking(doc):
 			)
 
 		po.set_missing_values()
+		apply_booking_discount_to_po(po, doc)
 		po.flags.ignore_permissions = True
 		po.insert()
 
@@ -46,6 +48,7 @@ def create_purchase_orders_for_booking(doc):
 
 		po = frappe.get_doc("Purchase Order", po.name)
 		apply_booking_terms_to_po(po, doc)
+		apply_booking_discount_to_po(po, doc)
 		po.flags.ignore_permissions = True
 		po.save()
 

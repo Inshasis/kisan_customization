@@ -87,18 +87,50 @@ def cancel_sales_invoice_for_jawak(doc):
 		doc.db_set("sales_invoice", None, update_modified=False)
 		return
 
-	if si.docstatus == 1 and flt(si.outstanding_amount) < flt(si.grand_total):
-		frappe.throw(
-			_("Cannot cancel because Sales Invoice {0} has linked payments").format(
-				get_link_to_form("Sales Invoice", si.name)
-			)
-		)
-
 	# Unlink first; otherwise Frappe blocks SI delete/cancel while Outward Jawak still references it.
 	doc.db_set("sales_invoice", None, update_modified=False)
 
+	_cancel_linked_payments_for_invoice(si)
+
+	si.reload()
 	si.flags.ignore_permissions = True
 	if si.docstatus == 1:
 		si.cancel()
 	elif si.docstatus == 0:
 		si.delete()
+
+
+def _cancel_linked_payments_for_invoice(sales_invoice):
+	payment_entries = frappe.db.sql_list(
+		"""
+		SELECT DISTINCT per.parent
+		FROM `tabPayment Entry Reference` per
+		INNER JOIN `tabPayment Entry` pe ON pe.name = per.parent
+		WHERE per.reference_doctype = 'Sales Invoice'
+			AND per.reference_name = %s
+			AND pe.docstatus = 1
+		""",
+		sales_invoice.name,
+	)
+
+	for payment_entry in payment_entries:
+		pe = frappe.get_doc("Payment Entry", payment_entry)
+		pe.flags.ignore_permissions = True
+		pe.cancel()
+
+	journal_entries = frappe.db.sql_list(
+		"""
+		SELECT DISTINCT jea.parent
+		FROM `tabJournal Entry Account` jea
+		INNER JOIN `tabJournal Entry` je ON je.name = jea.parent
+		WHERE jea.reference_type = 'Sales Invoice'
+			AND jea.reference_name = %s
+			AND je.docstatus = 1
+		""",
+		sales_invoice.name,
+	)
+
+	for journal_entry in journal_entries:
+		je = frappe.get_doc("Journal Entry", journal_entry)
+		je.flags.ignore_permissions = True
+		je.cancel()

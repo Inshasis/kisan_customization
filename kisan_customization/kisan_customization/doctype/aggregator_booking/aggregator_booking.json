@@ -19,11 +19,7 @@
   "column_break_terms_3",
   "payment_date",
   "section_break_commodity",
-  "commodity",
-  "column_break_commodity",
-  "rate",
-  "column_break_commodity_qty",
-  "aggregator_qty",
+  "commodities",
   "section_break_items",
   "items",
   "section_break_totals",
@@ -132,31 +128,13 @@
    "label": "Commodity Details"
   },
   {
-   "fieldname": "commodity",
-   "fieldtype": "Link",
-   "label": "Commodity",
-   "options": "Item"
-  },
-  {
-   "fieldname": "column_break_commodity",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "rate",
-   "fieldtype": "Currency",
-   "label": "Rate",
-   "non_negative": 1,
-   "options": "Company:company:default_currency"
-  },
-  {
-   "fieldname": "column_break_commodity_qty",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "aggregator_qty",
-   "fieldtype": "Float",
-   "label": "Aggregator Qty",
-   "non_negative": 1
+   "cannot_add_rows": 1,
+   "cannot_delete_rows": 1,
+   "fieldname": "commodities",
+   "fieldtype": "Table",
+   "label": "Commodities",
+   "options": "Aggregator Booking Commodity",
+   "read_only": 1
   },
   {
    "fieldname": "section_break_items",

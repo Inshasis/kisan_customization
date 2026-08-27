@@ -15,12 +15,14 @@ frappe.ui.form.on("Aggregator Booking", {
 
 	refresh(frm) {
 		apply_booking_filters(frm);
-		patch_items_grid_add(frm);
+		setup_commodity_buttons(frm);
+		setup_commodities_grid_readonly(frm);
+		patch_commodity_grid_edit(frm);
 		toggle_commission_fields(frm);
 		toggle_discount_fields(frm);
 		apply_booking_dates(frm);
-		calculate_booking_discount(frm);
-		calculate_broker_commission(frm);
+		recalculate_commodity_allocations(frm);
+		recalculate_totals(frm);
 
 		if (frm.doc.docstatus !== 1 || !frm.doc.purchase_orders?.length) return;
 
@@ -32,15 +34,6 @@ frappe.ui.form.on("Aggregator Booking", {
 				name: ["in", names],
 			});
 		});
-	},
-
-	commodity(frm) {
-		sync_all_items_from_header(frm);
-	},
-
-	rate(frm) {
-		sync_all_items_from_header(frm);
-		recalculate_totals(frm);
 	},
 
 	booking_date(frm) {
@@ -102,22 +95,20 @@ frappe.ui.form.on("Aggregator Booking", {
 		calculate_broker_commission(frm);
 	},
 
-	items_add(frm, cdt, cdn) {
-		frappe.after_ajax(() => populate_item_row_from_header(frm, cdt, cdn));
+	commodities_remove(frm) {
+		remove_supplier_rows_for_missing_commodities(frm);
+		recalculate_commodity_allocations(frm);
+		recalculate_totals(frm);
 	},
 });
 
 frappe.ui.form.on("Aggregator Booking Item", {
-	form_render(frm, cdt, cdn) {
-		const row = locals[cdt]?.[cdn];
-		if (!row || row.item_code) {
-			return;
-		}
-		populate_item_row_from_header(frm, cdt, cdn);
+	item_code(frm, cdt, cdn) {
+		populate_item_row_from_commodity(frm, cdt, cdn);
 	},
 
 	supplier(frm, cdt, cdn) {
-		populate_item_row_from_header(frm, cdt, cdn);
+		populate_item_row_from_commodity(frm, cdt, cdn);
 	},
 
 	qty(frm, cdt, cdn) {
@@ -128,6 +119,7 @@ frappe.ui.form.on("Aggregator Booking Item", {
 	},
 
 	items_remove(frm) {
+		recalculate_commodity_allocations(frm);
 		recalculate_totals(frm);
 	},
 });
@@ -140,12 +132,9 @@ function apply_booking_filters(frm) {
 		},
 	}));
 
-	frm.set_query("commodity", () => ({
-		query: "erpnext.controllers.queries.item_query",
+	frm.set_query("item_code", "items", () => ({
 		filters: {
-			item_group: BOOKING_ITEM_GROUP,
-			is_purchase_item: 1,
-			has_variants: 0,
+			name: ["in", get_booking_commodity_items(frm)],
 		},
 	}));
 
@@ -157,102 +146,290 @@ function apply_booking_filters(frm) {
 	}));
 }
 
-function patch_items_grid_add(frm) {
-	const grid = frm.fields_dict.items?.grid;
-	if (!grid || grid.__booking_populate_patched) {
+function get_booking_commodity_items(frm) {
+	const items = (frm.doc.commodities || []).map((row) => row.item_code).filter(Boolean);
+	return items.length ? items : ["__none__"];
+}
+
+function setup_commodity_buttons(frm) {
+	if (frm.doc.docstatus !== 0) {
 		return;
 	}
 
-	const add_new_row = grid.add_new_row.bind(grid);
-	grid.add_new_row = function (...args) {
-		const row = add_new_row(...args);
-		const cdn = row?.doc?.name;
-		if (cdn) {
-			frappe.after_ajax(() =>
-				populate_item_row_from_header(frm, "Aggregator Booking Item", cdn)
-			);
-		}
-		return row;
-	};
-
-	grid.__booking_populate_patched = true;
+	frm.add_custom_button(__("Add Commodity"), () => open_commodity_dialog(frm));
 }
 
-function populate_item_row_from_header(frm, cdt, cdn) {
-	if (!frm.doc.commodity) {
+function setup_commodities_grid_readonly(frm) {
+	const grid = frm.fields_dict.commodities?.grid;
+	if (!grid) {
+		return;
+	}
+
+	grid.wrapper.find(".grid-add-row").hide();
+	grid.wrapper.find(".grid-footer .btn").hide();
+	grid.wrapper.find(".grid-remove-rows").hide();
+	grid.wrapper.find(".grid-row-check").hide();
+}
+
+function patch_commodity_grid_edit(frm) {
+	const grid = frm.fields_dict.commodities?.grid;
+	if (!grid || grid.__booking_commodity_edit_patched) {
+		return;
+	}
+
+	grid.wrapper.on("click", ".grid-row", function () {
+		if (frm.doc.docstatus !== 0) {
+			return;
+		}
+
+		const idx = cint($(this).attr("data-idx"));
+		const row = frm.doc.commodities?.[idx - 1];
+		if (row?.name) {
+			open_commodity_dialog(frm, row.name);
+		}
+	});
+
+	grid.__booking_commodity_edit_patched = true;
+}
+
+function open_commodity_dialog(frm, cdn = null) {
+	if (frm.doc.docstatus !== 0) {
+		return;
+	}
+
+	const is_edit = !!cdn;
+	const existing_row = is_edit ? locals["Aggregator Booking Commodity"]?.[cdn] : null;
+
+	const dialog = new frappe.ui.Dialog({
+		title: is_edit ? __("Edit Commodity") : __("Add Commodity"),
+		fields: [
+			{
+				fieldname: "item_code",
+				label: __("Commodity"),
+				fieldtype: "Link",
+				options: "Item",
+				reqd: 1,
+				get_query() {
+					const existing = (frm.doc.commodities || [])
+						.map((row) => row.item_code)
+						.filter((item) => item && item !== existing_row?.item_code);
+
+					return {
+						query: "erpnext.controllers.queries.item_query",
+						filters: {
+							item_group: BOOKING_ITEM_GROUP,
+							is_purchase_item: 1,
+							has_variants: 0,
+							name: ["not in", existing.length ? existing : ["__none__"]],
+						},
+					};
+				},
+			},
+			{
+				fieldname: "rate",
+				label: __("Rate"),
+				fieldtype: "Currency",
+				reqd: 1,
+				non_negative: 1,
+			},
+			{
+				fieldname: "aggregator_qty",
+				label: __("Aggregator Qty"),
+				fieldtype: "Float",
+				reqd: 1,
+				non_negative: 1,
+			},
+		],
+		primary_action_label: is_edit ? __("Update") : __("Add"),
+		primary_action(values) {
+			save_commodity_from_dialog(frm, values, cdn);
+			dialog.hide();
+		},
+	});
+
+	if (existing_row) {
+		dialog.set_values({
+			item_code: existing_row.item_code,
+			rate: existing_row.rate,
+			aggregator_qty: existing_row.aggregator_qty,
+		});
+	}
+
+	dialog.show();
+}
+
+function save_commodity_from_dialog(frm, values, cdn = null) {
+	const item_code = values.item_code;
+	const rate = flt(values.rate);
+	const aggregator_qty = flt(values.aggregator_qty);
+
+	if (!item_code || rate < 0 || aggregator_qty <= 0) {
 		frappe.msgprint({
-			title: __("Commodity Required"),
-			message: __("Please set Commodity, Rate, and Aggregator Qty before adding supplier rows."),
+			title: __("Invalid Commodity"),
+			message: __("Commodity, Rate, and Aggregator Qty are required."),
 			indicator: "orange",
 		});
 		return;
 	}
 
+	const duplicate = (frm.doc.commodities || []).find(
+		(row) => row.item_code === item_code && row.name !== cdn
+	);
+	if (duplicate) {
+		frappe.msgprint({
+			title: __("Duplicate Commodity"),
+			message: __("Commodity {0} is already added.", [item_code]),
+			indicator: "orange",
+		});
+		return;
+	}
+
+	frappe.db.get_value("Item", item_code, "item_name", (r) => {
+		frm.set_df_property("commodities", "read_only", 0);
+
+		if (cdn) {
+			const row = locals["Aggregator Booking Commodity"][cdn];
+			const old_item = row.item_code;
+
+			row.item_code = item_code;
+			row.item_name = r?.item_name || "";
+			row.rate = rate;
+			row.aggregator_qty = aggregator_qty;
+			row.amount = aggregator_qty * rate;
+
+			if (old_item !== item_code) {
+				remove_supplier_rows_for_item(frm, old_item);
+			}
+
+			sync_supplier_rows_for_item(frm, item_code);
+		} else {
+			const child = frm.add_child("commodities");
+			child.item_code = item_code;
+			child.item_name = r?.item_name || "";
+			child.rate = rate;
+			child.aggregator_qty = aggregator_qty;
+			child.allocated_qty = 0;
+			child.amount = aggregator_qty * rate;
+		}
+
+		frm.refresh_field("commodities");
+		frm.set_df_property("commodities", "read_only", 1);
+		setup_commodities_grid_readonly(frm);
+		recalculate_commodity_allocations(frm);
+		sync_all_items_from_commodities(frm);
+		recalculate_totals(frm);
+	});
+}
+
+function populate_item_row_from_commodity(frm, cdt, cdn) {
 	const row = locals[cdt]?.[cdn];
 	if (!row) {
 		return;
 	}
 
-	row.item_code = frm.doc.commodity;
-	row.rate = flt(frm.doc.rate);
-	row.uom = BOOKING_UOM;
-	row.amount = flt(row.qty) * flt(row.rate);
-
-	frappe.db.get_value("Item", frm.doc.commodity, "item_name", (r) => {
-		row.item_name = r?.item_name || "";
-		frm.refresh_field("items");
-	});
-
-	frm.refresh_field("items");
-}
-
-function sync_all_items_from_header(frm) {
-	if (!frm.doc.commodity) {
+	if (!frm.doc.commodities?.length) {
+		frappe.msgprint({
+			title: __("Commodity Required"),
+			message: __("Please add Commodity Details before adding supplier rows."),
+			indicator: "orange",
+		});
 		return;
 	}
 
+	if (!row.item_code) {
+		return;
+	}
+
+	const commodity = (frm.doc.commodities || []).find((c) => c.item_code === row.item_code);
+	if (!commodity) {
+		frappe.msgprint({
+			title: __("Invalid Item"),
+			message: __("Item {0} is not in Commodity Details.", [row.item_code]),
+			indicator: "orange",
+		});
+		row.item_code = "";
+		frm.refresh_field("items");
+		return;
+	}
+
+	row.item_name = commodity.item_name || row.item_name;
+	row.rate = flt(commodity.rate);
+	row.uom = BOOKING_UOM;
+	row.amount = flt(row.qty) * flt(row.rate);
+	frm.refresh_field("items");
+}
+
+function sync_all_items_from_commodities(frm) {
 	(frm.doc.items || []).forEach((row) => {
 		if (!row.name) {
 			return;
 		}
-		populate_item_row_from_header(frm, row.doctype, row.name);
+		populate_item_row_from_commodity(frm, row.doctype, row.name);
 	});
 	frm.refresh_field("items");
 }
 
-function get_child_qty_total(frm, exclude_cdn = null) {
+function sync_supplier_rows_for_item(frm, item_code) {
+	(frm.doc.items || []).forEach((row) => {
+		if (row.item_code === item_code && row.name) {
+			populate_item_row_from_commodity(frm, row.doctype, row.name);
+		}
+	});
+}
+
+function remove_supplier_rows_for_item(frm, item_code) {
+	const to_remove = (frm.doc.items || []).filter((row) => row.item_code === item_code);
+	to_remove.forEach((row) => {
+		frm.get_field("items").grid.grid_rows_by_docname[row.name]?.remove();
+	});
+}
+
+function remove_supplier_rows_for_missing_commodities(frm) {
+	const valid_items = new Set(get_booking_commodity_items(frm));
+	(frm.doc.items || [])
+		.filter((row) => row.item_code && !valid_items.has(row.item_code))
+		.forEach((row) => {
+			frm.get_field("items").grid.grid_rows_by_docname[row.name]?.remove();
+		});
+}
+
+function get_allocated_qty_for_item(frm, item_code, exclude_cdn = null) {
 	let total = 0;
 
 	(frm.doc.items || []).forEach((row) => {
 		if (exclude_cdn && row.name === exclude_cdn) {
 			return;
 		}
-		if (!row.supplier && !flt(row.qty)) {
-			return;
+		if (row.item_code === item_code) {
+			total += flt(row.qty);
 		}
-		total += flt(row.qty);
 	});
 
 	return total;
 }
 
 function validate_child_qty_limit(frm, cdt, cdn) {
-	const limit = flt(frm.doc.aggregator_qty);
-	if (!limit) {
+	const row = locals[cdt][cdn];
+	if (!row.item_code) {
 		return true;
 	}
 
-	const row = locals[cdt][cdn];
-	const other_total = get_child_qty_total(frm, cdn);
+	const commodity = (frm.doc.commodities || []).find((c) => c.item_code === row.item_code);
+	if (!commodity) {
+		return true;
+	}
+
+	const limit = flt(commodity.aggregator_qty);
+	const other_total = get_allocated_qty_for_item(frm, row.item_code, cdn);
 	const new_total = other_total + flt(row.qty);
 
 	if (new_total > limit) {
 		frappe.msgprint({
 			title: __("Qty Limit Exceeded"),
-			message: __("Total item quantity ({0}) cannot exceed Aggregator Qty ({1}).", [
-				new_total,
-				limit,
-			]),
+			message: __(
+				"Allocated quantity for {0} ({1}) cannot exceed Aggregator Qty ({2}).",
+				[row.item_code, new_total, limit]
+			),
 			indicator: "orange",
 		});
 		frappe.model.set_value(cdt, cdn, "qty", 0);
@@ -260,6 +437,17 @@ function validate_child_qty_limit(frm, cdt, cdn) {
 	}
 
 	return true;
+}
+
+function recalculate_commodity_allocations(frm) {
+	(frm.doc.commodities || []).forEach((commodity) => {
+		if (!commodity.item_code) {
+			return;
+		}
+		commodity.allocated_qty = get_allocated_qty_for_item(frm, commodity.item_code);
+		commodity.amount = flt(commodity.aggregator_qty) * flt(commodity.rate);
+	});
+	frm.refresh_field("commodities");
 }
 
 function get_booking_base_date(frm) {
@@ -340,6 +528,7 @@ function calculate_row_amount(frm, cdt, cdn) {
 	const row = locals[cdt][cdn];
 	const amount = flt(row.qty) * flt(row.rate);
 	frappe.model.set_value(cdt, cdn, "amount", amount).then(() => {
+		recalculate_commodity_allocations(frm);
 		recalculate_totals(frm);
 	});
 }

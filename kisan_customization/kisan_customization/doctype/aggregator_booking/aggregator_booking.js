@@ -2,6 +2,7 @@
 
 const BOOKING_SUPPLIER_GROUP = "Purchase";
 const BOOKING_ITEM_GROUP = "Products";
+const BOOKING_UOM = "Quintal";
 
 frappe.ui.form.on("Aggregator Booking", {
 	setup(frm) {
@@ -14,6 +15,7 @@ frappe.ui.form.on("Aggregator Booking", {
 
 	refresh(frm) {
 		apply_booking_filters(frm);
+		patch_items_grid_add(frm);
 		toggle_commission_fields(frm);
 		toggle_discount_fields(frm);
 		apply_booking_dates(frm);
@@ -30,6 +32,15 @@ frappe.ui.form.on("Aggregator Booking", {
 				name: ["in", names],
 			});
 		});
+	},
+
+	commodity(frm) {
+		sync_all_items_from_header(frm);
+	},
+
+	rate(frm) {
+		sync_all_items_from_header(frm);
+		recalculate_totals(frm);
 	},
 
 	booking_date(frm) {
@@ -90,19 +101,29 @@ frappe.ui.form.on("Aggregator Booking", {
 	total_qty(frm) {
 		calculate_broker_commission(frm);
 	},
+
+	items_add(frm, cdt, cdn) {
+		frappe.after_ajax(() => populate_item_row_from_header(frm, cdt, cdn));
+	},
 });
 
 frappe.ui.form.on("Aggregator Booking Item", {
-	item_code(frm, cdt, cdn) {
-		set_item_uom(frm, cdt, cdn);
-		calculate_row_amount(frm, cdt, cdn);
+	form_render(frm, cdt, cdn) {
+		const row = locals[cdt]?.[cdn];
+		if (!row || row.item_code) {
+			return;
+		}
+		populate_item_row_from_header(frm, cdt, cdn);
+	},
+
+	supplier(frm, cdt, cdn) {
+		populate_item_row_from_header(frm, cdt, cdn);
 	},
 
 	qty(frm, cdt, cdn) {
-		calculate_row_amount(frm, cdt, cdn);
-	},
-
-	rate(frm, cdt, cdn) {
+		if (!validate_child_qty_limit(frm, cdt, cdn)) {
+			return;
+		}
 		calculate_row_amount(frm, cdt, cdn);
 	},
 
@@ -119,14 +140,7 @@ function apply_booking_filters(frm) {
 		},
 	}));
 
-	frm.set_query("supplier", "items", () => ({
-		filters: {
-			disabled: 0,
-			supplier_group: BOOKING_SUPPLIER_GROUP,
-		},
-	}));
-
-	frm.set_query("item_code", "items", () => ({
+	frm.set_query("commodity", () => ({
 		query: "erpnext.controllers.queries.item_query",
 		filters: {
 			item_group: BOOKING_ITEM_GROUP,
@@ -134,6 +148,118 @@ function apply_booking_filters(frm) {
 			has_variants: 0,
 		},
 	}));
+
+	frm.set_query("supplier", "items", () => ({
+		filters: {
+			disabled: 0,
+			supplier_group: BOOKING_SUPPLIER_GROUP,
+		},
+	}));
+}
+
+function patch_items_grid_add(frm) {
+	const grid = frm.fields_dict.items?.grid;
+	if (!grid || grid.__booking_populate_patched) {
+		return;
+	}
+
+	const add_new_row = grid.add_new_row.bind(grid);
+	grid.add_new_row = function (...args) {
+		const row = add_new_row(...args);
+		const cdn = row?.doc?.name;
+		if (cdn) {
+			frappe.after_ajax(() =>
+				populate_item_row_from_header(frm, "Aggregator Booking Item", cdn)
+			);
+		}
+		return row;
+	};
+
+	grid.__booking_populate_patched = true;
+}
+
+function populate_item_row_from_header(frm, cdt, cdn) {
+	if (!frm.doc.commodity) {
+		frappe.msgprint({
+			title: __("Commodity Required"),
+			message: __("Please set Commodity, Rate, and Aggregator Qty before adding supplier rows."),
+			indicator: "orange",
+		});
+		return;
+	}
+
+	const row = locals[cdt]?.[cdn];
+	if (!row) {
+		return;
+	}
+
+	row.item_code = frm.doc.commodity;
+	row.rate = flt(frm.doc.rate);
+	row.uom = BOOKING_UOM;
+	row.amount = flt(row.qty) * flt(row.rate);
+
+	frappe.db.get_value("Item", frm.doc.commodity, "item_name", (r) => {
+		row.item_name = r?.item_name || "";
+		frm.refresh_field("items");
+	});
+
+	frm.refresh_field("items");
+}
+
+function sync_all_items_from_header(frm) {
+	if (!frm.doc.commodity) {
+		return;
+	}
+
+	(frm.doc.items || []).forEach((row) => {
+		if (!row.name) {
+			return;
+		}
+		populate_item_row_from_header(frm, row.doctype, row.name);
+	});
+	frm.refresh_field("items");
+}
+
+function get_child_qty_total(frm, exclude_cdn = null) {
+	let total = 0;
+
+	(frm.doc.items || []).forEach((row) => {
+		if (exclude_cdn && row.name === exclude_cdn) {
+			return;
+		}
+		if (!row.supplier && !flt(row.qty)) {
+			return;
+		}
+		total += flt(row.qty);
+	});
+
+	return total;
+}
+
+function validate_child_qty_limit(frm, cdt, cdn) {
+	const limit = flt(frm.doc.aggregator_qty);
+	if (!limit) {
+		return true;
+	}
+
+	const row = locals[cdt][cdn];
+	const other_total = get_child_qty_total(frm, cdn);
+	const new_total = other_total + flt(row.qty);
+
+	if (new_total > limit) {
+		frappe.msgprint({
+			title: __("Qty Limit Exceeded"),
+			message: __("Total item quantity ({0}) cannot exceed Aggregator Qty ({1}).", [
+				new_total,
+				limit,
+			]),
+			indicator: "orange",
+		});
+		frappe.model.set_value(cdt, cdn, "qty", 0);
+		return false;
+	}
+
+	return true;
 }
 
 function get_booking_base_date(frm) {
@@ -208,17 +334,6 @@ function calculate_broker_commission(frm) {
 	}
 
 	frm.set_value("broker_commission_amount", broker_commission_amount);
-}
-
-function set_item_uom(frm, cdt, cdn) {
-	const row = locals[cdt][cdn];
-	if (!row.item_code) return;
-
-	frappe.db.get_value("Item", row.item_code, "stock_uom", (r) => {
-		if (r?.stock_uom) {
-			frappe.model.set_value(cdt, cdn, "uom", r.stock_uom);
-		}
-	});
 }
 
 function calculate_row_amount(frm, cdt, cdn) {

@@ -19,16 +19,26 @@ from kisan_customization.aggregator_booking.terms import (
 )
 
 
+BOOKING_UOM = "Quintal"
+
+
 class AggregatorBooking(Document):
 	def validate(self):
 		self._set_company_defaults()
+		self._sync_items_from_header()
+		self._validate_aggregator_qty()
 		self._calculate_totals()
 		calculate_booking_discount(self)
 		apply_booking_dates(self)
 		calculate_booking_broker_commission(self)
 
 	def before_submit(self):
+		self._sync_items_from_header()
+		self._calculate_totals()
+		self._validate_commodity_details()
 		self._validate_items_for_submit()
+		self._validate_aggregator_qty()
+		self._validate_qty_match_on_submit()
 		self._validate_discount()
 		calculate_booking_discount(self)
 
@@ -50,6 +60,54 @@ class AggregatorBooking(Document):
 			self.company = default_company
 		else:
 			self.company = frappe.defaults.get_global_default("company")
+
+	def _validate_commodity_details(self):
+		if not self.commodity:
+			frappe.throw(_("Commodity is required before submit"))
+		if flt(self.rate) < 0:
+			frappe.throw(_("Rate cannot be negative"))
+		if flt(self.aggregator_qty) <= 0:
+			frappe.throw(_("Aggregator Qty must be greater than zero before submit"))
+
+	def _sync_items_from_header(self):
+		if not self.commodity:
+			return
+
+		item_name = frappe.db.get_value("Item", self.commodity, "item_name")
+
+		for row in self.items or []:
+			if not _row_has_data(row) and not row.supplier:
+				continue
+
+			row.item_code = self.commodity
+			row.item_name = item_name
+			row.uom = BOOKING_UOM
+			if self.rate is not None:
+				row.rate = flt(self.rate)
+
+	def _validate_qty_match_on_submit(self):
+		aggregator_qty = flt(self.aggregator_qty)
+		total_qty = flt(self.total_qty)
+
+		if aggregator_qty != total_qty:
+			frappe.throw(
+				_("Aggregator Qty ({0}) must equal Total Qty ({1}) before submit").format(
+					aggregator_qty, total_qty
+				)
+			)
+
+	def _validate_aggregator_qty(self):
+		limit = flt(self.aggregator_qty)
+		if not limit:
+			return
+
+		child_qty = sum(flt(row.qty) for row in self.items or [] if _row_has_data(row))
+		if child_qty > limit:
+			frappe.throw(
+				_("Sum of item quantities ({0}) cannot exceed Aggregator Qty ({1})").format(
+					child_qty, limit
+				)
+			)
 
 	def _validate_items_for_submit(self):
 		valid_rows = [row for row in self.items or [] if _row_has_data(row)]
@@ -76,14 +134,8 @@ class AggregatorBooking(Document):
 			frappe.throw(_("At least one supplier is required"))
 
 	def _validate_discount(self):
-		has_percent = flt(self.additional_discount_percentage) > 0
-		has_amount = flt(self.discount_amount) > 0
-
-		if not has_percent and not has_amount:
-			frappe.throw(
-				_("Please enter Discount Percent (%) or Discount Amount"),
-				title=_("Discount Required"),
-			)
+		if not flt(self.additional_discount_percentage) and not flt(self.discount_amount):
+			return
 
 		if flt(self.total_amount) and get_booking_effective_discount(self) > flt(self.total_amount):
 			frappe.throw(_("Discount Amount cannot be greater than Total Amount"))

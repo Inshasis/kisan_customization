@@ -26,7 +26,8 @@
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Item",
-   "options": "Item"
+   "options": "Item",
+   "read_only": 1
   },
   {
    "fetch_from": "item_code.item_name",
@@ -37,12 +38,13 @@
   },
   {
    "columns": 1,
-   "fetch_from": "item_code.stock_uom",
+   "default": "Quintal",
    "fieldname": "uom",
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "UOM",
-   "options": "UOM"
+   "options": "UOM",
+   "read_only": 1
   },
   {
    "columns": 1,
@@ -57,7 +59,8 @@
    "fieldtype": "Currency",
    "in_list_view": 1,
    "label": "Rate",
-   "non_negative": 1
+   "non_negative": 1,
+   "read_only": 1
   },
   {
    "fieldname": "amount",

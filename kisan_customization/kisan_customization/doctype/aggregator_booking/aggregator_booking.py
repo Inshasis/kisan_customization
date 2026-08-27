@@ -25,19 +25,21 @@ BOOKING_UOM = "Quintal"
 class AggregatorBooking(Document):
 	def validate(self):
 		self._set_company_defaults()
-		self._sync_items_from_header()
-		self._validate_aggregator_qty()
+		self._sync_items_from_commodities()
+		self._calculate_commodity_allocations()
+		self._validate_commodity_allocation_limits()
 		self._calculate_totals()
 		calculate_booking_discount(self)
 		apply_booking_dates(self)
 		calculate_booking_broker_commission(self)
 
 	def before_submit(self):
-		self._sync_items_from_header()
+		self._sync_items_from_commodities()
+		self._calculate_commodity_allocations()
 		self._calculate_totals()
 		self._validate_commodity_details()
 		self._validate_items_for_submit()
-		self._validate_aggregator_qty()
+		self._validate_commodity_allocation_limits()
 		self._validate_qty_match_on_submit()
 		self._validate_discount()
 		calculate_booking_discount(self)
@@ -61,65 +63,112 @@ class AggregatorBooking(Document):
 		else:
 			self.company = frappe.defaults.get_global_default("company")
 
+	def _get_commodity_map(self):
+		commodity_map = {}
+		for row in self.commodities or []:
+			if row.item_code:
+				commodity_map[row.item_code] = row
+		return commodity_map
+
 	def _validate_commodity_details(self):
-		if not self.commodity:
-			frappe.throw(_("Commodity is required before submit"))
-		if flt(self.rate) < 0:
-			frappe.throw(_("Rate cannot be negative"))
-		if flt(self.aggregator_qty) <= 0:
-			frappe.throw(_("Aggregator Qty must be greater than zero before submit"))
+		valid_commodities = [row for row in self.commodities or [] if row.item_code]
+		if not valid_commodities:
+			frappe.throw(_("Add at least one commodity before submit"))
 
-	def _sync_items_from_header(self):
-		if not self.commodity:
+		seen_items = set()
+		for row in valid_commodities:
+			if row.item_code in seen_items:
+				frappe.throw(_("Duplicate commodity {0} is not allowed").format(row.item_code))
+			seen_items.add(row.item_code)
+
+			if flt(row.rate) < 0:
+				frappe.throw(_("Rate cannot be negative for {0}").format(row.item_code))
+			if flt(row.aggregator_qty) <= 0:
+				frappe.throw(_("Aggregator Qty must be greater than zero for {0}").format(row.item_code))
+
+	def _sync_items_from_commodities(self):
+		commodity_map = self._get_commodity_map()
+		if not commodity_map:
 			return
-
-		item_name = frappe.db.get_value("Item", self.commodity, "item_name")
 
 		for row in self.items or []:
 			if not _row_has_data(row) and not row.supplier:
 				continue
 
-			row.item_code = self.commodity
-			row.item_name = item_name
+			if not row.item_code or row.item_code not in commodity_map:
+				continue
+
+			commodity = commodity_map[row.item_code]
+			row.item_name = commodity.item_name or frappe.db.get_value(
+				"Item", row.item_code, "item_name"
+			)
 			row.uom = BOOKING_UOM
-			if self.rate is not None:
-				row.rate = flt(self.rate)
+			row.rate = flt(commodity.rate)
+
+	def _calculate_commodity_allocations(self):
+		allocated_by_item = {}
+		for row in self.items or []:
+			if not row.item_code or not _row_has_data(row):
+				continue
+			allocated_by_item[row.item_code] = allocated_by_item.get(row.item_code, 0) + flt(row.qty)
+
+		for commodity in self.commodities or []:
+			if not commodity.item_code:
+				continue
+
+			commodity.allocated_qty = flt(allocated_by_item.get(commodity.item_code, 0))
+			commodity.amount = flt(commodity.aggregator_qty) * flt(commodity.rate)
 
 	def _validate_qty_match_on_submit(self):
-		aggregator_qty = flt(self.aggregator_qty)
-		total_qty = flt(self.total_qty)
+		for commodity in self.commodities or []:
+			if not commodity.item_code:
+				continue
 
-		if aggregator_qty != total_qty:
-			frappe.throw(
-				_("Aggregator Qty ({0}) must equal Total Qty ({1}) before submit").format(
-					aggregator_qty, total_qty
+			aggregator_qty = flt(commodity.aggregator_qty)
+			allocated_qty = flt(commodity.allocated_qty)
+
+			if aggregator_qty != allocated_qty:
+				frappe.throw(
+					_("Aggregator Qty ({0}) must equal Allocated Qty ({1}) for {2} before submit").format(
+						aggregator_qty, allocated_qty, commodity.item_code
+					)
 				)
-			)
 
-	def _validate_aggregator_qty(self):
-		limit = flt(self.aggregator_qty)
-		if not limit:
-			return
+	def _validate_commodity_allocation_limits(self):
+		allocated_by_item = {}
+		for row in self.items or []:
+			if not row.item_code or not _row_has_data(row):
+				continue
+			allocated_by_item[row.item_code] = allocated_by_item.get(row.item_code, 0) + flt(row.qty)
 
-		child_qty = sum(flt(row.qty) for row in self.items or [] if _row_has_data(row))
-		if child_qty > limit:
-			frappe.throw(
-				_("Sum of item quantities ({0}) cannot exceed Aggregator Qty ({1})").format(
-					child_qty, limit
+		for commodity in self.commodities or []:
+			if not commodity.item_code:
+				continue
+
+			limit = flt(commodity.aggregator_qty)
+			allocated = flt(allocated_by_item.get(commodity.item_code, 0))
+			if allocated > limit:
+				frappe.throw(
+					_("Allocated quantity ({0}) cannot exceed Aggregator Qty ({1}) for {2}").format(
+						allocated, limit, commodity.item_code
+					)
 				)
-			)
 
 	def _validate_items_for_submit(self):
 		valid_rows = [row for row in self.items or [] if _row_has_data(row)]
 		if not valid_rows:
-			frappe.throw(_("Add at least one item row before submit"))
+			frappe.throw(_("Add at least one supplier item row before submit"))
 
+		commodity_map = self._get_commodity_map()
 		suppliers = set()
+
 		for row in valid_rows:
 			if not row.supplier:
 				frappe.throw(_("Supplier is required in row {0}").format(row.idx))
 			if not row.item_code:
 				frappe.throw(_("Item is required in row {0}").format(row.idx))
+			if row.item_code not in commodity_map:
+				frappe.throw(_("Item {0} in row {1} is not in Commodity Details").format(row.item_code, row.idx))
 			if not row.uom:
 				frappe.throw(_("UOM is required in row {0}").format(row.idx))
 			if flt(row.qty) <= 0:

@@ -26,6 +26,12 @@
   "no_of_suppliers",
   "column_break_totals",
   "total_amount",
+  "section_break_discount",
+  "additional_discount_percentage",
+  "column_break_discount",
+  "discount_amount",
+  "column_break_discount_net",
+  "net_amount",
   "section_break_commission",
   "commission_type",
   "column_break_commission_1",
@@ -152,6 +158,37 @@
    "fieldtype": "Table",
    "label": "Items",
    "options": "Aggregator Booking Item"
+  },
+  {
+   "fieldname": "section_break_discount",
+   "fieldtype": "Section Break",
+   "label": "Additional Discount"
+  },
+  {
+   "fieldname": "additional_discount_percentage",
+   "fieldtype": "Float",
+   "label": "Discount Percent (%)"
+  },
+  {
+   "fieldname": "column_break_discount",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "discount_amount",
+   "fieldtype": "Currency",
+   "label": "Discount Amount",
+   "options": "Company:company:default_currency"
+  },
+  {
+   "fieldname": "column_break_discount_net",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "net_amount",
+   "fieldtype": "Currency",
+   "label": "Net Amount",
+   "options": "Company:company:default_currency",
+   "read_only": 1
   },
   {
    "fieldname": "section_break_commission",

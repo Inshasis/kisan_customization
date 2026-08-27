@@ -19,16 +19,14 @@
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Supplier",
-   "options": "Supplier",
-   "reqd": 1
+   "options": "Supplier"
   },
   {
    "fieldname": "item_code",
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Item",
-   "options": "Item",
-   "reqd": 1
+   "options": "Item"
   },
   {
    "fetch_from": "item_code.item_name",
@@ -44,8 +42,7 @@
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "UOM",
-   "options": "UOM",
-   "reqd": 1
+   "options": "UOM"
   },
   {
    "columns": 1,
@@ -53,16 +50,14 @@
    "fieldtype": "Float",
    "in_list_view": 1,
    "label": "Qty",
-   "non_negative": 1,
-   "reqd": 1
+   "non_negative": 1
   },
   {
    "fieldname": "rate",
    "fieldtype": "Currency",
    "in_list_view": 1,
    "label": "Rate",
-   "non_negative": 1,
-   "reqd": 1
+   "non_negative": 1
   },
   {
    "fieldname": "amount",

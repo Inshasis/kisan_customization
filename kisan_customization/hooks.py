@@ -42,6 +42,27 @@ fixtures = [
 					"Purchase Order-custom_broker_commission_amount",
 					"Purchase Order-custom_delivery_days",
 					"Purchase Order-custom_payment_days",
+					"Sales Order-custom_section_break_lqipi",
+					"Sales Order-custom_broker",
+					"Sales Order-custom_column_break_1ked0",
+					"Sales Order-custom_commission_type",
+					"Sales Order-custom_column_break_y5zpm",
+					"Sales Order-custom_commission_percent",
+					"Sales Order-custom_commission_amount",
+					"Sales Order-custom_broker_commission_amount",
+					"Sales Order-custom_delivery_days",
+					"Sales Order-custom_payment_days",
+					"Sales Invoice-custom_delivery_days",
+					"Sales Invoice-custom_payment_days",
+					"Sales Invoice-custom_delivery_date",
+					"Sales Invoice-custom_section_break_lqipi",
+					"Sales Invoice-custom_broker",
+					"Sales Invoice-custom_column_break_1ked0",
+					"Sales Invoice-custom_commission_type",
+					"Sales Invoice-custom_column_break_y5zpm",
+					"Sales Invoice-custom_commission_percent",
+					"Sales Invoice-custom_commission_amount",
+					"Sales Invoice-custom_broker_commission_amount",
 				],
 			]
 		],
@@ -121,6 +142,16 @@ doctype_js = {
 		"public/js/delivery_payment_days.js",
 		"public/js/broker_commission.js",
 		"public/js/purchase_order.js",
+	],
+	"Sales Order": [
+		"public/js/delivery_payment_days.js",
+		"public/js/broker_commission.js",
+		"public/js/sales_order.js",
+	],
+	"Sales Invoice": [
+		"public/js/broker_commission.js",
+		"public/js/delivery_payment_days.js",
+		"public/js/sales_invoice.js",
 	],
 }
 doctype_list_js = {
@@ -222,15 +253,24 @@ after_install = "kisan_customization.install.after_install.after_install"
 doc_events = {
 	"Purchase Invoice": {
 		"validate": "kisan_customization.purchase_invoice.purchase_invoice.validate",
+		"before_cancel": "kisan_customization.purchase_invoice.broker_commission.before_cancel",
 		"on_submit": "kisan_customization.purchase_invoice.broker_commission.on_submit",
-		"on_cancel": "kisan_customization.purchase_invoice.broker_commission.on_cancel",
 	},
 	"Purchase Order": {
 		"validate": "kisan_customization.purchase_order.broker_commission.validate",
 		"before_submit": "kisan_customization.purchase_order.broker_commission.before_submit",
 	},
+	"Sales Order": {
+		"validate": "kisan_customization.sales_order.broker_commission.validate",
+		"before_submit": "kisan_customization.sales_order.broker_commission.before_submit",
+	},
 	"Sales Invoice": {
-		"on_submit": "kisan_customization.outward_jawak.status.on_sales_invoice_update",
+		"validate": "kisan_customization.sales_invoice.sales_invoice.validate",
+		"before_cancel": "kisan_customization.sales_invoice.broker_commission.before_cancel",
+		"on_submit": [
+			"kisan_customization.sales_invoice.broker_commission.on_submit",
+			"kisan_customization.outward_jawak.status.on_sales_invoice_update",
+		],
 		"on_cancel": "kisan_customization.outward_jawak.status.on_sales_invoice_update",
 		"on_update_after_submit": "kisan_customization.outward_jawak.status.on_sales_invoice_update",
 	},
@@ -239,6 +279,9 @@ doc_events = {
 		"on_cancel": "kisan_customization.outward_jawak.status.update_jawak_from_payment_entry",
 	},
 }
+
+# Broker Commission is cancelled programmatically on invoice cancel (before_cancel hook).
+auto_cancel_exempted_doctypes = ["Broker Commission"]
 
 # Scheduled Tasks
 # ---------------
@@ -272,6 +315,9 @@ doc_events = {
 override_whitelisted_methods = {
 	"erpnext.buying.doctype.purchase_order.purchase_order.make_purchase_invoice": (
 		"kisan_customization.purchase_order.purchase_order.make_purchase_invoice"
+	),
+	"erpnext.selling.doctype.sales_order.sales_order.make_sales_invoice": (
+		"kisan_customization.sales_invoice.sales_order.make_sales_invoice"
 	),
 }
 #

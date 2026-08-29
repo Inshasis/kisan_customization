@@ -13,7 +13,8 @@ class BrokerCommission(Document):
 		if flt(self.broker_commission_amount) <= 0:
 			frappe.throw(_("Broker Commission Amount must be greater than zero"))
 
-		self._validate_unique_purchase_invoice()
+		self._validate_reference_invoice()
+		self._validate_unique_reference()
 
 	def on_submit(self):
 		if not self.journal_entry:
@@ -21,41 +22,43 @@ class BrokerCommission(Document):
 			self.db_set("journal_entry", je_name, update_modified=False)
 
 	def on_cancel(self):
-		if self.journal_entry and frappe.db.exists("Journal Entry", self.journal_entry):
-			je = frappe.get_doc("Journal Entry", self.journal_entry)
-			if je.docstatus == 1:
-				je.flags.ignore_permissions = True
-				je.cancel()
+		if self.journal_entry:
+			_cancel_linked_journal_entry(self.journal_entry)
 
-	def _validate_unique_purchase_invoice(self):
-		if not self.purchase_invoice:
-			return
+	def _validate_reference_invoice(self):
+		if bool(self.purchase_invoice) == bool(self.sales_invoice):
+			frappe.throw(
+				_("Set either Purchase Invoice or Sales Invoice, but not both.")
+			)
 
+	def _validate_unique_reference(self):
+		if self.purchase_invoice:
+			self._validate_unique_link("purchase_invoice", self.purchase_invoice, _("Purchase Invoice"))
+		if self.sales_invoice:
+			self._validate_unique_link("sales_invoice", self.sales_invoice, _("Sales Invoice"))
+
+	def _validate_unique_link(self, fieldname, value, label):
 		filters = {
-			"purchase_invoice": self.purchase_invoice,
+			fieldname: value,
 			"docstatus": ("<", 2),
 			"name": ("!=", self.name),
 		}
 		if frappe.db.exists("Broker Commission", filters):
-			frappe.throw(
-				_("Broker Commission already exists for Purchase Invoice {0}").format(
-					self.purchase_invoice
-				)
-			)
+			frappe.throw(_("Broker Commission already exists for {0} {1}").format(label, value))
 
 
 def create_broker_commission_journal_entry(doc):
 	expense_account = _get_broker_commission_expense_account(doc.company)
-
 	payable_account = get_party_account("Supplier", doc.broker, doc.company)
 	amount = flt(doc.broker_commission_amount)
 	cost_center = _get_cost_center(doc)
+	invoice_doctype, invoice_name = _get_reference_invoice(doc)
 
 	je = frappe.new_doc("Journal Entry")
 	je.voucher_type = "Journal Entry"
 	je.posting_date = getdate(doc.posting_date)
 	je.company = doc.company
-	je.user_remark = _("Broker Commission against Purchase Invoice {0}").format(doc.purchase_invoice)
+	je.user_remark = _("Broker Commission against {0} {1}").format(invoice_doctype, invoice_name)
 
 	je.append(
 		"accounts",
@@ -81,6 +84,12 @@ def create_broker_commission_journal_entry(doc):
 	je.submit()
 
 	return je.name
+
+
+def _get_reference_invoice(doc):
+	if doc.purchase_invoice:
+		return "Purchase Invoice", doc.purchase_invoice
+	return "Sales Invoice", doc.sales_invoice
 
 
 def _get_broker_commission_expense_account(company):
@@ -110,16 +119,30 @@ def _get_broker_commission_expense_account(company):
 
 
 def _get_cost_center(doc):
-	pi_cost_center = frappe.db.get_value("Purchase Invoice", doc.purchase_invoice, "cost_center")
-	if pi_cost_center:
-		return pi_cost_center
+	invoice_doctype, invoice_name = _get_reference_invoice(doc)
+	cost_center = frappe.db.get_value(invoice_doctype, invoice_name, "cost_center")
+	if cost_center:
+		return cost_center
 
+	item_doctype = f"{invoice_doctype} Item"
 	item_cost_center = frappe.db.get_value(
-		"Purchase Invoice Item",
-		{"parent": doc.purchase_invoice, "parenttype": "Purchase Invoice"},
+		item_doctype,
+		{"parent": invoice_name, "parenttype": invoice_doctype},
 		"cost_center",
 	)
 	if item_cost_center:
 		return item_cost_center
 
 	return frappe.get_cached_value("Company", doc.company, "cost_center")
+
+
+def _cancel_linked_journal_entry(je_name):
+	if not je_name or not frappe.db.exists("Journal Entry", je_name):
+		return
+
+	je = frappe.get_doc("Journal Entry", je_name)
+	if je.docstatus != 1:
+		return
+
+	je.flags.ignore_permissions = True
+	je.cancel()

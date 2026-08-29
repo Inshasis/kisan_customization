@@ -1,7 +1,7 @@
 frappe.provide("kisan_customization.delivery_payment_days");
 
 kisan_customization.delivery_payment_days.get_base_date = function (frm) {
-	if (frm.doc.doctype === "Purchase Invoice") {
+	if (frm.doc.doctype === "Purchase Invoice" || frm.doc.doctype === "Sales Invoice") {
 		return frm.doc.posting_date || frm.doc.bill_date || frappe.datetime.get_today();
 	}
 	return frm.doc.transaction_date || frm.doc.posting_date || frappe.datetime.get_today();
@@ -40,16 +40,29 @@ kisan_customization.delivery_payment_days.apply_delivery_days = function (frm) {
 	const date = kisan_customization.delivery_payment_days.add_days(frm, days);
 	if (!date) return;
 
-	if (frm.doc.doctype !== "Purchase Order") {
+	if (frm.doc.doctype === "Purchase Order") {
+		frm.set_value("schedule_date", date).then(() => {
+			(frm.doc.items || []).forEach((row) => {
+				frappe.model.set_value(row.doctype, row.name, "schedule_date", date);
+			});
+			frm.refresh_field("items");
+		});
 		return;
 	}
 
-	frm.set_value("schedule_date", date).then(() => {
-		(frm.doc.items || []).forEach((row) => {
-			frappe.model.set_value(row.doctype, row.name, "schedule_date", date);
+	if (frm.doc.doctype === "Sales Order") {
+		frm.set_value("delivery_date", date).then(() => {
+			(frm.doc.items || []).forEach((row) => {
+				frappe.model.set_value(row.doctype, row.name, "delivery_date", date);
+			});
+			frm.refresh_field("items");
 		});
-		frm.refresh_field("items");
-	});
+		return;
+	}
+
+	if (frm.doc.doctype === "Sales Invoice" && frm.fields_dict.custom_delivery_date) {
+		frm.set_value("custom_delivery_date", date);
+	}
 };
 
 kisan_customization.delivery_payment_days.sync_payment_amounts = function (frm) {
@@ -128,22 +141,22 @@ kisan_customization.delivery_payment_days.bind = function (doctype) {
 		},
 	};
 
-	if (doctype === "Purchase Order") {
+	if (doctype === "Purchase Order" || doctype === "Sales Order") {
 		handlers.transaction_date = function (frm) {
 			kisan_customization.delivery_payment_days.apply_all(frm);
 		};
 	}
 
-	if (doctype === "Purchase Invoice") {
+	if (doctype === "Purchase Invoice" || doctype === "Sales Invoice") {
 		handlers.posting_date = function (frm) {
-			kisan_customization.delivery_payment_days.apply_payment_days(frm);
+			kisan_customization.delivery_payment_days.apply_all(frm);
 		};
 		handlers.bill_date = function (frm) {
 			kisan_customization.delivery_payment_days.apply_payment_days(frm);
 		};
 		handlers.onload = function (frm) {
-			if (frm.doc.custom_payment_days) {
-				kisan_customization.delivery_payment_days.apply_payment_days(frm);
+			if (frm.doc.custom_payment_days || frm.doc.custom_delivery_days) {
+				kisan_customization.delivery_payment_days.apply_all(frm);
 			}
 		};
 	}

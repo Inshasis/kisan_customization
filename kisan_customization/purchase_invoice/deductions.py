@@ -493,6 +493,9 @@ def _sync_taxes_from_child_table(doc):
 	)
 
 	for row in doc.get(CHILD_TABLE_FIELD) or []:
+		if row.get("is_weight_deduction"):
+			continue
+
 		amount = flt(row.amount)
 		if not amount:
 			continue

@@ -3,6 +3,7 @@
 import json
 
 import frappe
+from frappe import _
 from frappe.utils import flt
 
 from kisan_customization.purchase_invoice.bags import (
@@ -24,6 +25,7 @@ from kisan_customization.utils.deduction_utils import (
 
 CHILD_TABLE_FIELD = "custom_deductions"
 WEIGHT_DEDUCTION_NAME = "Weight Deduction"
+DEDUCTION_ITEM_CODE = "Quality & Other"
 
 
 def _parse_tax_meta(description):
@@ -284,6 +286,7 @@ def _build_deduction_row(dt, ctx, saved=None, bag=None):
 		"deduction_type": dt.name,
 		"deduction_type_name": _display_name(dt, bag_type),
 		"bag_type": bag_type or "",
+		"no_of_bags": flt(bag["no_of_bags"]) if bag else 0,
 		"related_account": dt.related_account or saved.get("related_account") or "",
 		"qty_deducation": dt.qty_deducation,
 		"tiered_calculation": dt.tiered_calculation,
@@ -447,7 +450,6 @@ def _set_child_table_from_deductions(doc, deductions):
 		doc.append(CHILD_TABLE_FIELD, row)
 
 	sync_weight_deduction_row(doc)
-	_sync_taxes_from_child_table(doc)
 
 
 def _recalculate_child_table_amounts(doc):
@@ -493,9 +495,6 @@ def _sync_taxes_from_child_table(doc):
 	)
 
 	for row in doc.get(CHILD_TABLE_FIELD) or []:
-		if row.get("is_weight_deduction"):
-			continue
-
 		amount = flt(row.amount)
 		if not amount:
 			continue
@@ -578,7 +577,7 @@ def _get_deductions_from_taxes(doc, lookup):
 
 
 def recalculate_existing_deductions(doc):
-	if doc.flags.get("ignore_deduction_recalc"):
+	if doc.flags.get("ignore_deduction_recalc") or doc.get("is_return"):
 		return
 
 	if doc.docstatus == 1:
@@ -586,10 +585,7 @@ def recalculate_existing_deductions(doc):
 
 	if not frappe.get_meta("Purchase Invoice").has_field(CHILD_TABLE_FIELD):
 		lookup = _get_deduction_lookup(doc.company)
-		deductions = _get_deductions_from_taxes(doc, lookup)
-		if not deductions:
-			return
-		_apply_deduction_rows_legacy(doc, deductions)
+		_remove_deduction_taxes(doc, lookup["by_label"])
 		return
 
 	_migrate_taxes_to_child_table(doc)
@@ -603,68 +599,10 @@ def recalculate_existing_deductions(doc):
 	else:
 		sync_weight_deduction_row(doc)
 
-	if doc.get(CHILD_TABLE_FIELD):
-		_sync_taxes_from_child_table(doc)
-
 
 def _apply_deduction_rows_legacy(doc, deductions):
 	lookup = _get_deduction_lookup(doc.company)
 	_remove_deduction_taxes(doc, lookup["by_label"])
-
-	ctx = _get_pi_context(doc)
-	cost_center = doc.cost_center or frappe.get_cached_value(
-		"Company", doc.company, "cost_center"
-	)
-
-	for row in deductions:
-		dt = lookup["by_name"].get(row.get("deduction_type"))
-		if not dt:
-			continue
-
-		actual = flt(row.get("actual"))
-		manual_amount = flt(row.get("amount"))
-		bag_type = row.get("bag_type") or ""
-
-		bag_rows = get_bag_rows(doc)
-		bag = next((b for b in bag_rows if b["bag_type"] == bag_type), None) if bag_type else None
-		row_ctx = _bag_context(ctx, bag) if bag else ctx
-
-		amount, _, _, mode = _resolve_amount(
-			dt, row_ctx, actual=actual, manual_amount=manual_amount
-		)
-
-		if not amount:
-			continue
-
-		if not dt.related_account:
-			frappe.throw(
-				frappe._("Related Account not set for Deduction Type {0}").format(
-					dt.deduction_type_name
-				)
-			)
-
-		description = _build_tax_description(
-			dt.deduction_type_name,
-			actual if mode == "qty_deducation" else None,
-			bag_type=bag_type or None,
-		)
-
-		doc.append(
-			"taxes",
-			{
-				"category": "Total",
-				"add_deduct_tax": "Deduct",
-				"charge_type": "Actual",
-				"account_head": dt.related_account,
-				"description": description,
-				"rate": 0,
-				"tax_amount": amount,
-				"cost_center": cost_center,
-			},
-		)
-
-	if hasattr(doc, "calculate_taxes_and_totals"):
-		doc.calculate_taxes_and_totals()
 
 
 @frappe.whitelist()
@@ -733,6 +671,8 @@ def calculate_deduction_preview(purchase_invoice, deduction_type, actual, bag_ty
 		"required_value": required,
 		"difference": difference,
 		"amount": amount,
+		"bag_type": bag_type or "",
+		"no_of_bags": flt(row_ctx["total_bags"]) if bag else 0,
 		"net_amount": row_ctx["net_amount"],
 		"total_bags": row_ctx["total_bags"],
 		"total_gross_weight": row_ctx["total_gross_weight"],
@@ -774,3 +714,138 @@ def get_deduction_total(doc):
 		for tax in doc.get("taxes") or []
 		if tax.add_deduct_tax == "Deduct" and flt(tax.tax_amount) > 0
 	)
+
+
+def get_deduction_item_code():
+	settings_meta = frappe.get_meta("Kisan Master Settings", cached=True)
+	if settings_meta.has_field("deduction_item"):
+		item_code = frappe.db.get_single_value("Kisan Master Settings", "deduction_item")
+		if item_code and frappe.db.exists("Item", item_code):
+			return item_code
+
+	if frappe.db.exists("Item", DEDUCTION_ITEM_CODE):
+		return DEDUCTION_ITEM_CODE
+
+	return None
+
+
+def get_return_against_deduction_total(doc):
+	if not doc.get("is_return") or not doc.get("return_against"):
+		return 0
+
+	if not frappe.db.exists("Purchase Invoice", doc.return_against):
+		return 0
+
+	source = frappe.get_doc("Purchase Invoice", doc.return_against)
+	return flt(get_deduction_total(source))
+
+
+def remove_deduction_item_rows(doc):
+	item_code = get_deduction_item_code()
+	if not item_code:
+		return
+
+	for row in list(doc.get("items") or []):
+		if row.item_code == item_code:
+			doc.remove(row)
+
+
+def sync_deduction_item_row(doc):
+	if not frappe.get_meta("Purchase Invoice").has_field(CHILD_TABLE_FIELD):
+		return
+
+	if not doc.get("is_return"):
+		remove_deduction_item_rows(doc)
+		return
+
+	item_code = get_deduction_item_code()
+	deduction_total = get_return_against_deduction_total(doc)
+	deduction_rows = _get_deduction_item_rows(doc, item_code) if item_code else []
+
+	if deduction_total <= 0:
+		for row in deduction_rows:
+			doc.remove(row)
+		return
+
+	if not item_code:
+		frappe.throw(
+			_("Item {0} not found. Please create it to apply deductions on the invoice.").format(
+				DEDUCTION_ITEM_CODE
+			)
+		)
+
+	if deduction_rows:
+		row = deduction_rows[0]
+		_apply_deduction_item_values(doc, row, -1, deduction_total)
+		for extra_row in deduction_rows[1:]:
+			doc.remove(extra_row)
+	else:
+		item_row = doc.append(
+			"items",
+			{
+				"item_code": item_code,
+			},
+		)
+		_apply_deduction_item_values(doc, item_row, -1, deduction_total)
+
+
+def _get_deduction_item_rows(doc, item_code):
+	rows = [row for row in doc.get("items") or [] if row.item_code == item_code]
+
+	if doc.get("is_return"):
+		return rows
+
+	return [row for row in rows if flt(row.qty) == -1]
+
+
+def _apply_deduction_item_values(doc, item_row, qty, rate):
+	from erpnext.stock.get_item_details import get_item_details
+
+	qty = flt(qty)
+	rate = flt(rate)
+
+	parent_dict = {fieldname: doc.get(fieldname) for fieldname in doc.meta.get_valid_columns()}
+	args = parent_dict.copy()
+	args.update(item_row.as_dict())
+	args.update(
+		{
+			"doctype": doc.doctype,
+			"name": doc.name,
+			"child_doctype": item_row.doctype,
+			"child_docname": item_row.name,
+			"item_code": item_row.item_code,
+			"qty": qty,
+			"rate": rate,
+		}
+	)
+
+	item_details = get_item_details(args, doc, for_validate=False, overwrite_warehouse=False)
+	for fieldname, value in item_details.items():
+		if item_row.meta.get_field(fieldname) and value is not None and item_row.get(fieldname) is None:
+			item_row.set(fieldname, value)
+
+	item_row.qty = qty
+	item_row.rate = rate
+	item_row.received_qty = qty
+
+	conversion_factor = flt(item_row.conversion_factor) or 1
+	item_row.conversion_factor = conversion_factor
+	item_row.stock_qty = qty * conversion_factor
+
+	conversion_rate = flt(doc.conversion_rate) or 1
+	item_row.amount = qty * rate
+	item_row.base_rate = rate * conversion_rate
+	item_row.base_amount = item_row.amount * conversion_rate
+
+	if item_row.meta.has_field("net_rate"):
+		item_row.net_rate = rate
+	if item_row.meta.has_field("net_amount"):
+		item_row.net_amount = item_row.amount
+	if item_row.meta.has_field("base_net_rate"):
+		item_row.base_net_rate = item_row.base_rate
+	if item_row.meta.has_field("base_net_amount"):
+		item_row.base_net_amount = item_row.base_amount
+
+
+def _set_deduction_item_details(doc, item_row):
+	_apply_deduction_item_values(doc, item_row, item_row.qty, item_row.rate)

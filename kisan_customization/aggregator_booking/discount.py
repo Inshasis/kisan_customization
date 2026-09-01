@@ -42,3 +42,23 @@ def apply_booking_discount_to_po(po, booking):
 
 	if hasattr(po, "calculate_taxes_and_totals"):
 		po.calculate_taxes_and_totals()
+
+
+def apply_booking_discount_to_pi(pi, booking):
+	"""Apply booking discount to PI — percentage globally, amount split by supplier share."""
+	booking_total = flt(booking.get("total_amount"))
+	percent = flt(booking.get("additional_discount_percentage"))
+	booking_discount = get_booking_effective_discount(booking)
+
+	pi.apply_discount_on = "Net Total"
+	pi.additional_discount_percentage = 0
+	pi.discount_amount = 0
+
+	if percent > 0:
+		pi.additional_discount_percentage = percent
+	elif booking_total and booking_discount:
+		pi_share = flt(pi.net_total) / booking_total if booking_total else 0
+		pi.discount_amount = booking_discount * pi_share
+
+	if hasattr(pi, "calculate_taxes_and_totals"):
+		pi.calculate_taxes_and_totals()

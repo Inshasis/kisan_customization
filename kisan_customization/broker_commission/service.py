@@ -10,7 +10,30 @@ INVOICE_LINK_FIELD = {
 
 
 def should_create_broker_commission(doc):
+	if doc.get("is_return"):
+		return False
+
 	return doc.get("custom_broker") and flt(doc.get("custom_broker_commission_amount")) > 0
+
+
+BROKER_COMMISSION_FIELDS = (
+	"custom_broker",
+	"custom_commission_type",
+	"custom_commission_percent",
+	"custom_commission_amount",
+	"custom_broker_commission_amount",
+)
+
+
+def clear_broker_commission_fields(doc):
+	for fieldname in BROKER_COMMISSION_FIELDS:
+		if not doc.meta.has_field(fieldname):
+			continue
+
+		if fieldname in ("custom_broker", "custom_commission_type"):
+			doc.set(fieldname, None)
+		else:
+			doc.set(fieldname, 0)
 
 
 def get_invoice_link_field(doctype):

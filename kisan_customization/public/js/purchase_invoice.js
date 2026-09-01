@@ -13,7 +13,7 @@ frappe.ui.form.on("Purchase Invoice", {
 		load_bag_type_options(frm);
 
 		if (!frm.is_new()) {
-			add_broker_commission_button(frm);
+			add_post_submit_buttons(frm);
 		}
 
 		if (frm.is_new()) return;
@@ -93,23 +93,46 @@ frappe.ui.form.on("Purchase Invoice Bag Detail", {
 	},
 });
 
-function add_broker_commission_button(frm) {
-	if (frm.doc.docstatus !== 1 || !frm.doc.custom_broker) return;
+function add_post_submit_buttons(frm) {
+	if (frm.doc.docstatus !== 1) return;
+
+	const add_debit_note = () => {
+		if (frm.doc.is_return) return;
+		frm.add_custom_button(__("Debit Note"), () => make_kisan_debit_note(frm));
+	};
+
+	if (!frm.doc.custom_broker) {
+		add_debit_note();
+		return;
+	}
 
 	frappe.db.get_value(
 		"Broker Commission",
 		{ purchase_invoice: frm.doc.name, docstatus: 1 },
 		"name",
 		(r) => {
-			if (!r?.name) return;
-			frm.add_custom_button(__("Broker Commission"), () => {
-				frappe.set_route("Form", "Broker Commission", r.name);
-			});
+			if (r?.name) {
+				frm.add_custom_button(__("Broker Commission"), () => {
+					frappe.set_route("Form", "Broker Commission", r.name);
+				});
+			}
+			add_debit_note();
 		}
 	);
 }
 
+function make_kisan_debit_note(frm) {
+	frappe.model.open_mapped_doc({
+		method: "kisan_customization.purchase_invoice.debit_note.make_debit_note",
+		frm,
+	});
+}
+
 function can_show_deduction_button(frm) {
+	if (frm.doc.is_return) {
+		return false;
+	}
+
 	const total_bags = flt(frm.doc.custom_total_bags);
 	const child_sum = get_child_bag_sum(frm);
 	return (
@@ -120,7 +143,7 @@ function can_show_deduction_button(frm) {
 }
 
 function confirm_deductions_before_submit(frm) {
-	if (!can_show_deduction_button(frm)) {
+	if (frm.doc.is_return || !can_show_deduction_button(frm)) {
 		return;
 	}
 
@@ -209,19 +232,7 @@ function update_arrival_total(frm) {
 		(sum, row) => sum + flt(row.arrival_qty_kg),
 		0
 	);
-	frm.set_value("custom_total_arrival_weight", total_arrival).then(() => {
-		sync_arrival_qty(frm);
-	});
-}
-
-function sync_arrival_qty(frm) {
-	const arrival = flt(frm.doc.custom_total_arrival_weight);
-	if (!arrival || !(frm.doc.items || []).length) return;
-
-	const qty = flt(arrival / 100, 3);
-	(frm.doc.items || []).forEach((row) => {
-		frappe.model.set_value(row.doctype, row.name, "qty", qty);
-	});
+	frm.set_value("custom_total_arrival_weight", total_arrival);
 }
 
 function load_bag_type_options(frm) {
@@ -384,6 +395,19 @@ function build_deductions_html(deductions, frm, currency) {
 		</div>`;
 }
 
+function build_bag_detail_html(row) {
+	if (!row.bag_type) {
+		return "";
+	}
+
+	const no_of_bags = flt(row.no_of_bags ?? row.total_bags);
+	if (!no_of_bags) {
+		return "";
+	}
+
+	return `<p class="kd-bag-detail">(${frappe.utils.escape_html(row.bag_type)} × ${no_of_bags})</p>`;
+}
+
 function build_deduction_rows(deductions, currency) {
 	const symbol = typeof get_currency_symbol === "function" ? get_currency_symbol(currency) : currency;
 
@@ -431,6 +455,7 @@ function build_qty_deducation_row(row, idx, abbr, active, search_key, data, curr
 				<p class="kd-name">${frappe.utils.escape_html(row.deduction_type_name)}</p>
 				<p class="kd-acct">${frappe.utils.escape_html(row.related_account || "")}</p>
 				${formula}
+				${build_bag_detail_html(row)}
 			</div>
 			<div class="kd-qty-fields">
 				<div class="kd-field">
@@ -461,6 +486,7 @@ function build_auto_calc_row(row, idx, abbr, active, search_key, data, currency)
 				<p class="kd-name">${frappe.utils.escape_html(row.deduction_type_name)}</p>
 				<p class="kd-acct">${frappe.utils.escape_html(row.related_account || "")}</p>
 				<p class="kd-formula">${frappe.utils.escape_html(row.formula || "")}</p>
+				${build_bag_detail_html(row)}
 			</div>
 			<div class="kd-auto-amount">
 				<label>${__("Amount")}</label>
@@ -671,6 +697,7 @@ function get_deduction_styles() {
 		.kd-badge{width:36px;height:36px;border-radius:9px;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0}
 		.kd-info{flex:1;min-width:0}.kd-name{font-weight:600;margin:0 0 2px}.kd-acct{font-size:11px;color:#6b7280;margin:0}
 		.kd-formula{font-size:11px;color:#166534;margin:4px 0 0;font-weight:600}
+		.kd-bag-detail{font-size:11px;color:#475569;margin:2px 0 0;font-weight:500}
 		.kd-input-wrap{display:flex;border:1.5px solid #d1d8dd;border-radius:8px;overflow:hidden;width:140px;flex-shrink:0;background:#fff}
 		.kd-sym{padding:0 8px;background:#f0fdf4;color:#166534;font-weight:700;display:flex;align-items:center;border-right:1px solid #d1d8dd}
 		.kd-input{border:none!important;box-shadow:none!important;text-align:right;font-weight:600!important;font-size:13px!important;padding:6px 8px!important;width:100%;outline:none}

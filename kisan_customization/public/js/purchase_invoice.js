@@ -232,21 +232,7 @@ function update_arrival_total(frm) {
 		(sum, row) => sum + flt(row.arrival_qty_kg),
 		0
 	);
-	frm.set_value("custom_total_arrival_weight", total_arrival).then(() => {
-		sync_arrival_qty(frm);
-	});
-}
-
-function sync_arrival_qty(frm) {
-	if (frm.doc.custom_aggregator_booking) return;
-
-	const arrival = flt(frm.doc.custom_total_arrival_weight);
-	if (!arrival || !(frm.doc.items || []).length) return;
-
-	const qty = flt(arrival / 100, 3);
-	(frm.doc.items || []).forEach((row) => {
-		frappe.model.set_value(row.doctype, row.name, "qty", qty);
-	});
+	frm.set_value("custom_total_arrival_weight", total_arrival);
 }
 
 function load_bag_type_options(frm) {

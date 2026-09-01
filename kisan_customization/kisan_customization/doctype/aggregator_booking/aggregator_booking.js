@@ -24,13 +24,13 @@ frappe.ui.form.on("Aggregator Booking", {
 		recalculate_commodity_allocations(frm);
 		recalculate_totals(frm);
 
-		if (frm.doc.docstatus !== 1 || !frm.doc.purchase_orders?.length) return;
+		if (frm.doc.docstatus !== 1 || !frm.doc.purchase_invoices?.length) return;
 
-		frm.add_custom_button(__("View Purchase Orders"), () => {
-			const names = frm.doc.purchase_orders.map((row) => row.purchase_order).filter(Boolean);
+		frm.add_custom_button(__("View Purchase Invoices"), () => {
+			const names = frm.doc.purchase_invoices.map((row) => row.purchase_invoice).filter(Boolean);
 			if (!names.length) return;
 
-			frappe.set_route("List", "Purchase Order", {
+			frappe.set_route("List", "Purchase Invoice", {
 				name: ["in", names],
 			});
 		});

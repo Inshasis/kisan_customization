@@ -9,6 +9,7 @@
   "default_company",
   "column_break_general",
   "rental_item",
+  "deduction_item",
   "broker_settings_section",
   "broker_commission_expense_account",
   "days_settings_section",
@@ -107,11 +108,17 @@
    "fieldtype": "Link",
    "label": "Broker Commission Expense Account",
    "options": "Account"
+  },
+  {
+   "fieldname": "deduction_item",
+   "fieldtype": "Link",
+   "label": "Deduction Item",
+   "options": "Item"
   }
  ],
  "issingle": 1,
  "links": [],
- "modified": "2026-08-12 16:20:42.175757",
+ "modified": "2026-09-01 20:20:22.937657",
  "modified_by": "Administrator",
  "module": "Kisan Customization",
  "name": "Kisan Master Settings",

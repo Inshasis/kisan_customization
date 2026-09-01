@@ -56,6 +56,94 @@ def calculate_booking_broker_commission(booking):
 	return commission_amount
 
 
+def calculate_pi_broker_commission(pi, booking):
+	commission_type = booking.get("commission_type")
+	commission_amount = 0
+
+	if commission_type == "Percentage":
+		net_amount = flt(pi.net_total)
+		percent = flt(booking.get("commission_percent"))
+		commission_amount = (net_amount * percent) / 100
+	elif commission_type == "Total Qty":
+		total_qty = flt(pi.total_qty)
+		rate = flt(booking.get("commission_amount"))
+		commission_amount = total_qty * rate
+
+	return commission_amount
+
+
+def apply_booking_terms_to_pi(pi, booking):
+	payment_days = cint(booking.get("payment_days"))
+	payment_date = compute_payment_date(booking)
+
+	if _has_field("Purchase Invoice", "custom_payment_days") and payment_days:
+		pi.custom_payment_days = payment_days
+
+	if payment_date and payment_days:
+		grand_total = flt(pi.rounded_total) or flt(pi.grand_total)
+		base_grand_total = flt(pi.base_rounded_total) or flt(pi.base_grand_total)
+
+		pi.set("payment_schedule", [])
+		schedule_row = {
+			"due_date": payment_date,
+			"invoice_portion": 100,
+			"payment_amount": grand_total,
+			"base_payment_amount": base_grand_total,
+			"outstanding": grand_total,
+		}
+		if _has_field("Payment Schedule", "credit_days"):
+			schedule_row["credit_days"] = payment_days
+
+		pi.append("payment_schedule", schedule_row)
+		pi.due_date = payment_date
+	elif payment_date:
+		pi.due_date = payment_date
+
+	apply_booking_broker_to_pi(pi, booking)
+
+
+def apply_booking_broker_to_pi(pi, booking):
+	if not booking.get("aggregator"):
+		return
+
+	if _has_field("Purchase Invoice", "custom_broker"):
+		pi.custom_broker = booking.aggregator
+
+	if _has_field("Purchase Invoice", "custom_commission_type"):
+		pi.custom_commission_type = booking.get("commission_type")
+
+	if _has_field("Purchase Invoice", "custom_commission_percent"):
+		pi.custom_commission_percent = flt(booking.get("commission_percent"))
+
+	if _has_field("Purchase Invoice", "custom_commission_amount"):
+		pi.custom_commission_amount = flt(booking.get("commission_amount"))
+
+	if _has_field("Purchase Invoice", "custom_broker_commission_amount"):
+		pi.custom_broker_commission_amount = calculate_pi_broker_commission(pi, booking)
+
+
+def persist_pi_booking_terms(pi_name, booking):
+	pi = frappe.get_doc("Purchase Invoice", pi_name)
+	apply_booking_broker_to_pi(pi, booking)
+
+	values = {}
+	field_map = {
+		"custom_broker": booking.get("aggregator"),
+		"custom_commission_type": booking.get("commission_type"),
+		"custom_commission_percent": flt(booking.get("commission_percent")),
+		"custom_commission_amount": flt(booking.get("commission_amount")),
+		"custom_broker_commission_amount": flt(pi.custom_broker_commission_amount),
+		"custom_payment_days": cint(booking.get("payment_days")) or None,
+	}
+
+	for fieldname, value in field_map.items():
+		if _has_field("Purchase Invoice", fieldname) and value not in (None, ""):
+			values[fieldname] = value
+
+	if values:
+		frappe.db.set_value("Purchase Invoice", pi_name, values, update_modified=False)
+
+
 def calculate_po_broker_commission(po, booking):
 	commission_type = booking.get("commission_type")
 	commission_amount = 0

@@ -32,6 +32,7 @@ fixtures = [
 					"Purchase Invoice-custom_commission_amount",
 					"Purchase Invoice-custom_broker_commission_amount",
 					"Purchase Invoice-custom_payment_days",
+					"Purchase Invoice-custom_supplier_invoice_amount",
 					"Purchase Order-custom_section_break_lqipi",
 					"Purchase Order-custom_broker",
 					"Purchase Order-custom_column_break_1ked0",
@@ -252,9 +253,13 @@ after_install = "kisan_customization.install.after_install.after_install"
 
 doc_events = {
 	"Purchase Invoice": {
-		"validate": "kisan_customization.purchase_invoice.purchase_invoice.validate",
+		"validate": [
+			"kisan_customization.purchase_invoice.purchase_invoice.validate",
+			"kisan_customization.purchase_invoice.broker_commission.validate",
+		],
 		"before_cancel": "kisan_customization.purchase_invoice.broker_commission.before_cancel",
 		"on_submit": "kisan_customization.purchase_invoice.broker_commission.on_submit",
+		"on_trash": "kisan_customization.purchase_invoice.aggregator_booking.on_trash",
 	},
 	"Purchase Order": {
 		"validate": "kisan_customization.purchase_order.broker_commission.validate",
@@ -335,7 +340,7 @@ override_whitelisted_methods = {
 # Ignore links to specified DocTypes when deleting documents
 # -----------------------------------------------------------
 
-# ignore_links_on_delete = ["Communication", "ToDo"]
+ignore_links_on_delete = ["Aggregator Booking"]
 
 # Request Events
 # ----------------

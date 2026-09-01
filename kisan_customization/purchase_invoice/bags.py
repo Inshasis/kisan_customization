@@ -30,6 +30,9 @@ def get_pi_item_rate(doc):
 
 
 def sync_arrival_qty_to_items(doc):
+	if doc.get("custom_aggregator_booking"):
+		return
+
 	arrival_weight = flt(doc.get("custom_total_arrival_weight"))
 	if not arrival_weight:
 		return

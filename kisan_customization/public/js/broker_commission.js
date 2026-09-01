@@ -95,7 +95,7 @@ kisan_customization.broker_commission.bind = function (doctype) {
 
 		refresh(frm) {
 			kisan_customization.broker_commission.toggle_fields(frm);
-			if (frm.doc.docstatus === 0) {
+			if (frm.doc.docstatus === 0 && !frm.doc.is_return) {
 				kisan_customization.broker_commission.calculate(frm);
 			}
 		},

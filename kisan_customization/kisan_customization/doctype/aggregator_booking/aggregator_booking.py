@@ -9,9 +9,10 @@ from kisan_customization.aggregator_booking.discount import (
 	calculate_booking_discount,
 	get_booking_effective_discount,
 )
-from kisan_customization.aggregator_booking.purchase_orders import (
-	cancel_purchase_orders_for_booking,
-	create_purchase_orders_for_booking,
+from kisan_customization.aggregator_booking.purchase_invoices import (
+	cancel_legacy_purchase_orders_for_booking,
+	cancel_purchase_invoices_for_booking,
+	create_purchase_invoices_for_booking,
 )
 from kisan_customization.aggregator_booking.terms import (
 	apply_booking_dates,
@@ -45,13 +46,14 @@ class AggregatorBooking(Document):
 		calculate_booking_discount(self)
 
 	def on_submit(self):
-		if self.purchase_orders:
-			frappe.throw(_("Purchase Orders are already linked with this booking"))
+		if self.purchase_invoices:
+			frappe.throw(_("Purchase Invoices are already linked with this booking"))
 
-		create_purchase_orders_for_booking(self)
+		create_purchase_invoices_for_booking(self)
 
 	def on_cancel(self):
-		cancel_purchase_orders_for_booking(self)
+		cancel_purchase_invoices_for_booking(self)
+		cancel_legacy_purchase_orders_for_booking(self)
 
 	def _set_company_defaults(self):
 		if self.company:

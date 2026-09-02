@@ -13,12 +13,15 @@ DEDUCTION_TYPE_NAMES = [
 	"Weighbridge",
 	"RTGS",
 	"Miscellaneous",
+	"Bag Deduction",
 	"Weight Deduction",
 ]
 
 
 def get_default_deduction_types():
-	fixture_path = Path(__file__).resolve().parent / "deduction_type_defaults.json"
+	fixture_path = (
+		Path(__file__).resolve().parent.parent / "install" / "deduction_type_defaults.json"
+	)
 	with fixture_path.open(encoding="utf-8") as handle:
 		records = json.load(handle)
 

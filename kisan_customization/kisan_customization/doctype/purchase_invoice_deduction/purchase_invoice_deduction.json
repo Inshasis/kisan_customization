@@ -11,6 +11,7 @@
   "bag_type",
   "related_account",
   "is_weight_deduction",
+  "is_bag_deduction",
   "actual",
   "required_value",
   "difference",
@@ -51,6 +52,12 @@
    "fieldname": "is_weight_deduction",
    "fieldtype": "Check",
    "label": "Is Weight Deduction"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_bag_deduction",
+   "fieldtype": "Check",
+   "label": "Is Bag Deduction"
   },
   {
    "fieldname": "actual",

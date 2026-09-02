@@ -17,6 +17,7 @@ FORMULA_VARIABLES = (
 	"required_value",
 	"actual",
 	"difference",
+	"item_rate",
 )
 
 
@@ -82,6 +83,7 @@ def get_formula_context(
 	plastic_gross_weight=0,
 	actual=0,
 	difference=0,
+	item_rate=0,
 ):
 	charges = flt(dt.charges_per_unit)
 	net_amount = flt(net_amount)
@@ -99,6 +101,7 @@ def get_formula_context(
 		"required_value": flt(dt.required_value),
 		"actual": flt(actual),
 		"difference": flt(difference),
+		"item_rate": flt(item_rate),
 	}
 
 
@@ -112,6 +115,7 @@ def evaluate_calculation(
 	plastic_gross_weight=0,
 	actual=0,
 	difference=0,
+	item_rate=0,
 ):
 	formula = (dt.calculation or "").strip()
 	if not formula:
@@ -127,6 +131,7 @@ def evaluate_calculation(
 		plastic_gross_weight,
 		actual,
 		difference,
+		item_rate,
 	)
 
 	try:
@@ -149,6 +154,7 @@ def get_calculation_formula(
 	plastic_gross_weight=0,
 	actual=0,
 	difference=0,
+	item_rate=0,
 ):
 	mode = get_calculation_mode(dt)
 	calc_kwargs = {
@@ -160,6 +166,7 @@ def get_calculation_formula(
 		"plastic_gross_weight": plastic_gross_weight,
 		"actual": actual,
 		"difference": difference,
+		"item_rate": item_rate,
 	}
 
 	if mode == "qty_deducation":
@@ -257,6 +264,7 @@ def calculate_qty_deducation_amount(
 	total_gross_weight=0,
 	total_arrival_weight=0,
 	plastic_gross_weight=0,
+	item_rate=0,
 ):
 	actual = flt(actual)
 	required = flt(dt.required_value)
@@ -266,6 +274,7 @@ def calculate_qty_deducation_amount(
 	total_gross_weight = flt(total_gross_weight)
 	total_arrival_weight = flt(total_arrival_weight)
 	plastic_gross_weight = flt(plastic_gross_weight)
+	item_rate = flt(item_rate)
 
 	difference = _calculate_difference(dt, actual)
 
@@ -283,6 +292,7 @@ def calculate_qty_deducation_amount(
 			plastic_gross_weight=plastic_gross_weight,
 			actual=actual,
 			difference=difference,
+			item_rate=item_rate,
 		)
 	else:
 		amount = _calculate_qty_amount_fallback(dt, difference, net_amount, total_qty)
@@ -300,6 +310,7 @@ def calculate_deduction_amount(
 	total_arrival_weight=0,
 	plastic_gross_weight=0,
 	manual_amount=0,
+	item_rate=0,
 ):
 	if isinstance(dt, str):
 		dt = frappe.get_cached_value(
@@ -326,6 +337,7 @@ def calculate_deduction_amount(
 	total_gross_weight = flt(total_gross_weight)
 	total_arrival_weight = flt(total_arrival_weight)
 	plastic_gross_weight = flt(plastic_gross_weight)
+	item_rate = flt(item_rate)
 
 	if mode == "qty_deducation":
 		return calculate_qty_deducation_amount(
@@ -337,6 +349,7 @@ def calculate_deduction_amount(
 			total_gross_weight,
 			total_arrival_weight,
 			plastic_gross_weight,
+			item_rate,
 		)
 
 	if mode == "formula":
@@ -351,6 +364,7 @@ def calculate_deduction_amount(
 			plastic_gross_weight=plastic_gross_weight,
 			actual=actual,
 			difference=difference,
+			item_rate=item_rate,
 		)
 		return flt(amount), difference, flt(dt.required_value)
 

@@ -7,6 +7,8 @@ from frappe import _
 from frappe.utils import flt
 
 from kisan_customization.purchase_invoice.bags import (
+	calculate_bag_deduction,
+	calculate_weight_deduction,
 	get_bag_rows,
 	get_pi_item_rate,
 	has_plastic_bag,
@@ -24,7 +26,10 @@ from kisan_customization.utils.deduction_utils import (
 )
 
 CHILD_TABLE_FIELD = "custom_deductions"
+BAG_DEDUCTION_NAME = "Bag Deduction"
 WEIGHT_DEDUCTION_NAME = "Weight Deduction"
+AUTO_DEDUCTION_NAMES = {BAG_DEDUCTION_NAME, WEIGHT_DEDUCTION_NAME}
+BAG_WISE_ARRIVAL_DEDUCTION_TYPES = frozenset({"Moise", "S/S"})
 DEDUCTION_ITEM_CODE = "Quality & Other"
 
 
@@ -93,6 +98,7 @@ def _get_pi_context(doc):
 		"total_gross_weight": get_pi_total_gross_weight(doc),
 		"total_arrival_weight": get_pi_total_arrival_weight(doc),
 		"plastic_gross_weight": get_pi_plastic_gross_weight(doc),
+		"item_rate": get_pi_item_rate(doc),
 	}
 
 
@@ -100,34 +106,46 @@ def _get_pi_item_rate(doc):
 	return get_pi_item_rate(doc)
 
 
+def _calculate_bag_deduction_amount(doc):
+	return calculate_bag_deduction(doc)
+
+
 def _calculate_weight_deduction_amount(doc):
-	gross_weight = get_pi_total_gross_weight(doc)
-	arrival_weight = get_pi_total_arrival_weight(doc)
-	weight_deduction = max(0, flt(gross_weight) - flt(arrival_weight))
-	item_rate = get_pi_item_rate(doc)
-	amount = flt(weight_deduction * item_rate / 100, 2)
-	return weight_deduction, item_rate, amount
+	return calculate_weight_deduction(doc)
 
 
-def _build_weight_deduction_dialog_row(doc):
-	weight_deduction, item_rate, amount = _calculate_weight_deduction_amount(doc)
-	if not weight_deduction and not amount:
+def _build_auto_deduction_dialog_row(doc, name, calculation_mode, is_bag_deduction=0, is_weight_deduction=0):
+	if is_bag_deduction:
+		deduction_kg, item_rate, amount = _calculate_bag_deduction_amount(doc)
+		gross_weight = get_pi_total_gross_weight(doc)
+		arrival_weight = get_pi_total_arrival_weight(doc)
+		formula = f"{gross_weight} - {arrival_weight} = {deduction_kg} kg × Avg. Rate {item_rate} / 100"
+	elif is_weight_deduction:
+		deduction_kg, item_rate, amount = _calculate_weight_deduction_amount(doc)
+		accepted_qty_kg = flt(get_pi_total_qty(doc)) * 100
+		gross_weight = get_pi_total_gross_weight(doc)
+		formula = f"{accepted_qty_kg} - {gross_weight} = {deduction_kg} kg × {item_rate} / 100"
+	else:
 		return None
 
-	weight_dt = _get_weight_deduction_type(doc.company)
+	if not deduction_kg and not amount:
+		return None
+
+	deduction_dt = _get_auto_deduction_type(doc.company, name)
 	ctx = _get_pi_context(doc)
 
 	return {
-		"deduction_type": weight_dt.name if weight_dt else "",
-		"deduction_type_name": WEIGHT_DEDUCTION_NAME,
+		"deduction_type": deduction_dt.name if deduction_dt else "",
+		"deduction_type_name": name,
 		"bag_type": "",
-		"related_account": weight_dt.related_account if weight_dt else "",
-		"is_weight_deduction": 1,
-		"weight_deduction_kg": weight_deduction,
+		"related_account": deduction_dt.related_account if deduction_dt else "",
+		"is_bag_deduction": is_bag_deduction,
+		"is_weight_deduction": is_weight_deduction,
+		"weight_deduction_kg": deduction_kg,
 		"item_rate": item_rate,
 		"qty_deducation": 0,
-		"calculation_mode": "weight_deduction",
-		"formula": f"{weight_deduction} × {item_rate} / 100",
+		"calculation_mode": calculation_mode,
+		"formula": formula,
 		"net_amount": ctx["net_amount"],
 		"total_bags": ctx["total_bags"],
 		"total_gross_weight": ctx["total_gross_weight"],
@@ -135,6 +153,24 @@ def _build_weight_deduction_dialog_row(doc):
 		"difference": 0,
 		"amount": amount,
 	}
+
+
+def _build_bag_deduction_dialog_row(doc):
+	return _build_auto_deduction_dialog_row(
+		doc,
+		BAG_DEDUCTION_NAME,
+		"bag_deduction",
+		is_bag_deduction=1,
+	)
+
+
+def _build_weight_deduction_dialog_row(doc):
+	return _build_auto_deduction_dialog_row(
+		doc,
+		WEIGHT_DEDUCTION_NAME,
+		"weight_deduction",
+		is_weight_deduction=1,
+	)
 
 
 def _bag_context(base_ctx, bag):
@@ -155,7 +191,12 @@ def _calc_kwargs(ctx, actual=0):
 		"total_gross_weight": ctx["total_gross_weight"],
 		"total_arrival_weight": ctx["total_arrival_weight"],
 		"plastic_gross_weight": ctx["plastic_gross_weight"],
+		"item_rate": ctx.get("item_rate", 0),
 	}
+
+
+def _uses_bag_wise_arrival(dt):
+	return (dt.deduction_type_name or "").strip() in BAG_WISE_ARRIVAL_DEDUCTION_TYPES
 
 
 def _deduction_tax_label(tax, by_label):
@@ -164,7 +205,7 @@ def _deduction_tax_label(tax, by_label):
 
 	meta = _parse_tax_meta(tax.description)
 	label = meta.get("label")
-	if label not in by_label and label != WEIGHT_DEDUCTION_NAME:
+	if label not in by_label and label not in AUTO_DEDUCTION_NAMES:
 		return None
 
 	bag_type = meta.get("bag") or ""
@@ -215,7 +256,7 @@ def _get_existing_deductions_from_child(doc):
 	existing = {}
 
 	for row in doc.get(CHILD_TABLE_FIELD) or []:
-		if row.get("is_weight_deduction"):
+		if row.get("is_weight_deduction") or row.get("is_bag_deduction"):
 			continue
 
 		key = (row.deduction_type, row.bag_type or "")
@@ -264,8 +305,11 @@ def _resolve_amount(dt, ctx, actual=0, manual_amount=0, saved_amount=0):
 	return amount, 0, flt(dt.required_value), mode
 
 
-def _display_name(dt, bag_type=None):
+def _display_name(dt, bag_type=None, no_of_bags=0):
 	if bag_type:
+		bags = int(flt(no_of_bags))
+		if bags:
+			return f"{dt.deduction_type_name} ({bag_type} × {bags})"
 		return f"{dt.deduction_type_name} ({bag_type})"
 	return dt.deduction_type_name
 
@@ -281,10 +325,11 @@ def _build_deduction_row(dt, ctx, saved=None, bag=None):
 	)
 
 	bag_type = bag["bag_type"] if bag else None
+	no_of_bags = flt(bag["no_of_bags"]) if bag else 0
 
 	return {
 		"deduction_type": dt.name,
-		"deduction_type_name": _display_name(dt, bag_type),
+		"deduction_type_name": _display_name(dt, bag_type, no_of_bags),
 		"bag_type": bag_type or "",
 		"no_of_bags": flt(bag["no_of_bags"]) if bag else 0,
 		"related_account": dt.related_account or saved.get("related_account") or "",
@@ -305,11 +350,14 @@ def _build_deduction_row(dt, ctx, saved=None, bag=None):
 			plastic_gross_weight=row_ctx["plastic_gross_weight"],
 			actual=actual,
 			difference=difference,
+			item_rate=row_ctx.get("item_rate", 0),
 		),
 		"net_amount": row_ctx["net_amount"],
 		"total_qty": row_ctx["total_qty"],
 		"total_bags": row_ctx["total_bags"],
 		"total_gross_weight": row_ctx["total_gross_weight"],
+		"total_arrival_weight": row_ctx["total_arrival_weight"],
+		"item_rate": row_ctx.get("item_rate", 0),
 		"actual": actual,
 		"difference": difference,
 		"amount": amount,
@@ -326,14 +374,22 @@ def _child_row_dict(
 	weight_deduction_kg=0,
 	item_rate=0,
 	is_weight_deduction=0,
+	is_bag_deduction=0,
+	no_of_bags=0,
 ):
-	display = WEIGHT_DEDUCTION_NAME if is_weight_deduction else _display_name(dt, bag_type or None)
+	if is_bag_deduction:
+		display = BAG_DEDUCTION_NAME
+	elif is_weight_deduction:
+		display = WEIGHT_DEDUCTION_NAME
+	else:
+		display = _display_name(dt, bag_type or None, no_of_bags)
 	return {
 		"deduction_type": dt.name if dt else None,
 		"deduction_type_name": display,
 		"bag_type": bag_type or "",
 		"related_account": (dt.related_account if dt else None) or None,
 		"is_weight_deduction": is_weight_deduction,
+		"is_bag_deduction": is_bag_deduction,
 		"actual": flt(actual),
 		"required_value": flt(required),
 		"difference": flt(difference),
@@ -343,11 +399,11 @@ def _child_row_dict(
 	}
 
 
-def _get_weight_deduction_type(company):
+def _get_auto_deduction_type(company, deduction_type_name):
 	return frappe.db.get_value(
 		"Deduction Type",
 		{
-			"deduction_type_name": WEIGHT_DEDUCTION_NAME,
+			"deduction_type_name": deduction_type_name,
 			"company": company,
 			"is_active": 1,
 		},
@@ -356,7 +412,21 @@ def _get_weight_deduction_type(company):
 	)
 
 
+def _get_weight_deduction_type(company):
+	return _get_auto_deduction_type(company, WEIGHT_DEDUCTION_NAME)
+
+
+def _get_bag_deduction_type(company):
+	return _get_auto_deduction_type(company, BAG_DEDUCTION_NAME)
+
+
 def _resolve_related_account(row, lookup, company=None):
+	if row.get("is_bag_deduction"):
+		bag_dt = lookup["by_label"].get(BAG_DEDUCTION_NAME) or _get_bag_deduction_type(company)
+		if bag_dt:
+			return bag_dt.related_account
+		return row.get("related_account")
+
 	if row.get("is_weight_deduction"):
 		weight_dt = lookup["by_label"].get(WEIGHT_DEDUCTION_NAME) or _get_weight_deduction_type(
 			company
@@ -375,33 +445,60 @@ def _resolve_related_account(row, lookup, company=None):
 	return row.get("related_account")
 
 
-def sync_weight_deduction_row(doc):
-	if not frappe.get_meta("Purchase Invoice").has_field("custom_weight_deduction"):
-		return
+def sync_auto_deduction_rows(doc):
+	bag_deduction, bag_rate, bag_amount = _calculate_bag_deduction_amount(doc)
+	weight_deduction, weight_rate, weight_amount = _calculate_weight_deduction_amount(doc)
 
-	weight_deduction, item_rate, amount = _calculate_weight_deduction_amount(doc)
-	doc.custom_weight_deduction = weight_deduction
+	if frappe.get_meta("Purchase Invoice").has_field("custom_bag_deduction"):
+		doc.custom_bag_deduction = bag_deduction
+	if frappe.get_meta("Purchase Invoice").has_field("custom_bag_deduction_amount"):
+		doc.custom_bag_deduction_amount = bag_amount
+	if frappe.get_meta("Purchase Invoice").has_field("custom_weight_deduction"):
+		doc.custom_weight_deduction = weight_deduction
+	if frappe.get_meta("Purchase Invoice").has_field("custom_weight_deduction_amount"):
+		doc.custom_weight_deduction_amount = weight_amount
 
+	bag_dt = _get_bag_deduction_type(doc.company)
 	weight_dt = _get_weight_deduction_type(doc.company)
 	rows = list(doc.get(CHILD_TABLE_FIELD) or [])
-	non_weight_rows = [row for row in rows if not row.get("is_weight_deduction")]
+	manual_rows = [
+		row
+		for row in rows
+		if not row.get("is_weight_deduction") and not row.get("is_bag_deduction")
+	]
 
 	doc.set(CHILD_TABLE_FIELD, [])
 
-	for row in non_weight_rows:
+	for row in manual_rows:
 		doc.append(CHILD_TABLE_FIELD, row.as_dict())
 
-	if weight_deduction or amount:
+	if bag_deduction or bag_amount:
+		doc.append(
+			CHILD_TABLE_FIELD,
+			_child_row_dict(
+				bag_dt,
+				bag_amount,
+				weight_deduction_kg=bag_deduction,
+				item_rate=bag_rate,
+				is_bag_deduction=1,
+			),
+		)
+
+	if weight_deduction or weight_amount:
 		doc.append(
 			CHILD_TABLE_FIELD,
 			_child_row_dict(
 				weight_dt,
-				amount,
+				weight_amount,
 				weight_deduction_kg=weight_deduction,
-				item_rate=item_rate,
+				item_rate=weight_rate,
 				is_weight_deduction=1,
 			),
 		)
+
+
+def sync_weight_deduction_row(doc):
+	sync_auto_deduction_rows(doc)
 
 
 def _resolve_child_row_amount(doc, row_data, lookup, ctx):
@@ -421,6 +518,8 @@ def _resolve_child_row_amount(doc, row_data, lookup, ctx):
 		dt, row_ctx, actual=actual, manual_amount=manual_amount
 	)
 
+	no_of_bags = flt(bag["no_of_bags"]) if bag else 0
+
 	return _child_row_dict(
 		dt,
 		amount,
@@ -428,6 +527,7 @@ def _resolve_child_row_amount(doc, row_data, lookup, ctx):
 		difference=difference,
 		required=required,
 		bag_type=bag_type,
+		no_of_bags=no_of_bags,
 	)
 
 
@@ -461,7 +561,7 @@ def _recalculate_child_table_amounts(doc):
 	updated_rows = []
 
 	for row in doc.get(CHILD_TABLE_FIELD) or []:
-		if row.get("is_weight_deduction"):
+		if row.get("is_weight_deduction") or row.get("is_bag_deduction"):
 			continue
 
 		child_row = _resolve_child_row_amount(
@@ -590,11 +690,13 @@ def recalculate_existing_deductions(doc):
 
 	_migrate_taxes_to_child_table(doc)
 
-	non_weight_rows = [
-		row for row in doc.get(CHILD_TABLE_FIELD) or [] if not row.get("is_weight_deduction")
+	non_auto_rows = [
+		row
+		for row in doc.get(CHILD_TABLE_FIELD) or []
+		if not row.get("is_weight_deduction") and not row.get("is_bag_deduction")
 	]
 
-	if non_weight_rows:
+	if non_auto_rows:
 		_recalculate_child_table_amounts(doc)
 	else:
 		sync_weight_deduction_row(doc)
@@ -619,16 +721,28 @@ def get_deduction_data(purchase_invoice):
 		if _should_skip_deduction(dt, pi):
 			continue
 
-		if (dt.deduction_type_name or "").strip() == WEIGHT_DEDUCTION_NAME:
+		if (dt.deduction_type_name or "").strip() in AUTO_DEDUCTION_NAMES:
 			continue
 
-		if dt.qty_deducation and dt.deduction_category == "multiple" and bag_rows:
+		if _uses_bag_wise_arrival(dt) and bag_rows:
 			for bag in bag_rows:
+				if not flt(bag["no_of_bags"]):
+					continue
+				saved = existing.get((dt.name, bag["bag_type"]), {})
+				result.append(_build_deduction_row(dt, ctx, saved, bag))
+		elif dt.qty_deducation and dt.deduction_category == "multiple" and bag_rows:
+			for bag in bag_rows:
+				if not flt(bag["no_of_bags"]):
+					continue
 				saved = existing.get((dt.name, bag["bag_type"]), {})
 				result.append(_build_deduction_row(dt, ctx, saved, bag))
 		else:
 			saved = existing.get((dt.name, ""), {})
 			result.append(_build_deduction_row(dt, ctx, saved))
+
+	bag_row = _build_bag_deduction_dialog_row(pi)
+	if bag_row:
+		result.append(bag_row)
 
 	weight_row = _build_weight_deduction_dialog_row(pi)
 	if weight_row:
@@ -636,7 +750,11 @@ def get_deduction_data(purchase_invoice):
 
 	return sorted(
 		result,
-		key=lambda row: (1 if row.get("is_weight_deduction") else 0, row["deduction_type_name"]),
+		key=lambda row: (
+			1 if row.get("is_bag_deduction") or row.get("is_weight_deduction") else 0,
+			1 if row.get("is_weight_deduction") else 0,
+			row["deduction_type_name"],
+		),
 	)
 
 
@@ -676,6 +794,8 @@ def calculate_deduction_preview(purchase_invoice, deduction_type, actual, bag_ty
 		"net_amount": row_ctx["net_amount"],
 		"total_bags": row_ctx["total_bags"],
 		"total_gross_weight": row_ctx["total_gross_weight"],
+		"total_arrival_weight": row_ctx["total_arrival_weight"],
+		"item_rate": row_ctx.get("item_rate", 0),
 		"calculation_mode": mode,
 		"formula": get_calculation_formula(
 			dt,
@@ -687,6 +807,7 @@ def calculate_deduction_preview(purchase_invoice, deduction_type, actual, bag_ty
 			plastic_gross_weight=row_ctx["plastic_gross_weight"],
 			actual=flt(actual),
 			difference=difference,
+			item_rate=row_ctx.get("item_rate", 0),
 		),
 	}
 
@@ -697,23 +818,39 @@ def apply_deductions(purchase_invoice, deductions):
 		deductions = json.loads(deductions)
 
 	pi = frappe.get_doc("Purchase Invoice", purchase_invoice)
+	if pi.docstatus == 1:
+		frappe.throw(_("Cannot apply deductions on a submitted Purchase Invoice."))
+
 	_set_child_table_from_deductions(pi, deductions)
 	pi.save()
 
 	return {"message": "Deductions applied successfully"}
 
 
-def get_deduction_total(doc):
+def get_deduction_total(doc, exclude_auto_deductions=False):
 	if frappe.get_meta("Purchase Invoice").has_field(CHILD_TABLE_FIELD) and doc.get(
 		CHILD_TABLE_FIELD
 	):
-		return sum(flt(row.amount) for row in doc.get(CHILD_TABLE_FIELD) or [])
+		total = 0
+		for row in doc.get(CHILD_TABLE_FIELD) or []:
+			if exclude_auto_deductions and _is_auto_deduction_row(row):
+				continue
+			total += flt(row.amount)
+		return total
 
 	return sum(
 		flt(tax.tax_amount)
 		for tax in doc.get("taxes") or []
 		if tax.add_deduct_tax == "Deduct" and flt(tax.tax_amount) > 0
 	)
+
+
+def _is_auto_deduction_row(row):
+	if row.get("is_bag_deduction") or row.get("is_weight_deduction"):
+		return True
+
+	deduction_type_name = (row.get("deduction_type_name") or "").split(" (")[0]
+	return deduction_type_name in AUTO_DEDUCTION_NAMES
 
 
 def get_deduction_item_code():
@@ -737,7 +874,7 @@ def get_return_against_deduction_total(doc):
 		return 0
 
 	source = frappe.get_doc("Purchase Invoice", doc.return_against)
-	return flt(get_deduction_total(source))
+	return flt(get_deduction_total(source, exclude_auto_deductions=True))
 
 
 def remove_deduction_item_rows(doc):

@@ -23,10 +23,46 @@ def get_bag_charges(bag_type):
 	return 0
 
 
+def get_pi_avg_rate(doc):
+	rates = [flt(row.rate) for row in doc.get("items") or [] if flt(row.rate)]
+	if not rates:
+		return 0
+	return flt(sum(rates) / len(rates))
+
+
 def get_pi_item_rate(doc):
-	if doc.get("items"):
-		return flt(doc.items[0].rate)
-	return 0
+	return get_pi_avg_rate(doc)
+
+
+def get_accepted_qty_kg(doc):
+	from kisan_customization.utils.deduction_utils import get_pi_total_qty
+
+	return flt(get_pi_total_qty(doc)) * 100
+
+
+def calculate_bag_deduction(doc):
+	from kisan_customization.utils.deduction_utils import (
+		get_pi_total_arrival_weight,
+		get_pi_total_gross_weight,
+	)
+
+	gross_weight = get_pi_total_gross_weight(doc)
+	arrival_weight = get_pi_total_arrival_weight(doc)
+	bag_deduction = max(0, flt(gross_weight) - flt(arrival_weight))
+	item_rate = get_pi_item_rate(doc)
+	amount = flt(bag_deduction * item_rate / 100, 2)
+	return bag_deduction, item_rate, amount
+
+
+def calculate_weight_deduction(doc):
+	from kisan_customization.utils.deduction_utils import get_pi_total_gross_weight
+
+	accepted_qty_kg = get_accepted_qty_kg(doc)
+	gross_weight = get_pi_total_gross_weight(doc)
+	weight_deduction = max(0, flt(accepted_qty_kg) - flt(gross_weight))
+	item_rate = get_pi_item_rate(doc)
+	amount = flt(weight_deduction * item_rate / 100, 2)
+	return weight_deduction, item_rate, amount
 
 
 def get_child_bag_sum(doc):
@@ -113,3 +149,19 @@ def recalculate_bag_weights(doc):
 		total_arrival += flt(row.arrival_qty_kg)
 
 	doc.custom_total_arrival_weight = total_arrival
+	_sync_bag_deduction_header(doc)
+
+
+def _sync_bag_deduction_header(doc):
+	if not doc.meta.has_field("custom_bag_deduction"):
+		return
+
+	bag_deduction, avg_rate, amount = calculate_bag_deduction(doc)
+	doc.custom_bag_deduction = bag_deduction
+	if doc.meta.has_field("custom_bag_deduction_amount"):
+		doc.custom_bag_deduction_amount = amount
+	if doc.meta.has_field("custom_weight_deduction"):
+		weight_deduction, _, weight_amount = calculate_weight_deduction(doc)
+		doc.custom_weight_deduction = weight_deduction
+		if doc.meta.has_field("custom_weight_deduction_amount"):
+			doc.custom_weight_deduction_amount = weight_amount

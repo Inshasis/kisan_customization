@@ -28,27 +28,48 @@ kisan_customization.broker_commission.toggle_fields = function (frm) {
 	});
 };
 
+kisan_customization.broker_commission.get_pi_commission_base = function (frm) {
+	const total_inr = flt(frm.doc.total) || flt(frm.doc.net_total) || 0;
+	const weight_deduction_amount = flt(frm.doc.custom_weight_deduction_amount) || 0;
+	return Math.max(0, total_inr - weight_deduction_amount);
+};
+
+kisan_customization.broker_commission.get_commission_base = function (frm) {
+	return flt(frm.doc.total_qty) || 0;
+};
+
 kisan_customization.broker_commission.calculate = function (frm) {
 	if (!frm.fields_dict.custom_broker_commission_amount) return;
+	if (frm.doc.is_return) return;
 
 	const commission_type = frm.doc.custom_commission_type;
 	let commission_amount = 0;
 
-	if (commission_type === "Percentage") {
+	if (frm.doctype === "Purchase Invoice") {
+		const base_amount = kisan_customization.broker_commission.get_pi_commission_base(frm);
+
+		if (commission_type === "Percentage") {
+			const percent = flt(frm.doc.custom_commission_percent) || 0;
+			commission_amount = (base_amount * percent) / 100;
+		} else if (commission_type === "Total Qty") {
+			const rate = flt(frm.doc.custom_commission_amount) || 0;
+			commission_amount = (base_amount * rate) / 100;
+		}
+	} else if (commission_type === "Percentage") {
 		const net_amount = flt(frm.doc.net_total) || 0;
 		const percent = flt(frm.doc.custom_commission_percent) || 0;
 		commission_amount = (net_amount * percent) / 100;
 	} else if (commission_type === "Total Qty") {
-		const total_qty = flt(frm.doc.total_qty) || 0;
 		const rate = flt(frm.doc.custom_commission_amount) || 0;
-		commission_amount = total_qty * rate;
+		const base_qty = kisan_customization.broker_commission.get_commission_base(frm);
+		commission_amount = base_qty * rate;
 	}
 
 	frm.set_value("custom_broker_commission_amount", commission_amount);
 };
 
 kisan_customization.broker_commission.bind = function (doctype) {
-	frappe.ui.form.on(doctype, {
+	const handlers = {
 		setup(frm) {
 			frm.set_query("custom_broker", function () {
 				return {
@@ -58,6 +79,12 @@ kisan_customization.broker_commission.bind = function (doctype) {
 				};
 			});
 			kisan_customization.broker_commission.toggle_fields(frm);
+		},
+
+		custom_broker(frm) {
+			if (frm.doc.docstatus === 0 && !frm.doc.is_return) {
+				kisan_customization.broker_commission.calculate(frm);
+			}
 		},
 
 		custom_commission_type(frm) {
@@ -87,8 +114,14 @@ kisan_customization.broker_commission.bind = function (doctype) {
 			}
 		},
 
+		total(frm) {
+			if (frm.doc.docstatus === 0 && doctype === "Purchase Invoice") {
+				kisan_customization.broker_commission.calculate(frm);
+			}
+		},
+
 		total_qty(frm) {
-			if (frm.doc.docstatus === 0) {
+			if (frm.doc.docstatus === 0 && doctype !== "Purchase Invoice") {
 				kisan_customization.broker_commission.calculate(frm);
 			}
 		},
@@ -99,5 +132,21 @@ kisan_customization.broker_commission.bind = function (doctype) {
 				kisan_customization.broker_commission.calculate(frm);
 			}
 		},
-	});
+	};
+
+	if (doctype === "Purchase Invoice") {
+		handlers.custom_weight_deduction_amount = function (frm) {
+			if (frm.doc.docstatus === 0 && !frm.doc.is_return) {
+				kisan_customization.broker_commission.calculate(frm);
+			}
+		};
+
+		handlers.custom_total_gross_weight = function (frm) {
+			if (frm.doc.docstatus === 0 && !frm.doc.is_return) {
+				kisan_customization.broker_commission.calculate(frm);
+			}
+		};
+	}
+
+	frappe.ui.form.on(doctype, handlers);
 };

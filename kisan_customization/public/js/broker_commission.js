@@ -29,9 +29,7 @@ kisan_customization.broker_commission.toggle_fields = function (frm) {
 };
 
 kisan_customization.broker_commission.get_pi_commission_base = function (frm) {
-	const total_inr = flt(frm.doc.total) || flt(frm.doc.net_total) || 0;
-	const weight_deduction_amount = flt(frm.doc.custom_weight_deduction_amount) || 0;
-	return Math.max(0, total_inr - weight_deduction_amount);
+	return flt(frm.doc.custom_total_gross_weight) || 0;
 };
 
 kisan_customization.broker_commission.get_commission_base = function (frm) {
@@ -46,14 +44,14 @@ kisan_customization.broker_commission.calculate = function (frm) {
 	let commission_amount = 0;
 
 	if (frm.doctype === "Purchase Invoice") {
-		const base_amount = kisan_customization.broker_commission.get_pi_commission_base(frm);
+		const base_qty = kisan_customization.broker_commission.get_pi_commission_base(frm);
 
 		if (commission_type === "Percentage") {
 			const percent = flt(frm.doc.custom_commission_percent) || 0;
-			commission_amount = (base_amount * percent) / 100;
+			commission_amount = (base_qty * percent) / 100;
 		} else if (commission_type === "Total Qty") {
 			const rate = flt(frm.doc.custom_commission_amount) || 0;
-			commission_amount = (base_amount * rate) / 100;
+			commission_amount = (base_qty * rate) / 100;
 		}
 	} else if (commission_type === "Percentage") {
 		const net_amount = flt(frm.doc.net_total) || 0;
@@ -109,13 +107,7 @@ kisan_customization.broker_commission.bind = function (doctype) {
 		},
 
 		net_total(frm) {
-			if (frm.doc.docstatus === 0) {
-				kisan_customization.broker_commission.calculate(frm);
-			}
-		},
-
-		total(frm) {
-			if (frm.doc.docstatus === 0 && doctype === "Purchase Invoice") {
+			if (frm.doc.docstatus === 0 && doctype !== "Purchase Invoice") {
 				kisan_customization.broker_commission.calculate(frm);
 			}
 		},
@@ -135,13 +127,13 @@ kisan_customization.broker_commission.bind = function (doctype) {
 	};
 
 	if (doctype === "Purchase Invoice") {
-		handlers.custom_weight_deduction_amount = function (frm) {
+		handlers.custom_total_gross_weight = function (frm) {
 			if (frm.doc.docstatus === 0 && !frm.doc.is_return) {
 				kisan_customization.broker_commission.calculate(frm);
 			}
 		};
 
-		handlers.custom_total_gross_weight = function (frm) {
+		handlers.custom_total_arrival_weight = function (frm) {
 			if (frm.doc.docstatus === 0 && !frm.doc.is_return) {
 				kisan_customization.broker_commission.calculate(frm);
 			}

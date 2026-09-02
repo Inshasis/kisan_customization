@@ -76,7 +76,7 @@
    "precision": "2"
   },
   {
-   "description": "Variables: net_amount, total_amount, total_bags, total_qty, total_gross_weight, charges_per_unit (or charges), required_value, actual, difference. Qty Deducation: difference is computed first (tiered for Moise), then formula runs. Non-qty: leave empty to use Charges per Unit directly.",
+   "description": "Variables: net_amount, total_amount, total_bags, total_qty, total_gross_weight, total_arrival_weight, item_rate, charges_per_unit (or charges), required_value, actual, difference. Bag-wise types (Moise, S/S, Others) use arrival qty (kg) per bag type from Bag Details. Qty Deducation: difference is computed first (tiered for Moise), then formula runs.",
    "fieldname": "calculation",
    "fieldtype": "Small Text",
    "label": "Calculation"

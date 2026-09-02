@@ -8,6 +8,7 @@ from frappe.utils import flt
 
 from kisan_customization.broker_commission.service import clear_broker_commission_fields
 from kisan_customization.purchase_invoice.deductions import (
+	_calculate_bag_deduction_amount,
 	_calculate_weight_deduction_amount,
 	get_deduction_item_code,
 	sync_deduction_item_row,
@@ -33,8 +34,9 @@ def _apply_debit_note_settings(doc, source):
 	if doc.meta.has_field("custom_weight_deduction"):
 		doc.custom_weight_deduction = weight_deduction_kg
 
-	if weight_deduction_kg > 0:
-		_set_item_qty_from_weight_deduction(doc, source, weight_deduction_kg)
+	return_deduction_kg = _get_return_deduction_kg(source)
+	if return_deduction_kg > 0:
+		_set_item_qty_from_deduction_kg(doc, source, return_deduction_kg)
 
 	clear_broker_commission_fields(doc)
 	sync_deduction_item_row(doc)
@@ -52,8 +54,21 @@ def _get_weight_deduction_kg(source):
 	return flt(weight_deduction_kg)
 
 
-def _set_item_qty_from_weight_deduction(doc, source, weight_deduction_kg):
-	return_qty_quintal = flt(weight_deduction_kg / 100, 3)
+def _get_bag_deduction_kg(source):
+	bag_deduction_kg = flt(source.get("custom_bag_deduction"))
+	if bag_deduction_kg:
+		return bag_deduction_kg
+
+	bag_deduction_kg, _, _ = _calculate_bag_deduction_amount(source)
+	return flt(bag_deduction_kg)
+
+
+def _get_return_deduction_kg(source):
+	return flt(_get_weight_deduction_kg(source)) + flt(_get_bag_deduction_kg(source))
+
+
+def _set_item_qty_from_deduction_kg(doc, source, deduction_kg):
+	return_qty_quintal = flt(deduction_kg / 100, 3)
 	if not return_qty_quintal or not doc.get("items"):
 		return
 

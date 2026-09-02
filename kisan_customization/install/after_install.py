@@ -2,10 +2,6 @@
 
 import frappe
 
-from kisan_customization.fixtures.deduction_types import get_default_deduction_types
-
-DEFAULT_DEDUCTION_TYPES = get_default_deduction_types()
-
 DEFAULT_BAG_DEDUCTIONS = [
 	{"bag_type": "plastic", "charges": 0.2},
 	{"bag_type": "jute", "charges": 0.6},
@@ -56,16 +52,6 @@ def _set_default_if_empty(settings, fieldname, value):
 
 
 def setup_default_deduction_types():
-	company = frappe.get_single("Kisan Master Settings").default_company
-	if not company:
-		company = frappe.defaults.get_global_default("company")
-	if not company:
-		return
+	from kisan_customization.install.deduction_types import sync_deduction_types
 
-	for row in DEFAULT_DEDUCTION_TYPES:
-		name = row["deduction_type_name"]
-		if frappe.db.exists("Deduction Type", name):
-			continue
-
-		doc = frappe.get_doc({"doctype": "Deduction Type", "company": company, **row})
-		doc.insert(ignore_permissions=True)
+	sync_deduction_types()

@@ -1,7 +1,38 @@
 kisan_customization.broker_commission.bind("Purchase Invoice");
 kisan_customization.delivery_payment_days.bind("Purchase Invoice");
 
+const HIDDEN_PI_CREATE_BUTTONS = [__("Return / Debit Note")];
+
+function hide_purchase_invoice_create_options(frm) {
+	HIDDEN_PI_CREATE_BUTTONS.forEach((label) => {
+		frm.remove_custom_button(label, __("Create"));
+	});
+}
+
+function patch_purchase_invoice_controller() {
+	const PIController = erpnext.accounts?.PurchaseInvoice;
+	if (!PIController || PIController.prototype.__kisan_hide_create_patched) {
+		return;
+	}
+
+	const original_refresh = PIController.prototype.refresh;
+
+	PIController.prototype.refresh = function (...args) {
+		const result = original_refresh.apply(this, args);
+		hide_purchase_invoice_create_options(this.frm);
+		return result;
+	};
+
+	PIController.prototype.__kisan_hide_create_patched = true;
+}
+
+patch_purchase_invoice_controller();
+
 frappe.ui.form.on("Purchase Invoice", {
+	setup() {
+		patch_purchase_invoice_controller();
+	},
+
 	onload(frm) {
 		load_bag_type_options(frm);
 		if (frm.is_new() && !frm.doc.custom_bag_details?.length) {
@@ -64,6 +95,11 @@ frappe.ui.form.on("Purchase Invoice", {
 frappe.ui.form.on("Purchase Invoice Item", {
 	rate(frm) {
 		recalculate_all_bag_rows(frm);
+		update_deduction_header_fields(frm);
+	},
+
+	qty(frm) {
+		update_deduction_header_fields(frm);
 	},
 });
 
@@ -227,12 +263,57 @@ function recalculate_all_bag_rows(frm) {
 	update_arrival_total(frm);
 }
 
+function get_pi_avg_rate(frm) {
+	const rates = (frm.doc.items || []).map((row) => flt(row.rate)).filter((rate) => rate);
+	if (!rates.length) {
+		return 0;
+	}
+	return rates.reduce((sum, rate) => sum + rate, 0) / rates.length;
+}
+
+function update_deduction_header_fields(frm) {
+	if (frm.doc.is_return) {
+		return;
+	}
+
+	const gross = flt(frm.doc.custom_total_gross_weight);
+	const arrival = flt(frm.doc.custom_total_arrival_weight);
+	const bag_deduction = Math.max(0, gross - arrival);
+	const avg_rate = get_pi_avg_rate(frm);
+	const bag_amount = flt((bag_deduction * avg_rate) / 100, 2);
+
+	if (frm.fields_dict.custom_bag_deduction) {
+		frm.set_value("custom_bag_deduction", bag_deduction);
+	}
+	if (frm.fields_dict.custom_bag_deduction_amount) {
+		frm.set_value("custom_bag_deduction_amount", bag_amount);
+	}
+
+	const accepted_qty_kg = (frm.doc.items || []).reduce((sum, row) => sum + flt(row.qty), 0) * 100;
+	const weight_deduction = Math.max(0, accepted_qty_kg - gross);
+	const weight_amount = flt((weight_deduction * avg_rate) / 100, 2);
+
+	if (frm.fields_dict.custom_weight_deduction) {
+		frm.set_value("custom_weight_deduction", weight_deduction);
+	}
+	if (frm.fields_dict.custom_weight_deduction_amount) {
+		frm.set_value("custom_weight_deduction_amount", weight_amount).then(() => {
+			kisan_customization.broker_commission.calculate(frm);
+		});
+		return;
+	}
+
+	kisan_customization.broker_commission.calculate(frm);
+}
+
 function update_arrival_total(frm) {
 	const total_arrival = (frm.doc.custom_bag_details || []).reduce(
 		(sum, row) => sum + flt(row.arrival_qty_kg),
 		0
 	);
-	frm.set_value("custom_total_arrival_weight", total_arrival);
+	frm.set_value("custom_total_arrival_weight", total_arrival).then(() => {
+		update_deduction_header_fields(frm);
+	});
 }
 
 function load_bag_type_options(frm) {
@@ -331,6 +412,7 @@ function open_deductions_dialog(frm) {
 
 function show_deductions_dialog(frm, deductions) {
 	const currency = frm.doc.currency || frappe.defaults.get_default("currency");
+	const is_submitted = frm.doc.docstatus === 1;
 
 	const dialog = new frappe.ui.Dialog({
 		title: __("Purchase Deductions"),
@@ -338,6 +420,7 @@ function show_deductions_dialog(frm, deductions) {
 		fields: [],
 		primary_action_label: __("Apply Deductions"),
 		primary_action() {
+			if (is_submitted) return;
 			apply_deductions(dialog, frm);
 		},
 	});
@@ -349,9 +432,17 @@ function show_deductions_dialog(frm, deductions) {
 		dialog._frm = frm;
 		bind_deduction_events(dialog, frm, currency);
 		update_deduction_summary(dialog, currency);
+		if (is_submitted) {
+			set_deduction_dialog_readonly(dialog);
+		}
 	});
 
 	dialog.show();
+}
+
+function set_deduction_dialog_readonly(dialog) {
+	dialog.disable_primary_action();
+	dialog.$body.find("input:not(#kd-search), button").prop("disabled", true);
 }
 
 function build_deductions_html(deductions, frm, currency) {
@@ -390,7 +481,8 @@ function build_deductions_html(deductions, frm, currency) {
 			<div class="kd-list">${build_deduction_rows(deductions, currency)}</div>
 			<div class="kd-footer">
 				<strong>${__("Damage")}:</strong> ${__("difference × charges × total_gross_weight / 100")} &nbsp;|&nbsp;
-				<strong>${__("S/S / Moise")}:</strong> ${__("difference × total_amount / 100")}
+				<strong>${__("S/S / Moise")}:</strong> ${__("difference × arrival wt × item_rate / 100")} &nbsp;|&nbsp;
+				<strong>${__("Others")}:</strong> ${__("arrival wt × item_rate / 100")}
 			</div>
 		</div>`;
 }
@@ -401,11 +493,21 @@ function build_bag_detail_html(row) {
 	}
 
 	const no_of_bags = flt(row.no_of_bags ?? row.total_bags);
-	if (!no_of_bags) {
+	const arrival_kg = flt(row.total_arrival_weight);
+	if (!no_of_bags && !arrival_kg) {
 		return "";
 	}
 
-	return `<p class="kd-bag-detail">(${frappe.utils.escape_html(row.bag_type)} × ${no_of_bags})</p>`;
+	const bag_label = frappe.utils.escape_html(row.bag_type);
+	const parts = [`${bag_label} × ${no_of_bags || 0}`];
+	if (arrival_kg) {
+		parts.push(`${__("Arrival Wt")}: ${arrival_kg} kg`);
+	}
+	if (flt(row.item_rate)) {
+		parts.push(`${__("Rate")}: ${flt(row.item_rate)}`);
+	}
+
+	return `<p class="kd-bag-detail">(${parts.join(" &bull; ")})</p>`;
 }
 
 function build_deduction_rows(deductions, currency) {
@@ -422,9 +524,14 @@ function build_deduction_rows(deductions, currency) {
 					qty_deducation: row.qty_deducation ? 1 : 0,
 					calculation_mode: row.calculation_mode,
 					bag_type: row.bag_type || "",
+					is_bag_deduction: row.is_bag_deduction ? 1 : 0,
 					is_weight_deduction: row.is_weight_deduction ? 1 : 0,
 				})
 			);
+
+			if (row.is_bag_deduction) {
+				return build_bag_deduction_row(row, idx, abbr, active, search_key, data, currency);
+			}
 
 			if (row.is_weight_deduction) {
 				return build_weight_deduction_row(row, idx, abbr, active, search_key, data, currency);
@@ -495,6 +602,27 @@ function build_auto_calc_row(row, idx, abbr, active, search_key, data, currency)
 		</div>`;
 }
 
+function build_bag_deduction_row(row, idx, abbr, active, search_key, data, currency) {
+	const formula =
+		row.formula ||
+		`${flt(row.weight_deduction_kg)} × ${flt(row.item_rate)} / 100`;
+
+	return `
+		<div class="kd-row ${active} kd-row-auto kd-row-bag" data-search="${search_key}" data-row='${data}' data-amount="${flt(row.amount)}">
+			<div class="kd-badge b${idx % 9}">${frappe.utils.escape_html(abbr)}</div>
+			<div class="kd-info">
+				<p class="kd-name">${frappe.utils.escape_html(row.deduction_type_name)}</p>
+				<p class="kd-acct">${frappe.utils.escape_html(row.related_account || "")}</p>
+				<p class="kd-formula">${frappe.utils.escape_html(formula)}</p>
+				<p class="kd-formula">${__("Bag Deduction")}: ${flt(row.weight_deduction_kg)} kg &nbsp;|&nbsp; ${__("Avg. Rate")}: ${flt(row.item_rate)} &nbsp;|&nbsp; ${__("Amount")}: ${flt(row.weight_deduction_kg)} × ${flt(row.item_rate)} / 100</p>
+			</div>
+			<div class="kd-auto-amount">
+				<label>${__("Amount")}</label>
+				<div class="kd-auto-value">${format_currency(flt(row.amount), currency)}</div>
+			</div>
+		</div>`;
+}
+
 function build_weight_deduction_row(row, idx, abbr, active, search_key, data, currency) {
 	const formula =
 		row.formula ||
@@ -507,7 +635,7 @@ function build_weight_deduction_row(row, idx, abbr, active, search_key, data, cu
 				<p class="kd-name">${frappe.utils.escape_html(row.deduction_type_name)}</p>
 				<p class="kd-acct">${frappe.utils.escape_html(row.related_account || "")}</p>
 				<p class="kd-formula">${frappe.utils.escape_html(formula)}</p>
-				<p class="kd-formula">${__("Weight Deduction")}: ${flt(row.weight_deduction_kg)} kg &nbsp;|&nbsp; ${__("Rate")}: ${flt(row.item_rate)}</p>
+				<p class="kd-formula">${__("Weight Deduction")}: ${flt(row.weight_deduction_kg)} kg &nbsp;|&nbsp; ${__("Avg. Rate")}: ${flt(row.item_rate)}</p>
 			</div>
 			<div class="kd-auto-amount">
 				<label>${__("Amount")}</label>
@@ -593,7 +721,7 @@ function recalculate_qty_row($row, frm, currency) {
 }
 
 function get_row_amount($row) {
-	if ($row.hasClass("kd-row-auto") || $row.hasClass("kd-row-weight")) {
+	if ($row.hasClass("kd-row-auto") || $row.hasClass("kd-row-weight") || $row.hasClass("kd-row-bag")) {
 		return flt($row.attr("data-amount"));
 	}
 	if ($row.hasClass("kd-row-qty")) {
@@ -627,7 +755,7 @@ function apply_deductions(dialog, frm) {
 		const $row = $(this);
 		const rowData = JSON.parse($row.attr("data-row") || "{}");
 
-		if (rowData.is_weight_deduction) {
+		if (rowData.is_bag_deduction || rowData.is_weight_deduction) {
 			return;
 		}
 

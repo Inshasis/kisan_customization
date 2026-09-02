@@ -57,19 +57,11 @@ def calculate_booking_broker_commission(booking):
 
 
 def calculate_pi_broker_commission(pi, booking):
-	commission_type = booking.get("commission_type")
-	commission_amount = 0
+	from kisan_customization.purchase_invoice.broker_commission import (
+		calculate_broker_commission_amount,
+	)
 
-	if commission_type == "Percentage":
-		net_amount = flt(pi.net_total)
-		percent = flt(booking.get("commission_percent"))
-		commission_amount = (net_amount * percent) / 100
-	elif commission_type == "Total Qty":
-		total_qty = flt(pi.total_qty)
-		rate = flt(booking.get("commission_amount"))
-		commission_amount = total_qty * rate
-
-	return commission_amount
+	return calculate_broker_commission_amount(pi)
 
 
 def apply_booking_terms_to_pi(pi, booking):

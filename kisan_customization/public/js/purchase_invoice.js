@@ -524,6 +524,7 @@ function build_deduction_rows(deductions, currency) {
 					qty_deducation: row.qty_deducation ? 1 : 0,
 					calculation_mode: row.calculation_mode,
 					bag_type: row.bag_type || "",
+					no_of_bags: flt(row.no_of_bags) || 0,
 					is_bag_deduction: row.is_bag_deduction ? 1 : 0,
 					is_weight_deduction: row.is_weight_deduction ? 1 : 0,
 				})
@@ -701,6 +702,7 @@ function recalculate_qty_row($row, frm, currency) {
 			deduction_type: rowData.deduction_type,
 			actual,
 			bag_type: rowData.bag_type || null,
+			no_of_bags: rowData.no_of_bags || null,
 		},
 		callback(r) {
 			if (!r.message) return;
@@ -765,11 +767,14 @@ function apply_deductions(dialog, frm) {
 				qty_deducation: 1,
 				actual: flt($row.find(".deduction-actual").val()),
 				bag_type: rowData.bag_type || "",
+				no_of_bags: flt(rowData.no_of_bags) || 0,
 			});
 		} else if (AUTO_CALC_MODES.has(rowData.calculation_mode)) {
 			deductions.push({
 				deduction_type: rowData.deduction_type,
 				calculation_mode: rowData.calculation_mode,
+				bag_type: rowData.bag_type || "",
+				no_of_bags: flt(rowData.no_of_bags) || 0,
 			});
 		} else {
 			deductions.push({

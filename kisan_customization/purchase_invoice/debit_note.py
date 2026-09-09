@@ -8,7 +8,6 @@ from frappe.utils import flt
 
 from kisan_customization.broker_commission.service import clear_broker_commission_fields
 from kisan_customization.purchase_invoice.deductions import (
-	_calculate_bag_deduction_amount,
 	_calculate_weight_deduction_amount,
 	get_deduction_item_code,
 	sync_deduction_item_row,
@@ -34,9 +33,8 @@ def _apply_debit_note_settings(doc, source):
 	if doc.meta.has_field("custom_weight_deduction"):
 		doc.custom_weight_deduction = weight_deduction_kg
 
-	return_deduction_kg = _get_return_deduction_kg(source)
-	if return_deduction_kg > 0:
-		_set_item_qty_from_deduction_kg(doc, source, return_deduction_kg)
+	if weight_deduction_kg > 0:
+		_set_item_qty_from_weight_deduction(doc, source, weight_deduction_kg)
 
 	clear_broker_commission_fields(doc)
 	sync_deduction_item_row(doc)
@@ -54,22 +52,33 @@ def _get_weight_deduction_kg(source):
 	return flt(weight_deduction_kg)
 
 
-def _get_bag_deduction_kg(source):
-	bag_deduction_kg = flt(source.get("custom_bag_deduction"))
-	if bag_deduction_kg:
-		return bag_deduction_kg
+def _get_commodity_accepted_kg(source):
+	deduction_item_code = get_deduction_item_code()
+	accepted_kg = 0
 
-	bag_deduction_kg, _, _ = _calculate_bag_deduction_amount(source)
-	return flt(bag_deduction_kg)
+	for item in source.get("items") or []:
+		if deduction_item_code and item.item_code == deduction_item_code:
+			continue
+		accepted_kg += flt(item.qty) * 100
+
+	return accepted_kg
 
 
-def _get_return_deduction_kg(source):
-	return flt(_get_weight_deduction_kg(source)) + flt(_get_bag_deduction_kg(source))
+def _get_return_qty_quintal_for_item(source_qty_quintal, weight_ded_kg, accepted_kg):
+	"""Multi-rate sauda: weight deduction split item-wise by accepted qty share."""
+	if not source_qty_quintal or not weight_ded_kg or not accepted_kg:
+		return 0
+
+	return flt((weight_ded_kg / accepted_kg) * flt(source_qty_quintal), 3)
 
 
-def _set_item_qty_from_deduction_kg(doc, source, deduction_kg):
-	return_qty_quintal = flt(deduction_kg / 100, 3)
-	if not return_qty_quintal or not doc.get("items"):
+def _set_item_qty_from_weight_deduction(doc, source, weight_ded_kg):
+	weight_ded_kg = flt(weight_ded_kg)
+	if not weight_ded_kg or not doc.get("items"):
+		return
+
+	accepted_kg = _get_commodity_accepted_kg(source)
+	if not accepted_kg:
 		return
 
 	deduction_item_code = get_deduction_item_code()
@@ -82,22 +91,16 @@ def _set_item_qty_from_deduction_kg(doc, source, deduction_kg):
 	if not commodity_items:
 		return
 
-	total_source_qty = sum(
-		flt(source_items.get(item.purchase_invoice_item).qty)
-		for item in commodity_items
-		if source_items.get(item.purchase_invoice_item)
-	)
-
 	for item in commodity_items:
 		source_item = source_items.get(item.purchase_invoice_item)
 		source_qty = flt(source_item.qty) if source_item else 0
+		return_qty_quintal = _get_return_qty_quintal_for_item(
+			source_qty, weight_ded_kg, accepted_kg
+		)
+		if not return_qty_quintal:
+			continue
 
-		if total_source_qty:
-			share = source_qty / total_source_qty
-		else:
-			share = 1 / len(commodity_items)
-
-		qty = -flt(return_qty_quintal * share, 3)
+		qty = -return_qty_quintal
 		item.qty = qty
 		item.received_qty = qty
 

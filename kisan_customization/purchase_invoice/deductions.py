@@ -14,6 +14,7 @@ from kisan_customization.purchase_invoice.bags import (
 	get_pi_item_rate,
 	has_plastic_bag,
 )
+from kisan_customization.fixtures.deduction_types import DEDUCTION_TYPE_NAMES
 from kisan_customization.utils.deduction_utils import (
 	calculate_deduction_amount,
 	get_calculation_formula,
@@ -25,6 +26,8 @@ from kisan_customization.utils.deduction_utils import (
 	get_pi_total_gross_weight,
 	get_pi_total_qty,
 )
+
+_DEDUCTION_TYPE_ORDER = {name: idx for idx, name in enumerate(DEDUCTION_TYPE_NAMES)}
 
 CHILD_TABLE_FIELD = "custom_deductions"
 BAG_DEDUCTION_NAME = "Bag Deduction"
@@ -61,8 +64,49 @@ def _build_tax_description(deduction_name, actual=None, bag_type=None):
 	return "|".join(parts)
 
 
+def _deduction_base_name(deduction_type_name):
+	base = (deduction_type_name or "").split(" (")[0].strip()
+	if base.upper() == "UNLOADING":
+		return "UNLOADING"
+	return base
+
+
+def _deduction_type_order_index(deduction_type_name):
+	base = _deduction_base_name(deduction_type_name)
+	if base in _DEDUCTION_TYPE_ORDER:
+		return _DEDUCTION_TYPE_ORDER[base]
+
+	for name, idx in _DEDUCTION_TYPE_ORDER.items():
+		if name.lower() == base.lower():
+			return idx
+
+	return len(_DEDUCTION_TYPE_ORDER) + 100
+
+
+def _deduction_row_sort_key(row):
+	if isinstance(row, dict):
+		get_val = row.get
+	else:
+		get_val = lambda key, r=row: r.get(key)
+
+	if get_val("is_bag_deduction"):
+		return (_DEDUCTION_TYPE_ORDER.get(BAG_DEDUCTION_NAME, 900), 0, "", 0, "")
+	if get_val("is_weight_deduction"):
+		return (_DEDUCTION_TYPE_ORDER.get(WEIGHT_DEDUCTION_NAME, 901), 0, "", 0, "")
+
+	display_name = get_val("deduction_type_name") or ""
+	base_idx = _deduction_type_order_index(display_name)
+	bag_type = get_val("bag_type") or ""
+	no_of_bags = flt(get_val("no_of_bags"))
+	return (base_idx, bag_type, no_of_bags, display_name)
+
+
+def _sort_deduction_rows(rows):
+	return sorted(rows, key=_deduction_row_sort_key)
+
+
 def _get_active_deduction_types(company):
-	return frappe.get_all(
+	types = frappe.get_all(
 		"Deduction Type",
 		filters={"is_active": 1, "company": company},
 		fields=[
@@ -76,8 +120,8 @@ def _get_active_deduction_types(company):
 			"deduction_category",
 			"calculation",
 		],
-		order_by="deduction_type_name asc",
 	)
+	return sorted(types, key=lambda dt: _deduction_type_order_index(dt.deduction_type_name))
 
 
 def _get_deduction_lookup(company):
@@ -560,6 +604,18 @@ def sync_auto_deduction_rows(doc):
 			),
 		)
 
+	_reorder_child_deduction_table(doc)
+
+
+def _reorder_child_deduction_table(doc):
+	rows = list(doc.get(CHILD_TABLE_FIELD) or [])
+	if len(rows) < 2:
+		return
+
+	doc.set(CHILD_TABLE_FIELD, [])
+	for row in _sort_deduction_rows(rows):
+		doc.append(CHILD_TABLE_FIELD, row.as_dict() if hasattr(row, "as_dict") else row)
+
 
 def sync_weight_deduction_row(doc):
 	sync_auto_deduction_rows(doc)
@@ -822,14 +878,7 @@ def get_deduction_data(purchase_invoice):
 	if weight_row:
 		result.append(weight_row)
 
-	return sorted(
-		result,
-		key=lambda row: (
-			1 if row.get("is_bag_deduction") or row.get("is_weight_deduction") else 0,
-			1 if row.get("is_weight_deduction") else 0,
-			row["deduction_type_name"],
-		),
-	)
+	return _sort_deduction_rows(result)
 
 
 @frappe.whitelist()

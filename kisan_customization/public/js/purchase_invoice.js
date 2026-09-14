@@ -28,6 +28,70 @@ function patch_purchase_invoice_controller() {
 
 patch_purchase_invoice_controller();
 
+const PI_HIDE_ON_RETURN_EXTRA_TOTAL_FIELDS = [
+	"total_net_weight",
+	"base_total",
+	"base_net_total",
+	"column_break_50",
+];
+
+const PI_HIDE_ON_RETURN_FIELDS = [
+	"custom_bag_details_section",
+	"custom_bag_details",
+	"custom_weight_info_section",
+	"custom_total_bags",
+	"custom_total_gross_weight",
+	"custom_total_arrival_weight",
+	"custom_weight_deduction",
+	"custom_bag_deduction",
+	"custom_bag_deduction_amount",
+	"custom_weight_deduction_amount",
+	"custom_deductions_section",
+	"custom_deductions",
+	"custom_supplier_invoice_amount",
+	"custom_section_break_lqipi",
+	"custom_broker",
+	"custom_column_break_1ked0",
+	"custom_commission_type",
+	"custom_commission_percent",
+	"custom_commission_amount",
+	"custom_broker_commission_amount",
+];
+
+const PI_TOTAL_FIELDS_ALWAYS_VISIBLE = [
+	"total_qty",
+	"total",
+	"net_total",
+	"base_total",
+	"base_net_total",
+];
+
+function get_pi_return_hidden_fields(frm) {
+	const fields = PI_HIDE_ON_RETURN_FIELDS.concat(PI_HIDE_ON_RETURN_EXTRA_TOTAL_FIELDS);
+	Object.keys(frm.fields_dict || {}).forEach((fieldname) => {
+		if (/^custom_weight_column_break|^custom_column_break_weight/.test(fieldname)) {
+			fields.push(fieldname);
+		}
+	});
+	return [...new Set(fields)];
+}
+
+function toggle_return_pi_sections(frm) {
+	const is_return = cint(frm.doc.is_return);
+
+	get_pi_return_hidden_fields(frm).forEach((fieldname) => {
+		if (frm.fields_dict[fieldname]) {
+			frm.toggle_display(fieldname, !is_return);
+		}
+	});
+
+	PI_TOTAL_FIELDS_ALWAYS_VISIBLE.forEach((fieldname) => {
+		if (frm.fields_dict[fieldname]) {
+			frm.toggle_display(fieldname, true);
+		}
+	});
+}
+
 frappe.ui.form.on("Purchase Invoice", {
 	setup() {
 		patch_purchase_invoice_controller();
@@ -35,19 +99,25 @@ frappe.ui.form.on("Purchase Invoice", {
 
 	onload(frm) {
 		load_bag_type_options(frm);
-		if (frm.is_new() && !frm.doc.custom_bag_details?.length) {
+		if (frm.is_new() && !frm.doc.is_return && !frm.doc.custom_bag_details?.length) {
 			load_default_bag_rows(frm);
 		}
+		toggle_return_pi_sections(frm);
+	},
+
+	is_return(frm) {
+		toggle_return_pi_sections(frm);
 	},
 
 	refresh(frm) {
 		load_bag_type_options(frm);
+		toggle_return_pi_sections(frm);
 
 		if (!frm.is_new()) {
 			add_post_submit_buttons(frm);
 		}
 
-		if (frm.is_new()) return;
+		if (frm.is_new() || frm.doc.is_return) return;
 		if (!can_show_deduction_button(frm)) return;
 
 		const total = get_existing_deduction_total(frm);
@@ -66,6 +136,10 @@ frappe.ui.form.on("Purchase Invoice", {
 		recalculate_all_bag_rows(frm);
 	},
 
+	total_qty(frm) {
+		update_deduction_header_fields(frm);
+	},
+
 	items_add(frm) {
 		recalculate_all_bag_rows(frm);
 	},
@@ -75,6 +149,8 @@ frappe.ui.form.on("Purchase Invoice", {
 	},
 
 	validate(frm) {
+		validate_supplier_invoice_amount_client(frm);
+
 		const total_bags = flt(frm.doc.custom_total_bags);
 		const child_sum = get_child_bag_sum(frm);
 
@@ -130,31 +206,38 @@ frappe.ui.form.on("Purchase Invoice Bag Detail", {
 });
 
 function add_post_submit_buttons(frm) {
-	if (frm.doc.docstatus !== 1) return;
+	if (frm.doc.docstatus !== 1 || frm.doc.is_return) return;
 
-	const add_debit_note = () => {
-		if (frm.doc.is_return) return;
-		frm.add_custom_button(__("Debit Note"), () => make_kisan_debit_note(frm));
-	};
+	frappe.call({
+		method: "kisan_customization.purchase_invoice.debit_note.has_active_debit_note",
+		args: { purchase_invoice: frm.doc.name },
+		callback(r) {
+			if (r.message) return;
 
-	if (!frm.doc.custom_broker) {
-		add_debit_note();
-		return;
-	}
+			const add_debit_note = () => {
+				frm.add_custom_button(__("Debit Note"), () => make_kisan_debit_note(frm));
+			};
 
-	frappe.db.get_value(
-		"Broker Commission",
-		{ purchase_invoice: frm.doc.name, docstatus: 1 },
-		"name",
-		(r) => {
-			if (r?.name) {
-				frm.add_custom_button(__("Broker Commission"), () => {
-					frappe.set_route("Form", "Broker Commission", r.name);
-				});
+			if (!frm.doc.custom_broker) {
+				add_debit_note();
+				return;
 			}
-			add_debit_note();
-		}
-	);
+
+			frappe.db.get_value(
+				"Broker Commission",
+				{ purchase_invoice: frm.doc.name, docstatus: 1 },
+				"name",
+				(bc) => {
+					if (bc?.name) {
+						frm.add_custom_button(__("Broker Commission"), () => {
+							frappe.set_route("Form", "Broker Commission", bc.name);
+						});
+					}
+					add_debit_note();
+				}
+			);
+		},
+	});
 }
 
 function make_kisan_debit_note(frm) {
@@ -162,6 +245,31 @@ function make_kisan_debit_note(frm) {
 		method: "kisan_customization.purchase_invoice.debit_note.make_debit_note",
 		frm,
 	});
+}
+
+function validate_supplier_invoice_amount_client(frm) {
+	if (frm.doc.is_return || !frm.fields_dict.custom_supplier_invoice_amount) {
+		return;
+	}
+
+	const supplier_amount = flt(frm.doc.custom_supplier_invoice_amount);
+	if (supplier_amount <= 0) {
+		frappe.throw(__("Supplier Invoice Amount must be greater than 0."));
+	}
+
+	const grand_total =
+		flt(frm.doc.grand_total) || flt(frm.doc.rounded_total) || flt(frm.doc.base_grand_total) || 0;
+	if (grand_total > supplier_amount) {
+		frappe.throw(
+			__(
+				"Grand Total ({0}) cannot be greater than Supplier Invoice Amount ({1}).",
+				[
+					format_currency(grand_total, frm.doc.currency),
+					format_currency(supplier_amount, frm.doc.currency),
+				]
+			)
+		);
+	}
 }
 
 function can_show_deduction_button(frm) {
@@ -289,7 +397,10 @@ function update_deduction_header_fields(frm) {
 		frm.set_value("custom_bag_deduction_amount", bag_amount);
 	}
 
-	const accepted_qty_kg = (frm.doc.items || []).reduce((sum, row) => sum + flt(row.qty), 0) * 100;
+	const total_qty =
+		flt(frm.doc.total_qty) ||
+		(frm.doc.items || []).reduce((sum, row) => sum + flt(row.qty), 0);
+	const accepted_qty_kg = total_qty * 100;
 	const weight_deduction = Math.max(0, accepted_qty_kg - gross);
 	const weight_amount = flt((weight_deduction * avg_rate) / 100, 2);
 
@@ -524,7 +635,8 @@ function build_deduction_rows(deductions, currency) {
 					qty_deducation: row.qty_deducation ? 1 : 0,
 					calculation_mode: row.calculation_mode,
 					bag_type: row.bag_type || "",
-					no_of_bags: flt(row.no_of_bags) || 0,
+					no_of_bags: flt(row.no_of_bags),
+					bag_line_key: row.bag_line_key || "",
 					is_bag_deduction: row.is_bag_deduction ? 1 : 0,
 					is_weight_deduction: row.is_weight_deduction ? 1 : 0,
 				})
@@ -691,6 +803,14 @@ function bind_deduction_events(dialog, frm, currency) {
 	});
 }
 
+function deduction_bag_args(rowData) {
+	return {
+		bag_type: rowData.bag_type || null,
+		no_of_bags: flt(rowData.no_of_bags) || null,
+		bag_line_key: rowData.bag_line_key || null,
+	};
+}
+
 function recalculate_qty_row($row, frm, currency) {
 	const rowData = JSON.parse($row.attr("data-row") || "{}");
 	const actual = flt($row.find(".deduction-actual").val());
@@ -701,8 +821,7 @@ function recalculate_qty_row($row, frm, currency) {
 			purchase_invoice: frm.doc.name,
 			deduction_type: rowData.deduction_type,
 			actual,
-			bag_type: rowData.bag_type || null,
-			no_of_bags: rowData.no_of_bags || null,
+			...deduction_bag_args(rowData),
 		},
 		callback(r) {
 			if (!r.message) return;
@@ -761,20 +880,24 @@ function apply_deductions(dialog, frm) {
 			return;
 		}
 
+		const bag_args = deduction_bag_args(rowData);
+
 		if (rowData.qty_deducation) {
 			deductions.push({
 				deduction_type: rowData.deduction_type,
 				qty_deducation: 1,
 				actual: flt($row.find(".deduction-actual").val()),
-				bag_type: rowData.bag_type || "",
-				no_of_bags: flt(rowData.no_of_bags) || 0,
+				bag_type: bag_args.bag_type || "",
+				no_of_bags: flt(rowData.no_of_bags),
+				bag_line_key: bag_args.bag_line_key || "",
 			});
 		} else if (AUTO_CALC_MODES.has(rowData.calculation_mode)) {
 			deductions.push({
 				deduction_type: rowData.deduction_type,
 				calculation_mode: rowData.calculation_mode,
-				bag_type: rowData.bag_type || "",
-				no_of_bags: flt(rowData.no_of_bags) || 0,
+				bag_type: bag_args.bag_type || "",
+				no_of_bags: flt(rowData.no_of_bags),
+				bag_line_key: bag_args.bag_line_key || "",
 			});
 		} else {
 			deductions.push({

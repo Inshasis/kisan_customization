@@ -6,19 +6,18 @@ from frappe.utils import flt
 
 
 def validate_supplier_invoice_amount(doc):
-	if not doc.meta.has_field("custom_supplier_invoice_amount"):
+	if not doc.meta.has_field("custom_supplier_invoice_amount") or doc.get("is_return"):
 		return
 
 	supplier_amount = flt(doc.custom_supplier_invoice_amount)
-	if not supplier_amount:
-		return
+	if supplier_amount <= 0:
+		frappe.throw(_("Supplier Invoice Amount must be greater than 0."))
 
-	# Supplier invoice amount is the farmer bill (pre-tax); compare net total, not grand total.
-	net_total = flt(doc.base_net_total) or flt(doc.net_total)
-	if net_total > supplier_amount:
+	grand_total = flt(doc.base_grand_total) or flt(doc.grand_total) or flt(doc.rounded_total)
+	if grand_total > supplier_amount:
 		frappe.throw(
-			_("Net Total ({0}) cannot be greater than Supplier Invoice Amount ({1})").format(
-				frappe.format(net_total, {"fieldtype": "Currency"}),
+			_("Grand Total ({0}) cannot be greater than Supplier Invoice Amount ({1}).").format(
+				frappe.format(grand_total, {"fieldtype": "Currency"}),
 				frappe.format(supplier_amount, {"fieldtype": "Currency"}),
 			)
 		)

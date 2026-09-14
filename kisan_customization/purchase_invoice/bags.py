@@ -37,7 +37,10 @@ def get_pi_item_rate(doc):
 def get_accepted_qty_kg(doc):
 	from kisan_customization.utils.deduction_utils import get_pi_total_qty
 
-	return flt(get_pi_total_qty(doc)) * 100
+	total_qty = flt(doc.get("total_qty"))
+	if not total_qty:
+		total_qty = get_pi_total_qty(doc)
+	return flt(total_qty) * 100
 
 
 def calculate_bag_deduction(doc):
@@ -88,13 +91,15 @@ def get_bag_rows(doc):
 	rate = get_pi_item_rate(doc)
 	rows = []
 
-	for row in doc.get("custom_bag_details") or []:
+	for idx, row in enumerate(doc.get("custom_bag_details") or [], start=1):
 		arrival = flt(row.arrival_qty_kg)
 		gross = flt(row.gross_weight_kg)
+		bag_line_key = row.name or f"{row.bag_type}|{idx}|{int(flt(row.no_of_bags))}"
 		rows.append(
 			{
 				"bag_type": row.bag_type,
 				"no_of_bags": flt(row.no_of_bags),
+				"bag_line_key": bag_line_key,
 				"charges": flt(row.charges),
 				"gross_weight_kg": gross,
 				"deduct_weight_kg": flt(row.deduct_weight_kg),

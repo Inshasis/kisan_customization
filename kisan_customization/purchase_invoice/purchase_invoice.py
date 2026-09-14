@@ -14,6 +14,7 @@ from kisan_customization.purchase_invoice.payment_terms import (
 	sync_payment_terms_from_linked_po,
 )
 from kisan_customization.purchase_invoice.sauda_qty import validate_sauda_qty_range
+from kisan_customization.purchase_invoice.debit_note import validate_unique_debit_note
 from kisan_customization.purchase_invoice.validation import (
 	clear_booking_purchase_invoice_taxes,
 	remove_kisan_deduction_taxes,
@@ -31,6 +32,7 @@ def validate(doc, method=None):
 	else:
 		recalculate_bag_weights(doc)
 		remove_deduction_item_rows(doc)
+		validate_unique_debit_note(doc)
 
 	if doc.get("is_return"):
 		sync_deduction_item_row(doc)

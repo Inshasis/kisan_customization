@@ -14,11 +14,11 @@ PI_BROKER_READ_ONLY_FIELDS = (
 )
 
 PI_TOTAL_FIELD_ORDER = (
-	("total_qty", "custom_total_arrival_weight"),
+	("total_qty", "custom_deductions"),
 	("column_break_28", "total_qty"),
 	("total", "column_break_28"),
 	("net_total", "total"),
-	("base_total", "section_break_26"),
+	("base_total", "column_break_50"),
 	("base_net_total", "base_total"),
 )
 

@@ -10,6 +10,7 @@
   "deduction_type_name",
   "bag_type",
   "no_of_bags",
+  "bag_detail_name",
   "related_account",
   "is_weight_deduction",
   "is_bag_deduction",
@@ -42,9 +43,16 @@
   },
   {
    "fieldname": "no_of_bags",
-   "fieldtype": "Float",
+   "fieldtype": "Int",
    "label": "No. of Bags",
-   "precision": "2",
+   "non_negative": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "bag_detail_name",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Bag Detail Name",
    "read_only": 1
   },
   {

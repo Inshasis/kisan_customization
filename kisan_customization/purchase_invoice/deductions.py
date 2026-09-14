@@ -52,12 +52,10 @@ def _parse_tax_meta(description):
 	return meta
 
 
-def _build_tax_description(deduction_name, actual=None, bag_type=None, no_of_bags=0):
+def _build_tax_description(deduction_name, actual=None, bag_type=None):
 	parts = [deduction_name]
 	if bag_type:
 		parts.append(f"bag:{bag_type}")
-	if no_of_bags:
-		parts.append(f"bags:{int(flt(no_of_bags))}")
 	if actual is not None:
 		parts.append(f"actual:{actual}")
 	return "|".join(parts)
@@ -125,9 +123,10 @@ def _build_auto_deduction_dialog_row(doc, name, calculation_mode, is_bag_deducti
 		formula = f"{gross_weight} - {arrival_weight} = {deduction_kg} kg × Avg. Rate {item_rate} / 100"
 	elif is_weight_deduction:
 		deduction_kg, item_rate, amount = _calculate_weight_deduction_amount(doc)
-		accepted_qty_kg = flt(get_pi_total_qty(doc)) * 100
+		total_qty = get_pi_total_qty(doc)
+		accepted_qty_kg = flt(total_qty) * 100
 		gross_weight = get_pi_total_gross_weight(doc)
-		formula = f"{accepted_qty_kg} - {gross_weight} = {deduction_kg} kg × {item_rate} / 100"
+		formula = f"{total_qty} × 100 - {gross_weight} = {deduction_kg} kg × {item_rate} / 100"
 	else:
 		return None
 
@@ -176,46 +175,6 @@ def _build_weight_deduction_dialog_row(doc):
 	)
 
 
-def _parse_no_of_bags_from_name(deduction_type_name):
-	if not deduction_type_name:
-		return 0
-
-	match = re.search(r"×\s*(\d+)", deduction_type_name)
-	if match:
-		return flt(match.group(1))
-	return 0
-
-
-def _deduction_row_key(deduction_type, bag_type="", no_of_bags=0):
-	return (deduction_type, bag_type or "", int(flt(no_of_bags)))
-
-
-def _find_bag_row(bag_rows, bag_type, no_of_bags=0, gross_weight_kg=0):
-	if not bag_type:
-		return None
-
-	candidates = [bag for bag in bag_rows if bag.get("bag_type") == bag_type]
-	if not candidates:
-		return None
-
-	no_of_bags = flt(no_of_bags)
-	if no_of_bags:
-		matched = [bag for bag in candidates if flt(bag.get("no_of_bags")) == no_of_bags]
-		if len(matched) == 1:
-			return matched[0]
-
-	gross_weight_kg = flt(gross_weight_kg)
-	if gross_weight_kg:
-		matched = [bag for bag in candidates if flt(bag.get("gross_weight_kg")) == gross_weight_kg]
-		if len(matched) == 1:
-			return matched[0]
-
-	if len(candidates) == 1:
-		return candidates[0]
-
-	return None
-
-
 def _bag_context(base_ctx, bag):
 	return {
 		**base_ctx,
@@ -240,6 +199,56 @@ def _calc_kwargs(ctx, actual=0):
 
 def _uses_bag_wise_arrival(dt):
 	return (dt.deduction_type_name or "").strip() in BAG_WISE_ARRIVAL_DEDUCTION_TYPES
+
+
+def _parse_no_of_bags_from_name(deduction_type_name):
+	name = deduction_type_name or ""
+	match = re.search(r"×\s*(\d+)", name)
+	return flt(match.group(1)) if match else 0
+
+
+def _manual_deduction_key(deduction_type, bag=None, bag_type="", no_of_bags=0, bag_line_key=""):
+	if bag:
+		return (
+			deduction_type,
+			bag.get("bag_line_key") or "",
+			bag.get("bag_type") or "",
+			flt(bag.get("no_of_bags")),
+		)
+
+	return (deduction_type, bag_line_key or "", bag_type or "", flt(no_of_bags))
+
+
+def _row_bag_identity(row):
+	bag_line_key = row.get("bag_detail_name") or ""
+	no_of_bags = flt(row.get("no_of_bags"))
+	if not no_of_bags:
+		no_of_bags = _parse_no_of_bags_from_name(row.get("deduction_type_name"))
+	return bag_line_key, row.get("bag_type") or "", no_of_bags
+
+
+def _find_bag_row(bag_rows, bag_type="", no_of_bags=0, bag_line_key=""):
+	if bag_line_key:
+		match = next((bag for bag in bag_rows if bag.get("bag_line_key") == bag_line_key), None)
+		if match:
+			return match
+
+	if bag_type and no_of_bags:
+		match = next(
+			(
+				bag
+				for bag in bag_rows
+				if bag.get("bag_type") == bag_type and flt(bag.get("no_of_bags")) == flt(no_of_bags)
+			),
+			None,
+		)
+		if match:
+			return match
+
+	if bag_type:
+		return next((bag for bag in bag_rows if bag.get("bag_type") == bag_type), None)
+
+	return None
 
 
 def _deduction_tax_label(tax, by_label):
@@ -286,8 +295,7 @@ def _get_existing_deductions_from_taxes(pi, by_label):
 			continue
 
 		meta = _parse_tax_meta(tax.description)
-		bags = flt(meta.get("bags"))
-		existing_key = _deduction_row_key(dt.name, bag_type, bags)
+		existing_key = (dt.name, bag_type)
 		existing[existing_key] = {
 			"amount": flt(tax.tax_amount),
 			"actual": flt(meta.get("actual")),
@@ -303,15 +311,18 @@ def _get_existing_deductions_from_child(doc):
 		if row.get("is_weight_deduction") or row.get("is_bag_deduction"):
 			continue
 
-		no_of_bags = flt(getattr(row, "no_of_bags", None))
-		if not no_of_bags:
-			no_of_bags = _parse_no_of_bags_from_name(row.deduction_type_name)
-
-		key = _deduction_row_key(row.deduction_type, row.bag_type, no_of_bags)
+		bag_line_key, bag_type, no_of_bags = _row_bag_identity(row)
+		key = _manual_deduction_key(
+			row.deduction_type,
+			bag_type=bag_type,
+			no_of_bags=no_of_bags,
+			bag_line_key=bag_line_key,
+		)
 		existing[key] = {
 			"amount": flt(row.amount),
 			"actual": flt(row.actual),
 			"related_account": row.related_account,
+			"bag_line_key": bag_line_key,
 			"no_of_bags": no_of_bags,
 		}
 
@@ -381,6 +392,7 @@ def _build_deduction_row(dt, ctx, saved=None, bag=None):
 		"deduction_type_name": _display_name(dt, bag_type, no_of_bags),
 		"bag_type": bag_type or "",
 		"no_of_bags": flt(bag["no_of_bags"]) if bag else 0,
+		"bag_line_key": bag.get("bag_line_key") if bag else "",
 		"related_account": dt.related_account or saved.get("related_account") or "",
 		"qty_deducation": dt.qty_deducation,
 		"tiered_calculation": dt.tiered_calculation,
@@ -425,6 +437,7 @@ def _child_row_dict(
 	is_weight_deduction=0,
 	is_bag_deduction=0,
 	no_of_bags=0,
+	bag_detail_name="",
 ):
 	if is_bag_deduction:
 		display = BAG_DEDUCTION_NAME
@@ -436,7 +449,8 @@ def _child_row_dict(
 		"deduction_type": dt.name if dt else None,
 		"deduction_type_name": display,
 		"bag_type": bag_type or "",
-		"no_of_bags": flt(no_of_bags),
+		"no_of_bags": int(flt(no_of_bags)) if no_of_bags else 0,
+		"bag_detail_name": bag_detail_name or "",
 		"related_account": (dt.related_account if dt else None) or None,
 		"is_weight_deduction": is_weight_deduction,
 		"is_bag_deduction": is_bag_deduction,
@@ -560,13 +574,13 @@ def _resolve_child_row_amount(doc, row_data, lookup, ctx):
 	manual_amount = flt(row_data.get("amount"))
 	bag_type = row_data.get("bag_type") or ""
 	no_of_bags = flt(row_data.get("no_of_bags"))
+	bag_line_key = row_data.get("bag_line_key") or row_data.get("bag_detail_name") or ""
 
 	bag_rows = get_bag_rows(doc)
-	bag = _find_bag_row(
-		bag_rows,
-		bag_type,
-		no_of_bags=no_of_bags,
-		gross_weight_kg=row_data.get("gross_weight_kg"),
+	bag = (
+		_find_bag_row(bag_rows, bag_type=bag_type, no_of_bags=no_of_bags, bag_line_key=bag_line_key)
+		if bag_type or bag_line_key
+		else None
 	)
 	row_ctx = _bag_context(ctx, bag) if bag else ctx
 
@@ -574,7 +588,7 @@ def _resolve_child_row_amount(doc, row_data, lookup, ctx):
 		dt, row_ctx, actual=actual, manual_amount=manual_amount
 	)
 
-	no_of_bags = flt(bag["no_of_bags"]) if bag else flt(row_data.get("no_of_bags"))
+	no_of_bags = flt(bag["no_of_bags"]) if bag else 0
 
 	return _child_row_dict(
 		dt,
@@ -584,6 +598,7 @@ def _resolve_child_row_amount(doc, row_data, lookup, ctx):
 		required=required,
 		bag_type=bag_type,
 		no_of_bags=no_of_bags,
+		bag_detail_name=bag.get("bag_line_key") if bag else bag_line_key,
 	)
 
 
@@ -620,14 +635,15 @@ def _recalculate_child_table_amounts(doc):
 		if row.get("is_weight_deduction") or row.get("is_bag_deduction"):
 			continue
 
+		bag_line_key, bag_type, no_of_bags = _row_bag_identity(row)
 		child_row = _resolve_child_row_amount(
 			doc,
 			{
 				"deduction_type": row.deduction_type,
 				"actual": row.actual,
-				"bag_type": row.bag_type,
-				"no_of_bags": flt(getattr(row, "no_of_bags", None))
-				or _parse_no_of_bags_from_name(row.deduction_type_name),
+				"bag_type": bag_type,
+				"no_of_bags": no_of_bags,
+				"bag_line_key": bag_line_key,
 				"amount": row.amount,
 			},
 			lookup,
@@ -727,7 +743,6 @@ def _get_deductions_from_taxes(doc, lookup):
 				"deduction_type": dt.name,
 				"actual": flt(meta.get("actual")),
 				"bag_type": bag_type,
-				"no_of_bags": flt(meta.get("bags")),
 				"amount": flt(tax.tax_amount),
 			}
 		)
@@ -787,22 +802,16 @@ def get_deduction_data(purchase_invoice):
 			for bag in bag_rows:
 				if not flt(bag["no_of_bags"]):
 					continue
-				saved = existing.get(
-					_deduction_row_key(dt.name, bag["bag_type"], bag["no_of_bags"]),
-					{},
-				)
+				saved = existing.get(_manual_deduction_key(dt.name, bag=bag), {})
 				result.append(_build_deduction_row(dt, ctx, saved, bag))
 		elif dt.qty_deducation and dt.deduction_category == "multiple" and bag_rows:
 			for bag in bag_rows:
 				if not flt(bag["no_of_bags"]):
 					continue
-				saved = existing.get(
-					_deduction_row_key(dt.name, bag["bag_type"], bag["no_of_bags"]),
-					{},
-				)
+				saved = existing.get(_manual_deduction_key(dt.name, bag=bag), {})
 				result.append(_build_deduction_row(dt, ctx, saved, bag))
 		else:
-			saved = existing.get(_deduction_row_key(dt.name, "", 0), {})
+			saved = existing.get((dt.name, ""), {})
 			result.append(_build_deduction_row(dt, ctx, saved))
 
 	bag_row = _build_bag_deduction_dialog_row(pi)
@@ -824,7 +833,9 @@ def get_deduction_data(purchase_invoice):
 
 
 @frappe.whitelist()
-def calculate_deduction_preview(purchase_invoice, deduction_type, actual, bag_type=None, no_of_bags=None):
+def calculate_deduction_preview(
+	purchase_invoice, deduction_type, actual, bag_type=None, no_of_bags=None, bag_line_key=None
+):
 	pi = frappe.get_doc("Purchase Invoice", purchase_invoice)
 	ctx = _get_pi_context(pi)
 	dt = frappe.get_cached_value(
@@ -843,8 +854,13 @@ def calculate_deduction_preview(purchase_invoice, deduction_type, actual, bag_ty
 	)
 
 	bag = None
-	if bag_type:
-		bag = _find_bag_row(get_bag_rows(pi), bag_type, no_of_bags=no_of_bags)
+	if bag_type or bag_line_key:
+		bag = _find_bag_row(
+			get_bag_rows(pi),
+			bag_type=bag_type or "",
+			no_of_bags=flt(no_of_bags),
+			bag_line_key=bag_line_key or "",
+		)
 
 	row_ctx = _bag_context(ctx, bag) if bag else ctx
 	amount, difference, required, mode = _resolve_amount(dt, row_ctx, actual=flt(actual))

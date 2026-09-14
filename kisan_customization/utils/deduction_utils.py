@@ -32,6 +32,9 @@ def get_bag_charges(bag_type):
 
 
 def get_pi_total_qty(doc):
+	total_qty = flt(doc.get("total_qty"))
+	if total_qty:
+		return total_qty
 	return sum(flt(row.qty) for row in doc.get("items") or [])
 
 

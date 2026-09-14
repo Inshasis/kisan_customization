@@ -119,7 +119,7 @@ PURCHASE_INVOICE_FIELDS = {
 		{
 			"fieldname": "custom_section_break_lqipi",
 			"fieldtype": "Section Break",
-			"insert_after": "total_net_weight",
+			"insert_after": "base_net_total",
 			"label": "Broker Commission",
 		},
 		{

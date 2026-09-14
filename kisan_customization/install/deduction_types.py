@@ -16,7 +16,12 @@ SYNC_FIELDS = (
 )
 
 
-def sync_deduction_types(companies=None):
+def ensure_default_deduction_types(companies=None):
+	"""Create missing default Deduction Types per company. Never overwrite existing records."""
+	sync_deduction_types(companies=companies, update_existing=False)
+
+
+def sync_deduction_types(companies=None, update_existing=False):
 	companies = companies or _get_companies()
 	if not companies:
 		return
@@ -24,7 +29,7 @@ def sync_deduction_types(companies=None):
 	defaults = get_default_deduction_types()
 	for company in companies:
 		for row in defaults:
-			_sync_deduction_type(company, row)
+			_sync_deduction_type(company, row, update_existing=update_existing)
 
 	frappe.clear_cache(doctype="Deduction Type")
 
@@ -42,7 +47,7 @@ def _get_companies():
 	return [default_company] if default_company else []
 
 
-def _sync_deduction_type(company, row):
+def _sync_deduction_type(company, row, update_existing=False):
 	type_name = row.get("deduction_type_name")
 	if not type_name:
 		return
@@ -51,7 +56,8 @@ def _sync_deduction_type(company, row):
 	existing_name = _find_existing_deduction_type(company, type_name)
 
 	if existing_name:
-		_update_if_changed(existing_name, values)
+		if update_existing:
+			_update_if_changed(existing_name, values)
 		return
 
 	doc = frappe.get_doc(

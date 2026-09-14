@@ -2,16 +2,14 @@
 
 import frappe
 
-from kisan_customization.install.after_install import (
+from kisan_customization.install.master_settings import (
 	DEFAULT_BAG_DEDUCTIONS,
-	DEFAULT_DEDUCTION_TYPES,
 	DEFAULT_TIER_RANGES,
 )
 
 
 def execute():
 	seed_master_settings()
-	update_deduction_types()
 
 
 def seed_master_settings():
@@ -47,31 +45,3 @@ def _migrate_bag_types(settings):
 		settings.set("bag_wise_deductions", [])
 		for row in migrated:
 			settings.append("bag_wise_deductions", row)
-	elif settings.get("bag_wise_deductions"):
-		settings.set("bag_wise_deductions", [])
-
-
-def update_deduction_types():
-	company = frappe.get_single("Kisan Master Settings").default_company
-	if not company:
-		company = frappe.defaults.get_global_default("company")
-	if not company:
-		return
-
-	for row in DEFAULT_DEDUCTION_TYPES:
-		name = row["deduction_type_name"]
-		if not frappe.db.exists("Deduction Type", name):
-			continue
-
-		frappe.db.set_value(
-			"Deduction Type",
-			name,
-			{
-				"required_value": row["required_value"],
-				"charges_per_unit": row["charges_per_unit"],
-				"deduction_category": row["deduction_category"],
-				"tiered_calculation": row["tiered_calculation"],
-				"qty_deducation": row.get("qty_deducation", 0),
-			},
-			update_modified=False,
-		)

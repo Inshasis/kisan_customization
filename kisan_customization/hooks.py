@@ -7,6 +7,8 @@ app_license = "mit"
 
 required_apps = ["erpnext"]
 
+from kisan_customization.setup.company_master_data import COMPANY_MASTER_DOCTYPES
+
 fixtures = [
 	{
 		"dt": "Custom Field",
@@ -201,6 +203,10 @@ doctype_list_js = {
 
 # before_install = "kisan_customization.install.before_install"
 after_install = "kisan_customization.install.after_install.after_install"
+after_migrate = "kisan_customization.install.after_migrate.after_migrate"
+
+# Master/configuration data kept when using ERPNext "Delete Company Transactions"
+company_data_to_be_ignored = list(COMPANY_MASTER_DOCTYPES)
 
 # Uninstallation
 # ------------
@@ -246,9 +252,11 @@ after_install = "kisan_customization.install.after_install.after_install"
 # ---------------
 # Override standard doctype classes
 
-# override_doctype_class = {
-# 	"ToDo": "custom_app.overrides.CustomToDo"
-# }
+override_doctype_class = {
+	"Transaction Deletion Record": (
+		"kisan_customization.overrides.transaction_deletion_record.KisanTransactionDeletionRecord"
+	),
+}
 
 # Document Events
 # ---------------

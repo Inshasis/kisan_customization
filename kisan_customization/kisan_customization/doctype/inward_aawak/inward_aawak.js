@@ -1,7 +1,16 @@
 // Copyright (c) 2026, Hidayatali and contributors
 // For license information, please see license.txt
 
-// Helper function to setup read-only for Bag Details rate field
+let bagConfigPopulateTimer = null;
+
+function getInwardCommodityCodes(frm) {
+	return (frm.doc.commodities || []).map((row) => row.commodity).filter(Boolean);
+}
+
+function weightRequiredForRow(row) {
+	const uom = (row.uom || 'Bag').trim();
+	return ['Kg', 'Bag', 'Nos'].includes(uom);
+}
 function setupBagDetailsReadOnly(frm) {
 	if (!frm.fields_dict['bag_details'] || !frm.fields_dict['bag_details'].grid) {
 		return;
@@ -100,7 +109,9 @@ frappe.ui.form.on('Inward Aawak', {
 		// Auto-populate Bag Configurations if the form is new and bag_details is empty or has default row
 		if (frm.is_new()) {
 			let is_empty = !frm.doc.bag_details || frm.doc.bag_details.length === 0;
-			let is_default_row = frm.doc.bag_details && frm.doc.bag_details.length === 1 && !frm.doc.bag_details[0].bag_weight;
+			let is_default_row = frm.doc.bag_details && frm.doc.bag_details.length === 1
+				&& !frm.doc.bag_details[0].bag_configuration
+				&& !frm.doc.bag_details[0].number_of_bags;
 
 			if (is_empty || is_default_row) {
 				populateBagConfigurations(frm);
@@ -173,22 +184,37 @@ frappe.ui.form.on('Inward Aawak', {
 		}
 
 		// Validate each bag detail row
+		let config_keys = {};
 		let hasValidRows = false;
 		frm.doc.bag_details.forEach(function (row, index) {
-			if (!row.bag_weight) {
+			const weight = row.bag_weight || row.weight_kg;
+			if (weightRequiredForRow(row) && !weight) {
 				frappe.msgprint({
 					title: __('Bag Details Error'),
-					message: __('Row ' + (index + 1) + ': Bag weight is missing'),
+					message: __('Row {0}: Weight is required for UOM {1}', [index + 1, row.uom || 'Bag']),
 					indicator: 'red'
 				});
 				frappe.validated = false;
 				return;
 			}
 
+			if (row.bag_configuration) {
+				if (config_keys[row.bag_configuration]) {
+					frappe.msgprint({
+						title: __('Bag Details Error'),
+						message: __('Row {0}: Duplicate Bag Configuration line', [index + 1]),
+						indicator: 'red'
+					});
+					frappe.validated = false;
+					return;
+				}
+				config_keys[row.bag_configuration] = true;
+			}
+
 			if (!row.number_of_bags || row.number_of_bags <= 0) {
 				frappe.msgprint({
 					title: __('Bag Details Error'),
-					message: __('Row ' + (index + 1) + ': Number of bags must be greater than 0'),
+					message: __('Row {0}: Quantity must be greater than 0', [index + 1]),
 					indicator: 'red'
 				});
 				frappe.validated = false;
@@ -262,7 +288,12 @@ frappe.ui.form.on('Inward Aawak', {
 
 	// Field change handlers
 	commodities: function (frm) {
-		// Triggered when the table changes
+		if (frm.doc.docstatus !== 0 || !frm.is_new()) {
+			return;
+		}
+
+		clearTimeout(bagConfigPopulateTimer);
+		bagConfigPopulateTimer = setTimeout(() => populateBagConfigurations(frm), 300);
 	},
 
 	firm: function (frm) {
@@ -283,7 +314,14 @@ frappe.ui.form.on('Inward Aawak', {
 
 // Inward Commodity child table triggers
 frappe.ui.form.on('Inward Commodity', {
-	// Triggers removed as bag details are independent
+	commodity: function (frm) {
+		if (frm.doc.docstatus !== 0 || !frm.is_new()) {
+			return;
+		}
+
+		clearTimeout(bagConfigPopulateTimer);
+		bagConfigPopulateTimer = setTimeout(() => populateBagConfigurations(frm), 300);
+	},
 });
 
 // Bag Details child table validations
@@ -419,21 +457,42 @@ frappe.ui.form.on('Chamber Allocation', {
 
 // Helper functions
 function populateBagConfigurations(frm) {
+	const commodity_codes = getInwardCommodityCodes(frm);
+
 	frappe.call({
 		method: 'frappe.client.get_list',
 		args: {
 			doctype: 'Bag Configuration',
-			fields: ['name', 'bag_weight', 'rate_per_bag_per_day'],
-			limit_page_length: 100
+			fields: [
+				'name',
+				'rate_type',
+				'commodity',
+				'uom',
+				'weight_kg',
+				'rate',
+			],
+			limit_page_length: 500,
 		},
 		callback: function (r) {
-			if (r.message && r.message.length > 0) {
+			const configs = (r.message || []).filter((config) => {
+				if (config.rate_type === 'Specific') {
+					return commodity_codes.includes(config.commodity);
+				}
+				return config.rate_type === 'General';
+			});
+
+			if (configs.length > 0) {
 				frm.clear_table('bag_details');
 
-				r.message.forEach(function (config) {
+				configs.forEach(function (config) {
 					let new_row = frm.add_child('bag_details');
-					frappe.model.set_value('Bag Details', new_row.name, 'bag_weight', config.bag_weight);
-					frappe.model.set_value('Bag Details', new_row.name, 'rate', config.rate_per_bag_per_day);
+					frappe.model.set_value('Bag Details', new_row.name, 'bag_configuration', config.name);
+					frappe.model.set_value('Bag Details', new_row.name, 'rate_type', config.rate_type);
+					frappe.model.set_value('Bag Details', new_row.name, 'commodity', config.commodity);
+					frappe.model.set_value('Bag Details', new_row.name, 'uom', config.uom);
+					frappe.model.set_value('Bag Details', new_row.name, 'weight_kg', config.weight_kg);
+					frappe.model.set_value('Bag Details', new_row.name, 'bag_weight', config.weight_kg);
+					frappe.model.set_value('Bag Details', new_row.name, 'rate', config.rate);
 					frappe.model.set_value('Bag Details', new_row.name, 'number_of_bags', 0);
 					frappe.model.set_value('Bag Details', new_row.name, 'total_weight', 0);
 					frappe.model.set_value('Bag Details', new_row.name, 'is_auto_populated', 1);
@@ -441,10 +500,10 @@ function populateBagConfigurations(frm) {
 
 				frm.refresh_field('bag_details');
 				setTimeout(() => setupBagDetailsReadOnly(frm), 500);
-			} else {
+			} else if (!frm.doc.bag_details || !frm.doc.bag_details.length) {
 				frappe.msgprint({
 					title: __('No Bag Configurations'),
-					message: __('No Bag Configurations found. Please create them in the Bag Configuration master to proceed.'),
+					message: __('No matching Bag Configurations found. Add commodities or create Bag Configuration master rows.'),
 					indicator: 'orange'
 				});
 			}
@@ -454,14 +513,17 @@ function populateBagConfigurations(frm) {
 
 function calculateRowTotal(frm, cdt, cdn) {
 	let row = locals[cdt][cdn];
-	if (row.bag_weight && row.number_of_bags) {
-		let bagWeight = parseFloat(row.bag_weight);
-		let numberOfBags = parseInt(row.number_of_bags);
-		if (!isNaN(bagWeight) && !isNaN(numberOfBags)) {
-			let totalWeight = bagWeight * numberOfBags;
+	const weight = parseFloat(row.bag_weight || row.weight_kg);
+	const numberOfBags = parseInt(row.number_of_bags);
+
+	if (weight && numberOfBags) {
+		if (!isNaN(weight) && !isNaN(numberOfBags)) {
+			let totalWeight = weight * numberOfBags;
 			totalWeight = Math.round(totalWeight * 100) / 100;
 			frappe.model.set_value(cdt, cdn, 'total_weight', totalWeight);
 		}
+	} else if (row.lorry_weight_kg) {
+		frappe.model.set_value(cdt, cdn, 'total_weight', row.lorry_weight_kg);
 	} else {
 		frappe.model.set_value(cdt, cdn, 'total_weight', 0);
 	}

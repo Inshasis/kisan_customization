@@ -4,6 +4,8 @@ import frappe
 from frappe import _
 from frappe.utils import cint
 
+from kisan_customization.utils.rent_calculation import format_line_description, get_line_key
+
 STATUS_SUBMITTED = "Submitted"
 STATUS_PARTIALLY_DELIVERED = "Partially Delivered"
 STATUS_FULLY_DELIVERED = "Fully Delivered"
@@ -23,6 +25,21 @@ def normalize_bag_type(value):
 		return str(int(float(value)))
 	except (TypeError, ValueError):
 		return str(value).strip()
+
+
+def row_line_key(row, child_doctype="Bag Details"):
+	if getattr(row, "line_key", None):
+		return row.line_key
+
+	if getattr(row, "bag_configuration", None):
+		return get_line_key(bag_configuration=row.bag_configuration)
+
+	return get_line_key(
+		commodity=getattr(row, "commodity", None),
+		uom=getattr(row, "uom", None) or "Bag",
+		weight_kg=getattr(row, "weight_kg", None),
+		bag_weight=getattr(row, "bag_weight", None) or getattr(row, "bag_type", None),
+	)
 
 
 def get_inward_aawak(firm, lot_number, docstatus=1):
@@ -54,9 +71,16 @@ def get_inward_bag_map(inward_name):
 	for row in frappe.get_all(
 		"Bag Details",
 		filters={"parent": inward_name, "parenttype": "Inward Aawak"},
-		fields=["bag_weight", "number_of_bags"],
+		fields=[
+			"bag_configuration",
+			"commodity",
+			"uom",
+			"weight_kg",
+			"bag_weight",
+			"number_of_bags",
+		],
 	):
-		key = normalize_bag_type(row.bag_weight)
+		key = row_line_key(row)
 		if not key:
 			continue
 
@@ -89,9 +113,17 @@ def get_released_bag_map(firm, lot_number, exclude_jawak=None):
 		for row in frappe.get_all(
 			"Jawak Bag Detail",
 			filters={"parent": jawak_name, "parenttype": "Outward Jawak"},
-			fields=["bag_type", "release_bags"],
+			fields=[
+				"line_key",
+				"bag_configuration",
+				"commodity",
+				"uom",
+				"weight_kg",
+				"bag_type",
+				"release_bags",
+			],
 		):
-			key = normalize_bag_type(row.bag_type)
+			key = row_line_key(row, child_doctype="Jawak Bag Detail")
 			if not key:
 				continue
 
@@ -106,8 +138,8 @@ def get_remaining_bag_map(firm, lot_number, exclude_jawak=None):
 	released_map = get_released_bag_map(firm, lot_number, exclude_jawak)
 
 	remaining_map = {}
-	for bag_type, inward_qty in inward_map.items():
-		remaining_map[bag_type] = max(0, inward_qty - released_map.get(bag_type, 0))
+	for line_key, inward_qty in inward_map.items():
+		remaining_map[line_key] = max(0, inward_qty - released_map.get(line_key, 0))
 
 	return remaining_map, inward
 
@@ -123,8 +155,8 @@ def compute_delivery_status(inward_name, firm, lot_number, exclude_jawak=None):
 		return STATUS_SUBMITTED
 
 	if total_released >= total_inward:
-		for bag_type, inward_qty in inward_map.items():
-			if released_map.get(bag_type, 0) < inward_qty:
+		for line_key, inward_qty in inward_map.items():
+			if released_map.get(line_key, 0) < inward_qty:
 				return STATUS_PARTIALLY_DELIVERED
 		return STATUS_FULLY_DELIVERED
 
@@ -203,15 +235,28 @@ def get_remaining_bag_details(firm, lot_number, exclude_jawak=None):
 
 	bag_details = []
 	for row in inward_doc.bag_details:
-		bag_type = normalize_bag_type(row.bag_weight)
-		remaining = remaining_map.get(bag_type, 0)
+		line_key = row_line_key(row)
+		remaining = remaining_map.get(line_key, 0)
 		if remaining <= 0:
 			continue
 
+		description = format_line_description(
+			uom=row.uom,
+			weight_kg=row.weight_kg or row.bag_weight,
+			commodity=row.commodity,
+			bag_weight=row.bag_weight,
+		)
+
 		bag_details.append(
 			{
-				"bag_type": bag_type,
+				"line_key": line_key,
+				"bag_configuration": row.bag_configuration,
+				"bag_type": description,
 				"bag_weight": row.bag_weight,
+				"weight_kg": row.weight_kg or row.bag_weight,
+				"rate_type": row.rate_type,
+				"commodity": row.commodity,
+				"uom": row.uom,
 				"remaining_bags": remaining,
 				"rate": row.rate,
 			}
@@ -223,6 +268,15 @@ def get_remaining_bag_details(firm, lot_number, exclude_jawak=None):
 		"remaining_bags": sum(remaining_map.values()),
 		"bag_details": bag_details,
 	}
+
+
+def _line_label(row, remaining):
+	description = row.bag_type or format_line_description(
+		uom=row.uom,
+		weight_kg=row.weight_kg,
+		commodity=row.commodity,
+	)
+	return description or row.line_key or _("line {0}").format(row.idx)
 
 
 def validate_outward_release_bags(doc):
@@ -248,23 +302,24 @@ def validate_outward_release_bags(doc):
 		frappe.throw(_("Add at least one bag detail row"))
 
 	for row in doc.jawak_bag_details:
-		bag_type = normalize_bag_type(row.bag_type)
-		remaining = remaining_map.get(bag_type, 0)
+		line_key = row_line_key(row, child_doctype="Jawak Bag Detail")
+		remaining = remaining_map.get(line_key, 0)
+		label = _line_label(row, remaining)
 
 		if cint(row.release_bags) <= 0:
-			frappe.throw(_("Release bags must be greater than zero in row {0}").format(row.idx))
+			frappe.throw(_("Release quantity must be greater than zero in row {0}").format(row.idx))
 
 		if cint(row.release_bags) > remaining:
 			frappe.throw(
-				_(
-					"Release bags ({0}) exceed remaining bags ({1}) for bag type {2} kg in row {3}"
-				).format(row.release_bags, remaining, bag_type, row.idx)
+				_("Release quantity ({0}) exceeds remaining quantity ({1}) for {2} in row {3}").format(
+					row.release_bags, remaining, label, row.idx
+				)
 			)
 
 		if cint(row.total_bags) > remaining:
 			frappe.throw(
-				_("Available bags ({0}) exceed remaining bags ({1}) for bag type {2} kg in row {3}").format(
-					row.total_bags, remaining, bag_type, row.idx
+				_("Available quantity ({0}) exceeds remaining quantity ({1}) for {2} in row {3}").format(
+					row.total_bags, remaining, label, row.idx
 				)
 			)
 

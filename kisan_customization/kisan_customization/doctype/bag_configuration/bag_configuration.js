@@ -1,8 +1,9 @@
 // Copyright (c) 2026, Hidayatali and contributors
-// For license information, please see license.txt
 
-// frappe.ui.form.on("Bag Configuration", {
-// 	refresh(frm) {
-
-// 	},
-// });
+frappe.ui.form.on("Bag Configuration", {
+	rate_type(frm) {
+		if (frm.doc.rate_type === "General") {
+			frm.set_value("commodity", "");
+		}
+	},
+});

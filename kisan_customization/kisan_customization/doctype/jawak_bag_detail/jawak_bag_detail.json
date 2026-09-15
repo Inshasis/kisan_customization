@@ -6,10 +6,19 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
+  "bag_configuration",
+  "line_key",
   "bag_type",
+  "rate_type",
+  "commodity",
+  "uom",
+  "weight_kg",
   "total_bags",
   "release_bags",
   "rate",
+  "actual_storage_days",
+  "chargeable_period",
+  "chargeable_period_uom",
   "total_days",
   "base_total_amount",
   "add_amount",
@@ -17,47 +26,109 @@
  ],
  "fields": [
   {
+   "fieldname": "bag_configuration",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Bag Configuration",
+   "options": "Bag Configuration",
+   "read_only": 1
+  },
+  {
+   "fieldname": "line_key",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Line Key",
+   "read_only": 1
+  },
+  {
    "fieldname": "bag_type",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Bag Type (kg)",
+   "label": "Line Description",
    "read_only": 1,
    "reqd": 1
   },
   {
-   "description": "Remaining bags available for outward",
+   "fieldname": "rate_type",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Rate Type",
+   "read_only": 1
+  },
+  {
+   "fieldname": "commodity",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Commodity",
+   "options": "Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "uom",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "UOM",
+   "read_only": 1
+  },
+  {
+   "fieldname": "weight_kg",
+   "fieldtype": "Int",
+   "label": "Weight (Kg)",
+   "read_only": 1
+  },
+  {
+   "description": "Remaining quantity available for outward",
    "fieldname": "total_bags",
    "fieldtype": "Int",
    "in_list_view": 1,
-   "label": "Available Bags",
+   "label": "Available Qty",
    "read_only": 1,
    "reqd": 1
   },
   {
-   "description": "Editable, cannot exceed total_bags",
+   "description": "Editable, cannot exceed available quantity",
    "fieldname": "release_bags",
    "fieldtype": "Int",
    "in_list_view": 1,
-   "label": "Release Bags",
+   "label": "Release Qty",
    "reqd": 1
   },
   {
    "fieldname": "rate",
    "fieldtype": "Currency",
    "in_list_view": 1,
-   "label": "Rate per Bag per Month",
+   "label": "Rate per UOM per Month",
    "precision": "2",
    "read_only": 1,
    "reqd": 1
   },
   {
-   "description": "Auto-calculated storage duration",
+   "fieldname": "actual_storage_days",
+   "fieldtype": "Int",
+   "label": "Actual Storage Days",
+   "read_only": 1
+  },
+  {
+   "fieldname": "chargeable_period",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Chargeable Period",
+   "read_only": 1
+  },
+  {
+   "fieldname": "chargeable_period_uom",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Period UOM",
+   "read_only": 1
+  },
+  {
+   "description": "Chargeable days for General rate type",
    "fieldname": "total_days",
    "fieldtype": "Int",
    "in_list_view": 1,
    "label": "Total Days",
-   "read_only": 1,
-   "reqd": 1
+   "read_only": 1
   },
   {
    "description": "Calculated amount before add_amount",

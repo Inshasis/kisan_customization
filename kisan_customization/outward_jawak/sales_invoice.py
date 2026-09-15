@@ -39,6 +39,7 @@ def create_sales_invoice_for_jawak(doc):
 	si.company = doc.firm
 	si.set_posting_time = 1
 	si.posting_date = jawak_posting_date
+	si.custom_kisan_transaction_mode = "Regular"
 	si.due_date = jawak_posting_date
 	if jawak_datetime:
 		si.posting_time = jawak_datetime.strftime("%H:%M:%S")

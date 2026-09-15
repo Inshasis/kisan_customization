@@ -12,12 +12,18 @@
   "deduction_item",
   "broker_settings_section",
   "broker_commission_expense_account",
-  "days_settings_section",
+  "general_days_settings_section",
   "days_per_month",
   "column_break_djpq",
   "minimum_chargeable_days",
   "column_break_pznx",
   "extra_days_after_minimum",
+  "specific_days_settings_section",
+  "specific_minimum_days",
+  "column_break_specific_a",
+  "specific_extra_days",
+  "column_break_specific_b",
+  "specific_days_per_month",
   "deduction_settings_section",
   "deduction_tier_range",
   "bag_wise_deduction_section",
@@ -40,27 +46,64 @@
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "days_settings_section",
+   "fieldname": "general_days_settings_section",
    "fieldtype": "Section Break",
-   "label": "Days Settings"
+   "label": "General (All Cold Storage Commodities)"
   },
   {
    "default": "30",
+   "description": "Used to convert monthly rate to daily rate for General billing.",
    "fieldname": "days_per_month",
    "fieldtype": "Int",
    "label": "Days Per Month"
   },
   {
    "default": "15",
+   "description": "If storage days are at or below this value, this minimum is charged.",
    "fieldname": "minimum_chargeable_days",
    "fieldtype": "Int",
    "label": "Minimum Chargeable Days"
   },
   {
    "default": "2",
+   "description": "Added to actual days when storage exceeds the minimum (General billing only).",
    "fieldname": "extra_days_after_minimum",
    "fieldtype": "Int",
    "label": "Extra Days After Minimum"
+  },
+  {
+   "fieldname": "specific_days_settings_section",
+   "fieldtype": "Section Break",
+   "label": "Specific (Selected Commodities)"
+  },
+  {
+   "default": "30",
+   "description": "First billing month includes minimum days plus extra days (e.g. 30 + 2 = 32 days = 1 month). One day beyond that starts the next month.",
+   "fieldname": "specific_minimum_days",
+   "fieldtype": "Int",
+   "label": "Minimum Chargeable Days"
+  },
+  {
+   "default": "2",
+   "description": "Grace days included in the first month (added to minimum chargeable days).",
+   "fieldname": "specific_extra_days",
+   "fieldtype": "Int",
+   "label": "Extra Days After Minimum"
+  },
+  {
+   "fieldname": "column_break_specific_a",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_specific_b",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "30",
+   "description": "Each additional month after the first billing month is counted in blocks of this many days (e.g. day 33–62 = 2 months when set to 30).",
+   "fieldname": "specific_days_per_month",
+   "fieldtype": "Int",
+   "label": "Days Per Month"
   },
   {
    "fieldname": "deduction_settings_section",
@@ -114,11 +157,15 @@
    "fieldtype": "Link",
    "label": "Deduction Item",
    "options": "Item"
+  },
+  {
+   "fieldname": "column_break_ktjw",
+   "fieldtype": "Column Break"
   }
  ],
  "issingle": 1,
  "links": [],
- "modified": "2026-09-01 20:20:22.937657",
+ "modified": "2026-09-15 17:55:38.754923",
  "modified_by": "Administrator",
  "module": "Kisan Customization",
  "name": "Kisan Master Settings",

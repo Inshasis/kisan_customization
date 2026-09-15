@@ -579,7 +579,13 @@ function populateBagDetails(frm, aawak) {
 
 			data.bag_details.forEach((bagDetail) => {
 				const new_row = frm.add_child('jawak_bag_details');
+				frappe.model.set_value('Jawak Bag Detail', new_row.name, 'line_key', bagDetail.line_key);
+				frappe.model.set_value('Jawak Bag Detail', new_row.name, 'bag_configuration', bagDetail.bag_configuration);
 				frappe.model.set_value('Jawak Bag Detail', new_row.name, 'bag_type', bagDetail.bag_type);
+				frappe.model.set_value('Jawak Bag Detail', new_row.name, 'rate_type', bagDetail.rate_type);
+				frappe.model.set_value('Jawak Bag Detail', new_row.name, 'commodity', bagDetail.commodity);
+				frappe.model.set_value('Jawak Bag Detail', new_row.name, 'uom', bagDetail.uom);
+				frappe.model.set_value('Jawak Bag Detail', new_row.name, 'weight_kg', bagDetail.weight_kg);
 				frappe.model.set_value('Jawak Bag Detail', new_row.name, 'total_bags', bagDetail.remaining_bags);
 				frappe.model.set_value('Jawak Bag Detail', new_row.name, 'release_bags', bagDetail.remaining_bags);
 				frappe.model.set_value('Jawak Bag Detail', new_row.name, 'rate', bagDetail.rate || 0);
@@ -600,109 +606,81 @@ function recalculateAllAmounts(frm) {
 	console.log('Recalculating all amounts for jawak_date:', frm.doc.jawak_date);
 
 	const calcToken = ++recalcToken;
+	const rows = (frm.doc.jawak_bag_details || []).filter((row) => locals['Jawak Bag Detail']?.[row.name]);
 
-	// Fetch settings ONCE to avoid N+1 queries and race conditions
-	frappe.call({
-		method: 'frappe.client.get',
-		args: {
-			doctype: 'Kisan Master Settings',
-			name: 'Kisan Master Settings'
-		},
-		callback: function (r) {
-			if (calcToken !== recalcToken) {
-				return;
-			}
+	if (!rows.length) {
+		calculateParentTotals(frm);
+		return;
+	}
 
-			if (r.message) {
-				let settings = r.message;
+	let pending = rows.length;
 
-				if (frm.doc.jawak_bag_details) {
-					frm.doc.jawak_bag_details.forEach(row => {
-						if (!locals['Jawak Bag Detail']?.[row.name]) {
-							return;
-						}
-						performRowCalculation(frm, 'Jawak Bag Detail', row.name, settings);
-					});
-				}
-
+	rows.forEach((row) => {
+		calculateRowAmount(frm, 'Jawak Bag Detail', row.name, false, calcToken, () => {
+			pending -= 1;
+			if (pending === 0 && calcToken === recalcToken) {
 				frm.refresh_field('jawak_bag_details');
 				calculateParentTotals(frm);
 			}
-		}
+		});
 	});
 }
 
-function calculateRowAmount(frm, cdt, cdn, updateParent = false) {
-	const calcToken = ++recalcToken;
+function calculateRowAmount(frm, cdt, cdn, updateParent = false, calcToken = null, onDone = null) {
+	const token = calcToken === null ? ++recalcToken : calcToken;
+	const row = locals[cdt]?.[cdn];
+
+	if (!row || !frm.doc.jawak_date || !currentAawak || !currentAawak.aawak_date) {
+		if (onDone) {
+			onDone();
+		}
+		return;
+	}
 
 	frappe.call({
-		method: 'frappe.client.get',
+		method: 'kisan_customization.utils.rent_calculation.calculate_rent_line',
 		args: {
-			doctype: 'Kisan Master Settings',
-			name: 'Kisan Master Settings'
+			rate_type: row.rate_type || 'General',
+			qty: row.release_bags,
+			rate: row.rate,
+			aawak_date: currentAawak.aawak_date,
+			jawak_date: frm.doc.jawak_date,
+			add_amount: row.add_amount || 0,
 		},
 		callback: function (r) {
-			if (calcToken !== recalcToken) {
+			if (token !== recalcToken) {
+				if (onDone) {
+					onDone();
+				}
 				return;
 			}
 
 			if (r.message) {
-				performRowCalculation(frm, cdt, cdn, r.message);
+				applyRentCalculationToRow(cdt, cdn, r.message);
 				if (updateParent) {
 					calculateParentTotals(frm);
 				}
 			}
-		}
+
+			if (onDone) {
+				onDone();
+			}
+		},
 	});
 }
 
+function applyRentCalculationToRow(cdt, cdn, calc) {
+	frappe.model.set_value(cdt, cdn, 'actual_storage_days', calc.actual_storage_days);
+	frappe.model.set_value(cdt, cdn, 'chargeable_period', calc.chargeable_period);
+	frappe.model.set_value(cdt, cdn, 'chargeable_period_uom', calc.chargeable_period_uom);
+	frappe.model.set_value(cdt, cdn, 'total_days', calc.total_days);
+	frappe.model.set_value(cdt, cdn, 'base_total_amount', calc.base_total_amount);
+	frappe.model.set_value(cdt, cdn, 'total_amount', calc.total_amount);
+}
+
 function performRowCalculation(frm, cdt, cdn, settings) {
-	let row = locals[cdt]?.[cdn];
-	if (!row) {
-		return;
-	}
-
-	if (!frm.doc.jawak_date || !currentAawak || !currentAawak.aawak_date) {
-		return;
-	}
-
-	let aawakDate = new Date(currentAawak.aawak_date);
-	let jawakDate = new Date(frm.doc.jawak_date);
-
-	let aawakDay = new Date(aawakDate.getFullYear(), aawakDate.getMonth(), aawakDate.getDate());
-	let jawakDay = new Date(jawakDate.getFullYear(), jawakDate.getMonth(), jawakDate.getDate());
-	let actualDays = Math.round((jawakDay - aawakDay) / (1000 * 60 * 60 * 24));
-
-	let minDays = parseInt(settings.minimum_chargeable_days) || 15;
-	let extraDays = parseInt(settings.extra_days_after_minimum) || 2;
-	let daysPerMonth = parseInt(settings.days_per_month) || 30;
-
-	// Calculate chargeable days
-	let chargeableDays;
-	if (actualDays <= minDays) {
-		chargeableDays = minDays;
-	} else {
-		chargeableDays = actualDays + extraDays;
-	}
-
-	// Update total days
-	frappe.model.set_value(cdt, cdn, 'total_days', chargeableDays);
-
-	// Calculate base amount (before add_amount)
-	if (row.release_bags && row.rate) {
-		let dailyRate = row.rate / daysPerMonth;
-		let baseAmount = row.release_bags * dailyRate * chargeableDays;
-		baseAmount = Math.round(baseAmount * 100) / 100; // Keep 2 decimal precision for base
-
-		// Store base amount for use when add_amount changes
-		frappe.model.set_value(cdt, cdn, 'base_total_amount', baseAmount);
-
-		// Calculate total_amount = base_total_amount + add_amount, rounded to nearest whole number
-		let addAmount = row.add_amount || 0;
-		let totalAmount = Math.round(baseAmount + addAmount);
-
-		frappe.model.set_value(cdt, cdn, 'total_amount', totalAmount);
-	}
+	// Kept for backward compatibility; rent is calculated via calculateRowAmount().
+	calculateRowAmount(frm, cdt, cdn, false);
 }
 
 function calculateParentTotals(frm) {
@@ -719,16 +697,17 @@ function calculateParentTotals(frm) {
 			totalBags += row.total_bags || 0;
 			releasedBags += row.release_bags || 0;
 
-			// bag_type contains the bag weight (e.g., "5" for 5kg bags)
-			let bagWeight = parseFloat(row.bag_type) || 0;
-			totalWeight += (row.total_bags || 0) * bagWeight;
-			releasedWeight += (row.release_bags || 0) * bagWeight;
+			const weight = parseFloat(row.weight_kg || row.bag_type) || 0;
+			if (weight > 0) {
+				totalWeight += (row.total_bags || 0) * weight;
+				releasedWeight += (row.release_bags || 0) * weight;
+			}
 			totalAmount += row.total_amount || 0;
 
 			console.log('Row totals:', {
 				totalBags: row.total_bags,
 				releasedBags: row.release_bags,
-				bagWeight: bagWeight,
+				bagWeight: weight,
 				totalAmount: row.total_amount
 			});
 		});

@@ -46,6 +46,9 @@ def ensure_master_settings_defaults():
 		("days_per_month", 30),
 		("minimum_chargeable_days", 15),
 		("extra_days_after_minimum", 2),
+		("specific_minimum_days", 30),
+		("specific_extra_days", 2),
+		("specific_days_per_month", 30),
 	):
 		if _set_default_if_empty(settings, fieldname, value):
 			changed = True

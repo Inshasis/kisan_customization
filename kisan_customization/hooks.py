@@ -38,6 +38,10 @@ fixtures = [
 					"Purchase Invoice-custom_broker_commission_amount",
 					"Purchase Invoice-custom_payment_days",
 					"Purchase Invoice-custom_supplier_invoice_amount",
+					"Purchase Order-custom_kisan_transaction_mode",
+					"Purchase Invoice-custom_kisan_transaction_mode",
+					"Sales Order-custom_kisan_transaction_mode",
+					"Sales Invoice-custom_kisan_transaction_mode",
 					"Purchase Order-custom_section_break_lqipi",
 					"Purchase Order-custom_broker",
 					"Purchase Order-custom_column_break_1ked0",
@@ -140,21 +144,25 @@ fixtures = [
 # include js in doctype views
 doctype_js = {
 	"Purchase Invoice": [
+		"public/js/kisan_transaction_mode.js",
 		"public/js/broker_commission.js",
 		"public/js/delivery_payment_days.js",
 		"public/js/purchase_invoice.js",
 	],
 	"Purchase Order": [
+		"public/js/kisan_transaction_mode.js",
 		"public/js/delivery_payment_days.js",
 		"public/js/broker_commission.js",
 		"public/js/purchase_order.js",
 	],
 	"Sales Order": [
+		"public/js/kisan_transaction_mode.js",
 		"public/js/delivery_payment_days.js",
 		"public/js/broker_commission.js",
 		"public/js/sales_order.js",
 	],
 	"Sales Invoice": [
+		"public/js/kisan_transaction_mode.js",
 		"public/js/broker_commission.js",
 		"public/js/delivery_payment_days.js",
 		"public/js/sales_invoice.js",

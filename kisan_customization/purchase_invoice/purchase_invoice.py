@@ -20,23 +20,22 @@ from kisan_customization.purchase_invoice.validation import (
 	remove_kisan_deduction_taxes,
 	validate_supplier_invoice_amount,
 )
+from kisan_customization.utils.transaction_mode import is_kisan_custom
 
 
 def validate(doc, method=None):
-	if not doc.get("is_return"):
+	if doc.get("is_return"):
+		recalculate_bag_weights(doc)
+		remove_deduction_item_rows(doc)
+		validate_unique_debit_note(doc)
+		sync_deduction_item_row(doc)
+	elif is_kisan_custom(doc):
 		validate_supplier_invoice_amount(doc)
 		validate_bag_details(doc)
 		recalculate_bag_weights(doc)
 		recalculate_existing_deductions(doc)
 		validate_sauda_qty_range(doc)
-	else:
-		recalculate_bag_weights(doc)
-		remove_deduction_item_rows(doc)
-		validate_unique_debit_note(doc)
-
-	if doc.get("is_return"):
-		sync_deduction_item_row(doc)
-	remove_kisan_deduction_taxes(doc)
-	clear_booking_purchase_invoice_taxes(doc)
-	sync_payment_terms_from_linked_po(doc)
-	apply_payment_days_to_invoice(doc)
+		remove_kisan_deduction_taxes(doc)
+		clear_booking_purchase_invoice_taxes(doc)
+		sync_payment_terms_from_linked_po(doc)
+		apply_payment_days_to_invoice(doc)

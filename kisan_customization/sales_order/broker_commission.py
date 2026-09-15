@@ -3,8 +3,12 @@
 import frappe
 from frappe.utils import flt
 
+from kisan_customization.utils.transaction_mode import is_kisan_custom
+
 
 def sync_broker_commission(doc):
+	if not is_kisan_custom(doc):
+		return
 	if not doc.meta.has_field("custom_broker_commission_amount"):
 		return
 
@@ -24,13 +28,16 @@ def sync_broker_commission(doc):
 
 
 def validate(doc, method=None):
-	if doc.docstatus != 0:
+	if doc.docstatus != 0 or not is_kisan_custom(doc):
 		return
 
 	sync_broker_commission(doc)
 
 
 def before_submit(doc, method=None):
+	if not is_kisan_custom(doc):
+		return
+
 	sync_broker_commission(doc)
 
 	if not doc.meta.has_field("custom_broker_commission_amount"):

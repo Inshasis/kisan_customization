@@ -43,7 +43,9 @@ function patch_purchase_order_controller() {
 
 	POController.prototype.refresh = function (...args) {
 		const result = original_refresh.apply(this, args);
-		hide_purchase_order_create_options(this.frm);
+		if (kisan_customization.transaction_mode.is_kisan_custom(this.frm)) {
+			hide_purchase_order_create_options(this.frm);
+		}
 		return result;
 	};
 
@@ -58,15 +60,29 @@ frappe.ui.form.on("Purchase Order", {
 	},
 
 	onload(frm) {
-		apply_purchase_order_filters(frm);
+		if (kisan_customization.transaction_mode.is_kisan_custom(frm)) {
+			apply_purchase_order_filters(frm);
+		}
 	},
 
 	supplier(frm) {
-		apply_purchase_order_filters(frm);
+		if (kisan_customization.transaction_mode.is_kisan_custom(frm)) {
+			apply_purchase_order_filters(frm);
+		}
+	},
+
+	kisan_transaction_mode_set(frm) {
+		if (kisan_customization.transaction_mode.is_kisan_custom(frm)) {
+			apply_purchase_order_filters(frm);
+		}
 	},
 
 	refresh(frm) {
 		// ERPNext buying controller resets queries on load/refresh — re-apply after it runs.
-		setTimeout(() => apply_purchase_order_filters(frm));
+		setTimeout(() => {
+			if (kisan_customization.transaction_mode.is_kisan_custom(frm)) {
+				apply_purchase_order_filters(frm);
+			}
+		});
 	},
 });

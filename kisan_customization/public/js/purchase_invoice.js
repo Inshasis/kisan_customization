@@ -1,3 +1,5 @@
+frappe.provide("kisan_customization.purchase_invoice");
+
 kisan_customization.broker_commission.bind("Purchase Invoice");
 kisan_customization.delivery_payment_days.bind("Purchase Invoice");
 
@@ -19,7 +21,9 @@ function patch_purchase_invoice_controller() {
 
 	PIController.prototype.refresh = function (...args) {
 		const result = original_refresh.apply(this, args);
-		hide_purchase_invoice_create_options(this.frm);
+		if (kisan_customization.transaction_mode.is_kisan_custom(this.frm)) {
+			hide_purchase_invoice_create_options(this.frm);
+		}
 		return result;
 	};
 
@@ -83,14 +87,22 @@ function toggle_return_pi_sections(frm) {
 		if (frm.fields_dict[fieldname]) {
 			frm.toggle_display(fieldname, !is_return);
 		}
-	});
-
-	PI_TOTAL_FIELDS_ALWAYS_VISIBLE.forEach((fieldname) => {
-		if (frm.fields_dict[fieldname]) {
-			frm.toggle_display(fieldname, true);
+		if (is_return) {
+			frm.set_df_property(fieldname, "hidden", 1);
 		}
 	});
+
+	if (is_return) {
+		PI_TOTAL_FIELDS_ALWAYS_VISIBLE.forEach((fieldname) => {
+			if (frm.fields_dict[fieldname]) {
+				frm.toggle_display(fieldname, true);
+				frm.set_df_property(fieldname, "hidden", 0);
+			}
+		});
+	}
 }
+
+kisan_customization.purchase_invoice.apply_return_layout = toggle_return_pi_sections;
 
 frappe.ui.form.on("Purchase Invoice", {
 	setup() {
@@ -98,11 +110,20 @@ frappe.ui.form.on("Purchase Invoice", {
 	},
 
 	onload(frm) {
-		load_bag_type_options(frm);
-		if (frm.is_new() && !frm.doc.is_return && !frm.doc.custom_bag_details?.length) {
-			load_default_bag_rows(frm);
-		}
 		toggle_return_pi_sections(frm);
+		if (
+			kisan_customization.transaction_mode.is_kisan_custom(frm) &&
+			frm.doc[kisan_customization.transaction_mode.FIELD]
+		) {
+			kisan_customization.transaction_mode.init_kisan_purchase_invoice_ui(frm);
+		}
+	},
+
+	kisan_transaction_mode_set(frm) {
+		if (!kisan_customization.transaction_mode.is_kisan_custom(frm)) {
+			return;
+		}
+		kisan_customization.transaction_mode.init_kisan_purchase_invoice_ui(frm);
 	},
 
 	is_return(frm) {
@@ -110,14 +131,25 @@ frappe.ui.form.on("Purchase Invoice", {
 	},
 
 	refresh(frm) {
-		load_bag_type_options(frm);
+		if (
+			kisan_customization.transaction_mode.is_kisan_custom(frm) &&
+			frm.doc[kisan_customization.transaction_mode.FIELD]
+		) {
+			load_bag_type_options(frm);
+		}
 		toggle_return_pi_sections(frm);
 
 		if (!frm.is_new()) {
 			add_post_submit_buttons(frm);
 		}
 
-		if (frm.is_new() || frm.doc.is_return) return;
+		if (
+			frm.is_new() ||
+			frm.doc.is_return ||
+			!kisan_customization.transaction_mode.is_kisan_custom(frm)
+		) {
+			return;
+		}
 		if (!can_show_deduction_button(frm)) return;
 
 		const total = get_existing_deduction_total(frm);
@@ -149,6 +181,10 @@ frappe.ui.form.on("Purchase Invoice", {
 	},
 
 	validate(frm) {
+		if (!kisan_customization.transaction_mode.is_kisan_custom(frm)) {
+			return;
+		}
+
 		validate_supplier_invoice_amount_client(frm);
 
 		const total_bags = flt(frm.doc.custom_total_bags);
@@ -164,6 +200,9 @@ frappe.ui.form.on("Purchase Invoice", {
 	},
 
 	before_submit(frm) {
+		if (!kisan_customization.transaction_mode.is_kisan_custom(frm)) {
+			return;
+		}
 		return confirm_deductions_before_submit(frm);
 	},
 });
@@ -178,6 +217,13 @@ frappe.ui.form.on("Purchase Invoice Item", {
 		update_deduction_header_fields(frm);
 	},
 });
+
+kisan_customization.transaction_mode.init_kisan_purchase_invoice_ui = function (frm) {
+	load_bag_type_options(frm);
+	if (frm.is_new() && !frm.doc.is_return && !frm.doc.custom_bag_details?.length) {
+		load_default_bag_rows(frm);
+	}
+};
 
 frappe.ui.form.on("Purchase Invoice Bag Detail", {
 	bag_type(frm, cdt, cdn) {
@@ -207,6 +253,7 @@ frappe.ui.form.on("Purchase Invoice Bag Detail", {
 
 function add_post_submit_buttons(frm) {
 	if (frm.doc.docstatus !== 1 || frm.doc.is_return) return;
+	if (!kisan_customization.transaction_mode.is_kisan_custom(frm)) return;
 
 	frappe.call({
 		method: "kisan_customization.purchase_invoice.debit_note.has_active_debit_note",

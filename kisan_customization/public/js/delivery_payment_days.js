@@ -34,6 +34,9 @@ kisan_customization.delivery_payment_days.add_days = function (frm, days) {
 };
 
 kisan_customization.delivery_payment_days.apply_delivery_days = function (frm) {
+	if (!kisan_customization.delivery_payment_days.is_active(frm)) {
+		return;
+	}
 	const days = frm.doc.custom_delivery_days;
 	if (!days) return;
 
@@ -66,6 +69,9 @@ kisan_customization.delivery_payment_days.apply_delivery_days = function (frm) {
 };
 
 kisan_customization.delivery_payment_days.sync_payment_amounts = function (frm) {
+	if (!kisan_customization.delivery_payment_days.is_active(frm)) {
+		return;
+	}
 	const schedule = frm.doc.payment_schedule || [];
 	if (!schedule.length) return;
 
@@ -76,6 +82,9 @@ kisan_customization.delivery_payment_days.sync_payment_amounts = function (frm) 
 };
 
 kisan_customization.delivery_payment_days.apply_payment_days = function (frm) {
+	if (!kisan_customization.delivery_payment_days.is_active(frm)) {
+		return;
+	}
 	const days = frm.doc.custom_payment_days;
 	if (!days) return;
 
@@ -108,7 +117,17 @@ kisan_customization.delivery_payment_days.apply_payment_days = function (frm) {
 	}
 };
 
+kisan_customization.delivery_payment_days.is_active = function (frm) {
+	if (!["Purchase Order", "Purchase Invoice"].includes(frm.doctype)) {
+		return true;
+	}
+	return kisan_customization.transaction_mode.is_kisan_custom(frm);
+};
+
 kisan_customization.delivery_payment_days.apply_all = function (frm) {
+	if (!kisan_customization.delivery_payment_days.is_active(frm)) {
+		return;
+	}
 	if (frm.doc.custom_delivery_days) {
 		kisan_customization.delivery_payment_days.apply_delivery_days(frm);
 	}

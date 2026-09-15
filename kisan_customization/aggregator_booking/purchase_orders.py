@@ -5,6 +5,7 @@ from frappe import _
 from frappe.utils import flt, get_link_to_form
 
 from kisan_customization.aggregator_booking.discount import apply_booking_discount_to_po
+from kisan_customization.utils.transaction_mode import MODE_FIELD, MODE_KISAN
 from kisan_customization.aggregator_booking.terms import (
 	apply_booking_terms_to_po,
 	compute_delivery_date,
@@ -21,6 +22,8 @@ def create_purchase_orders_for_booking(doc):
 		po = frappe.new_doc("Purchase Order")
 		po.supplier = supplier
 		po.company = doc.company
+		if po.meta.has_field(MODE_FIELD):
+			po.set(MODE_FIELD, MODE_KISAN)
 		po.transaction_date = doc.booking_date
 
 		if frappe.db.has_column("Purchase Order", "custom_aggregator_booking"):

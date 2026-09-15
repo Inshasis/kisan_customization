@@ -10,6 +10,7 @@ from kisan_customization.aggregator_booking.terms import (
 	persist_pi_booking_terms,
 )
 from kisan_customization.purchase_invoice.validation import remove_template_tax_deductions
+from kisan_customization.utils.transaction_mode import MODE_FIELD, MODE_KISAN
 
 
 def create_purchase_invoices_for_booking(doc):
@@ -20,6 +21,8 @@ def create_purchase_invoices_for_booking(doc):
 		pi = frappe.new_doc("Purchase Invoice")
 		pi.supplier = supplier
 		pi.company = doc.company
+		if pi.meta.has_field(MODE_FIELD):
+			pi.set(MODE_FIELD, MODE_KISAN)
 		pi.posting_date = doc.booking_date
 		pi.bill_date = doc.booking_date
 		pi.set_posting_time = 1

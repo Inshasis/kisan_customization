@@ -11,6 +11,7 @@ frappe.ui.form.on("Sales Invoice", {
 
 function add_broker_commission_button(frm) {
 	if (frm.doc.docstatus !== 1 || !frm.doc.custom_broker) return;
+	if (!kisan_customization.transaction_mode.is_kisan_custom(frm)) return;
 
 	frappe.db.get_value(
 		"Broker Commission",

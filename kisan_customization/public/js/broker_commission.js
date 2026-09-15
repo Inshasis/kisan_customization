@@ -1,6 +1,16 @@
 frappe.provide("kisan_customization.broker_commission");
 
+kisan_customization.broker_commission.is_active = function (frm) {
+	return (
+		kisan_customization.transaction_mode.is_kisan_custom(frm) && !frm.doc.is_return
+	);
+};
+
 kisan_customization.broker_commission.toggle_fields = function (frm) {
+	if (!kisan_customization.broker_commission.is_active(frm)) {
+		return;
+	}
+
 	const commission_type = frm.doc.custom_commission_type;
 	const show_percent = commission_type === "Percentage";
 	const show_amount = commission_type === "Total Qty";
@@ -38,7 +48,7 @@ kisan_customization.broker_commission.get_commission_base = function (frm) {
 
 kisan_customization.broker_commission.calculate = function (frm) {
 	if (!frm.fields_dict.custom_broker_commission_amount) return;
-	if (frm.doc.is_return) return;
+	if (!kisan_customization.broker_commission.is_active(frm)) return;
 
 	const commission_type = frm.doc.custom_commission_type;
 	let commission_amount = 0;
@@ -80,7 +90,7 @@ kisan_customization.broker_commission.bind = function (doctype) {
 		},
 
 		custom_broker(frm) {
-			if (frm.doc.docstatus === 0 && !frm.doc.is_return) {
+			if (frm.doc.docstatus === 0) {
 				kisan_customization.broker_commission.calculate(frm);
 			}
 		},
@@ -119,8 +129,11 @@ kisan_customization.broker_commission.bind = function (doctype) {
 		},
 
 		refresh(frm) {
+			if (!kisan_customization.broker_commission.is_active(frm)) {
+				return;
+			}
 			kisan_customization.broker_commission.toggle_fields(frm);
-			if (frm.doc.docstatus === 0 && !frm.doc.is_return) {
+			if (frm.doc.docstatus === 0) {
 				kisan_customization.broker_commission.calculate(frm);
 			}
 		},

@@ -7,6 +7,7 @@ from kisan_customization.broker_commission.service import (
 	clear_broker_commission_fields,
 	create_broker_commission_on_submit,
 )
+from kisan_customization.utils.transaction_mode import is_kisan_custom
 
 
 def sync_broker_commission(doc):
@@ -42,17 +43,24 @@ def validate(doc, method=None):
 		clear_broker_commission_fields(doc)
 		return
 
+	if not is_kisan_custom(doc):
+		clear_broker_commission_fields(doc)
+		return
+
 	sync_broker_commission(doc)
 
 
 def before_submit(doc, method=None):
-	if doc.get("is_return"):
+	if doc.get("is_return") or not is_kisan_custom(doc):
 		return
 
 	sync_broker_commission(doc)
 
 
 def on_submit(doc, method=None):
+	if not is_kisan_custom(doc):
+		return
+
 	sync_broker_commission(doc)
 	create_broker_commission_on_submit(doc)
 

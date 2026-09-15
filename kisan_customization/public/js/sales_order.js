@@ -56,7 +56,9 @@ function patch_sales_order_controller() {
 
 	SOController.prototype.refresh = function (...args) {
 		const result = original_refresh.apply(this, args);
-		hide_sales_order_create_options(this.frm);
+		if (kisan_customization.transaction_mode.is_kisan_custom(this.frm)) {
+			hide_sales_order_create_options(this.frm);
+		}
 		return result;
 	};
 
@@ -71,18 +73,29 @@ frappe.ui.form.on("Sales Order", {
 	},
 
 	onload(frm) {
-		apply_sales_order_filters(frm);
+		if (kisan_customization.transaction_mode.is_kisan_custom(frm)) {
+			apply_sales_order_filters(frm);
+		}
 	},
 
 	customer(frm) {
-		apply_sales_order_filters(frm);
+		if (kisan_customization.transaction_mode.is_kisan_custom(frm)) {
+			apply_sales_order_filters(frm);
+		}
+	},
+
+	kisan_transaction_mode_set(frm) {
+		if (kisan_customization.transaction_mode.is_kisan_custom(frm)) {
+			apply_sales_order_filters(frm);
+		}
 	},
 
 	refresh(frm) {
-		// ERPNext selling controller resets queries on load/refresh — re-apply after it runs.
 		setTimeout(() => {
-			apply_sales_order_filters(frm);
-			hide_sales_order_create_options(frm);
+			if (kisan_customization.transaction_mode.is_kisan_custom(frm)) {
+				apply_sales_order_filters(frm);
+				hide_sales_order_create_options(frm);
+			}
 		});
 	},
 });

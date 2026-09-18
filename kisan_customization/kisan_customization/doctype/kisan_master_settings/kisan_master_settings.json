@@ -24,11 +24,10 @@
   "specific_minimum_days",
   "column_break_specific_b",
   "specific_extra_days",
-  "deduction_settings_section",
-  "deduction_tier_range",
   "bag_wise_deduction_section",
   "bag_wise_deductions",
-  "column_break_ktjw"
+  "column_break_ktjw",
+  "deduction_tier_range"
  ],
  "fields": [
   {
@@ -107,11 +106,6 @@
    "label": "Days Per Month"
   },
   {
-   "fieldname": "deduction_settings_section",
-   "fieldtype": "Section Break",
-   "label": "Deduction Settings"
-  },
-  {
    "fieldname": "deduction_tier_range",
    "fieldtype": "Table",
    "label": "Deduction Tier Range",
@@ -120,7 +114,7 @@
   {
    "fieldname": "bag_wise_deduction_section",
    "fieldtype": "Section Break",
-   "label": "Bag Wise Deduction"
+   "label": "Deduction Setting"
   },
   {
    "fieldname": "bag_wise_deductions",
@@ -166,7 +160,7 @@
  ],
  "issingle": 1,
  "links": [],
- "modified": "2026-09-18 10:02:20.593543",
+ "modified": "2026-09-18 10:05:14.427949",
  "modified_by": "Administrator",
  "module": "Kisan Customization",
  "name": "Kisan Master Settings",

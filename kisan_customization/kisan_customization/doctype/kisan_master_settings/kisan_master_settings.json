@@ -19,15 +19,16 @@
   "column_break_pznx",
   "extra_days_after_minimum",
   "specific_days_settings_section",
-  "specific_minimum_days",
-  "column_break_specific_a",
-  "specific_extra_days",
-  "column_break_specific_b",
   "specific_days_per_month",
+  "column_break_specific_a",
+  "specific_minimum_days",
+  "column_break_specific_b",
+  "specific_extra_days",
   "deduction_settings_section",
   "deduction_tier_range",
   "bag_wise_deduction_section",
-  "bag_wise_deductions"
+  "bag_wise_deductions",
+  "column_break_ktjw"
  ],
  "fields": [
   {
@@ -100,7 +101,7 @@
   },
   {
    "default": "30",
-   "description": "Each additional month after the first billing month is counted in blocks of this many days (e.g. day 33–62 = 2 months when set to 30).",
+   "description": "Each additional month after the first billing month is counted in blocks of this many days (e.g. day 33\u201362 = 2 months when set to 30).",
    "fieldname": "specific_days_per_month",
    "fieldtype": "Int",
    "label": "Days Per Month"
@@ -165,7 +166,7 @@
  ],
  "issingle": 1,
  "links": [],
- "modified": "2026-09-15 17:55:38.754923",
+ "modified": "2026-09-18 10:02:20.593543",
  "modified_by": "Administrator",
  "module": "Kisan Customization",
  "name": "Kisan Master Settings",

@@ -1,0 +1,293 @@
+{# GOODS RECEIPT NOTE / PURCHASE SETTLEMENT ADVICE — compact A4 #}
+{% set d = frappe.call("kisan_customization.purchase_invoice.print_context.get_settlement_print_data", purchase_invoice=doc.name) %}
+
+<style>
+:root {
+	--kpsa-w: 210mm;
+	--kpsa-h: 297mm;
+	--kpsa-m: 8mm;
+	--kpsa-blue: #b4c6e7;
+}
+@page { size: A4 portrait; margin: 8mm; }
+html, body { margin: 0; padding: 0; }
+.print-format { padding: 0 !important; margin: 0 !important; max-width: none !important; }
+.print-format .print-format-margin { margin: 0 !important; padding: 0 !important; }
+
+.kpsa-a4 {
+	box-sizing: border-box;
+	width: var(--kpsa-w);
+	max-width: var(--kpsa-w);
+	min-height: var(--kpsa-h);
+	margin: 0 auto;
+	padding: var(--kpsa-m);
+	background: #fff;
+}
+.kpsa { font-family: Arial, Helvetica, sans-serif; font-size: 7.5px; color: #111; line-height: 1.22; }
+.kpsa table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.kpsa td, .kpsa th { border: 1px solid #222; padding: 1px 2px; vertical-align: middle; word-wrap: break-word; }
+.kpsa .nob { border: none !important; }
+.kpsa .ctr { text-align: center; }
+.kpsa .rgt { text-align: right; }
+.kpsa .b { font-weight: 700; }
+.kpsa .sec-bar td { background: var(--kpsa-blue); font-weight: 700; text-align: center; padding: 2px; font-size: 8px; }
+.kpsa .tbl-hdr th { background: var(--kpsa-blue); font-weight: 700; text-align: center; font-size: 7px; padding: 1px; }
+.kpsa .sec-total td { background: #eef2f8; font-weight: 700; font-size: 7.5px; }
+.kpsa .block { margin-top: 2px; }
+.kpsa .logo-wrap {
+	border: 1px solid #333;
+	height: 40px;
+	width: 26mm;
+	display: table-cell;
+	vertical-align: middle;
+	text-align: center;
+	padding: 2px;
+	box-sizing: border-box;
+}
+.kpsa .logo-wrap img { max-height: 36px; max-width: 100%; object-fit: contain; vertical-align: middle; }
+.kpsa .logo-ph { font-size: 11px; font-weight: 700; color: #1e3a5f; }
+.kpsa .hdr-co { font-size: 10px; font-weight: 700; text-align: center; }
+.kpsa .hdr-addr { font-size: 7px; text-align: center; line-height: 1.25; margin-top: 1px; }
+.kpsa .hdr-gst { font-size: 7px; text-align: center; }
+.kpsa .hdr-title {
+	font-size: 8.5px;
+	font-weight: 700;
+	text-transform: uppercase;
+	border: 1px solid #222;
+	padding: 3px 2px;
+	text-align: center;
+	margin-top: 2px;
+	background: #fafafa;
+}
+.kpsa .meta3 > tbody > tr > td { font-size: 7px; vertical-align: top; padding: 2px 3px; }
+.kpsa .meta3 .lbl { font-weight: 700; width: 46%; padding-right: 3px; }
+.kpsa .rate-uom { font-size: 6px; display: block; text-align: right; line-height: 1; color: #444; }
+.kpsa .pair-main { width: 73%; vertical-align: top; padding: 0 !important; }
+.kpsa .pair-side { width: 27%; vertical-align: top; padding: 0 0 0 2px !important; }
+.kpsa .tax-side td { font-size: 7px; padding: 1px 2px; }
+.kpsa .tax-side .lbl { font-weight: 700; width: 54%; }
+.kpsa .tax-side .tax-hdr td { background: var(--kpsa-blue); font-weight: 700; text-align: center; font-size: 7px; }
+.kpsa .net-row td { background: #dce6f2; font-weight: 700; }
+.kpsa .foot { margin-top: 3px; font-size: 6.5px; color: #333; line-height: 1.3; }
+.kpsa .foot p { margin: 0 0 2px; }
+.kpsa .sign { margin-top: 8px; }
+.kpsa .sign td { border: none; text-align: center; padding-top: 14px; border-top: 1px solid #222 !important; font-size: 7px; }
+
+@media screen {
+	body[data-route="print"] .print-format,
+	.print-format {
+		background: #cfd4da !important;
+		padding: 8px !important;
+	}
+	.kpsa-a4 {
+		box-shadow: 0 0 0 1px #999, 0 2px 6px rgba(0, 0, 0, 0.12);
+	}
+}
+@media print {
+	.print-format, .print-format .print-format-margin { background: transparent !important; padding: 0 !important; }
+	.kpsa-a4 { width: auto; min-height: auto; padding: 0; box-shadow: none !important; }
+	.kpsa .sec-bar td, .kpsa .tbl-hdr th, .kpsa .tax-side .tax-hdr td, .kpsa .net-row td, .kpsa .sec-total td {
+		-webkit-print-color-adjust: exact;
+		print-color-adjust: exact;
+	}
+}
+</style>
+
+<div class="kpsa-a4">
+<div class="kpsa">
+
+	<table class="nob block" style="margin-top:0;">
+		<tr>
+			<td class="nob" style="width:20%; vertical-align:middle;">
+				<div class="logo-wrap">
+					{% if d.company_logo %}
+						<img src="{{ d.company_logo }}" alt="">
+					{% elif letter_head and letter_head.image %}
+						<img src="{{ letter_head.image }}" alt="">
+					{% elif letter_head and letter_head.content %}
+						{{ letter_head.content }}
+					{% else %}
+						<span class="logo-ph">{{ d.company_abbr or "LOGO" }}</span>
+					{% endif %}
+				</div>
+			</td>
+			<td class="nob" style="width:80%; vertical-align:middle;">
+				<div class="hdr-co">{{ d.company_name }}</div>
+				<div class="hdr-addr">{{ d.company_address_line or (d.company_address | striptags) }}</div>
+				{% if d.company_gstin %}<div class="hdr-gst"><span class="b">GSTIN:</span> {{ d.company_gstin }}</div>{% endif %}
+			</td>
+		</tr>
+	</table>
+
+	<div class="hdr-title">Goods Receipt Note &middot; Purchase Settlement Advice</div>
+
+	<table class="meta3 block">
+		<tr>
+			<td style="width:33.33%; border-right:1px solid #222;">
+				<table class="nob" style="width:100%;">
+					<tr><td class="lbl nob">Party</td><td class="nob">{{ d.party }}</td></tr>
+					<tr><td class="lbl nob">Party Location</td><td class="nob">{{ (d.party_location or "—") | striptags }}</td></tr>
+					<tr><td class="lbl nob">Broker</td><td class="nob">{{ d.broker or "—" }}</td></tr>
+					<tr><td class="lbl nob">Party GSTIN</td><td class="nob">{{ d.party_gstin or "—" }}</td></tr>
+				</table>
+			</td>
+			<td style="width:33.33%; border-right:1px solid #222;">
+				<table class="nob" style="width:100%;">
+					<tr><td class="lbl nob">Our Invoice No.</td><td class="nob">{{ d.our_invoice_no }}</td></tr>
+					<tr><td class="lbl nob">Date</td><td class="nob">{{ d.invoice_date }}</td></tr>
+					<tr><td class="lbl nob">Our Location</td><td class="nob">{{ (d.our_location or "—") | striptags }}</td></tr>
+					<tr><td class="lbl nob">Our GSTIN</td><td class="nob">{{ d.our_gstin or "—" }}</td></tr>
+					<tr><td class="lbl nob">PO No.</td><td class="nob">{{ d.po_no or "—" }}</td></tr>
+					<tr><td class="lbl nob">Arrival Date</td><td class="nob">{{ d.arrival_date }}</td></tr>
+				</table>
+			</td>
+			<td style="width:33.34%;">
+				<table class="nob" style="width:100%;">
+					<tr><td class="lbl nob">Debit Note No.</td><td class="nob">{{ d.debit_note_no or "—" }}</td></tr>
+					<tr><td class="lbl nob">Debit Note Date</td><td class="nob">{{ d.debit_note_date or "—" }}</td></tr>
+					<tr><td class="lbl nob">Vendor Doc No.</td><td class="nob">{{ d.vendor_doc_no or "—" }}</td></tr>
+					<tr><td class="lbl nob">Vendor Doc Date</td><td class="nob">{{ d.vendor_doc_date or "—" }}</td></tr>
+					<tr><td class="lbl nob">Vendor Bill Amount</td><td class="nob rgt">{{ d.vendor_bill_amount }}</td></tr>
+					<tr><td class="lbl nob">Lorry No.</td><td class="nob">{{ d.lorry_no or "—" }}</td></tr>
+				</table>
+			</td>
+		</tr>
+	</table>
+
+	<table class="block">
+		<tr class="sec-bar"><td colspan="9">Purchase Invoice Details</td></tr>
+		<tr class="tbl-hdr">
+			<th style="width:4%;">Sr.</th>
+			<th style="width:19%;">Item Codes</th>
+			<th style="width:8%;">HSN</th>
+			<th style="width:11%;">Vendor Dis Wt.</th>
+			<th style="width:9%;">Rate</th>
+			<th style="width:12%;">Basic value</th>
+			<th style="width:14%;">GST Amt/Rate</th>
+			<th style="width:7%;">TDS</th>
+			<th style="width:16%;">Payable Amt</th>
+		</tr>
+		{% for row in d.pi_lines %}
+		<tr>
+			<td class="ctr">{{ row.sr }}</td>
+			<td>{{ row.item }}</td>
+			<td class="ctr">{{ row.hsn }}</td>
+			<td class="rgt">{{ row.vendor_dis_wt }}</td>
+			<td class="rgt">{{ row.rate }}<span class="rate-uom">{{ row.rate_suffix or "" }}</span></td>
+			<td class="rgt">{{ row.basic }}</td>
+			<td class="rgt">{{ row.gst }}</td>
+			<td class="rgt">{{ row.tds or "—" }}</td>
+			<td class="rgt">{{ row.payable }}</td>
+		</tr>
+		{% endfor %}
+		<tr class="sec-total"><td colspan="8" class="rgt">Total Payable</td><td class="rgt">{{ d.pi_total_payable }}</td></tr>
+	</table>
+
+	<table class="block">
+		<tr class="sec-bar"><td colspan="10">Bargain Details</td></tr>
+		<tr class="tbl-hdr">
+			<th>Lot.</th><th>Item</th><th>Bags</th><th>Bags Wt.</th><th>Sauda Rate</th>
+			<th>Arr. Wt.</th><th>Oil %</th><th>Oil Rt.</th><th>Net Wt.</th><th>Amount</th>
+		</tr>
+		{% for row in d.bargain_rows %}
+		<tr>
+			<td>{{ row.lot_no }}</td><td>{{ row.item }}</td>
+			<td class="rgt">{{ row.bags }}</td><td class="rgt">{{ row.bags_wt }}</td><td class="rgt">{{ row.sauda_rate }}</td>
+			<td class="rgt">{{ row.arrival_weight }}</td><td class="rgt">{{ row.oil_pct or "—" }}</td><td class="rgt">{{ row.oil_rate or "—" }}</td>
+			<td class="rgt">{{ row.net_wt }}</td><td class="rgt">{{ row.amount }}</td>
+		</tr>
+		{% endfor %}
+		<tr class="sec-total"><td colspan="9" class="rgt">Total Amount</td><td class="rgt">{{ d.bargain_total }}</td></tr>
+	</table>
+
+	<table class="block">
+		<tr class="sec-bar"><td colspan="6">Quality and other deductions</td></tr>
+		<tr class="tbl-hdr">
+			<th style="width:5%;">Sr.</th><th>Particulars</th>
+			<th style="width:11%;">Req.</th><th style="width:11%;">Act.</th><th style="width:11%;">Diff</th><th style="width:13%;">Value</th>
+		</tr>
+		{% if d.quality_rows %}
+			{% for row in d.quality_rows %}
+			<tr>
+				<td class="ctr">{{ row.sr }}</td><td>{{ row.particulars }}</td>
+				<td class="rgt">{{ row.required }}</td><td class="rgt">{{ row.actual }}</td><td class="rgt">{{ row.diff }}</td><td class="rgt">{{ row.value }}</td>
+			</tr>
+			{% endfor %}
+		{% else %}
+			<tr><td colspan="6" class="ctr">—</td></tr>
+		{% endif %}
+		<tr class="sec-total"><td colspan="5" class="rgt">Total Deduction</td><td class="rgt">{{ d.quality_total }}</td></tr>
+	</table>
+
+	<table class="nob block">
+		<tr>
+			<td class="nob pair-main">
+				<table>
+					<tr class="sec-bar"><td colspan="6">Debit Note Details</td></tr>
+					<tr class="tbl-hdr">
+						<th style="width:5%;">Sr.</th><th>Particulars</th><th style="width:9%;">HSN</th>
+						<th style="width:13%;">Qty/Nos</th><th style="width:11%;">Rate</th><th style="width:13%;">Amount</th>
+					</tr>
+					{% if d.debit_lines %}
+						{% for row in d.debit_lines %}
+						<tr>
+							<td class="ctr">{% if row.sr %}{{ "%02d"|format(row.sr|int) }}{% endif %}</td>
+							<td>{{ row.particulars }}</td><td class="ctr">{{ row.hsn or "—" }}</td>
+							<td class="rgt">{{ row.qty }}</td><td class="rgt">{{ row.rate or "—" }}</td><td class="rgt">{{ row.amount }}</td>
+						</tr>
+						{% endfor %}
+					{% else %}
+						<tr><td colspan="6" class="ctr">—</td></tr>
+					{% endif %}
+					<tr class="sec-total"><td colspan="5" class="rgt">Debit Note Total</td><td class="rgt">{{ d.debit_grand_total }}</td></tr>
+				</table>
+			</td>
+			{% if d.debit_tax_sidebar %}
+			<td class="nob pair-side">
+				<table class="tax-side">
+					<tr class="tax-hdr"><td colspan="2">Tax Summary</td></tr>
+					{% for line in d.debit_tax_sidebar %}
+					<tr>
+						<td class="lbl{% if line.bold %} b{% endif %}">{{ line.label }}</td>
+						<td class="rgt{% if line.bold %} b{% endif %}">{{ line.amount }}</td>
+					</tr>
+					{% endfor %}
+				</table>
+			</td>
+			{% endif %}
+		</tr>
+	</table>
+
+	<table class="block">
+		<tr class="sec-bar"><td colspan="4">Settlement Summary</td></tr>
+		<tr class="tbl-hdr">
+			<th style="width:24%;">Document</th><th>Basic Net of TDS</th><th style="width:16%;">GST Amt</th><th style="width:20%;">Net Payable</th>
+		</tr>
+		<tr>
+			<td>{{ d.summary_pi.document }}</td>
+			<td class="rgt">{{ d.summary_pi.basic_net_tds }}</td>
+			<td class="rgt">{{ d.summary_pi.gst }}</td>
+			<td class="rgt">{{ d.summary_pi.net_payable }}</td>
+		</tr>
+		<tr>
+			<td>{{ d.summary_debit.document }}</td>
+			<td class="rgt">{{ d.summary_debit.basic_net_tds }}</td>
+			<td class="rgt">{{ d.summary_debit.gst }}</td>
+			<td class="rgt">{{ d.summary_debit.net_payable }}</td>
+		</tr>
+		<tr class="net-row"><td>Net Payable</td><td colspan="2"></td><td class="rgt">{{ d.net_payable }}</td></tr>
+	</table>
+
+	<div class="foot">
+		<p>Payment subject to realization. Verify qty, rate &amp; deductions. Disputes subject to company jurisdiction.</p>
+		<p>Printed By: {{ d.printed_by }} | {{ d.printed_on }}</p>
+	</div>
+
+	<table class="sign nob">
+		<tr>
+			<td class="nob" style="width:40%;">Authorized Signatory</td>
+			<td class="nob" style="width:20%; border-top:none !important;"></td>
+			<td class="nob" style="width:40%;">Party Acknowledgement</td>
+		</tr>
+	</table>
+</div>
+</div>

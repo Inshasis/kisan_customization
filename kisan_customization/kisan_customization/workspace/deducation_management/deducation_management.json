@@ -1,0 +1,93 @@
+{
+ "charts": [],
+ "content": "[{\"id\":\"eUHYUhQAQh\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Deducation Management</span>\",\"col\":12}},{\"id\":\"bmfV28eUg5\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Aggregator Booking\",\"col\":4}},{\"id\":\"PMMsHRsb2N\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Broker Commission\",\"col\":4}},{\"id\":\"dDNIayVzUI\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Purchase Order\",\"col\":4}},{\"id\":\"Fd4xWKF-m9\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Purchase Invoice\",\"col\":4}},{\"id\":\"z5Fs-h0-B_\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Sales Order\",\"col\":4}},{\"id\":\"f2w6sAFpgu\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Sales Invoice\",\"col\":4}},{\"id\":\"eSzd9VpOVn\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"DNJdVRIBUR\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Kisan Master Settings\",\"col\":3}},{\"id\":\"ug0X40AorR\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Deduction Type\",\"col\":3}}]",
+ "creation": "2026-10-01 14:05:56.298336",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "expenses",
+ "idx": 0,
+ "indicator_color": "green",
+ "is_hidden": 0,
+ "label": "Deducation Management",
+ "links": [],
+ "modified": "2026-10-01 16:42:52.104909",
+ "modified_by": "Administrator",
+ "module": "Kisan Customization",
+ "name": "Deducation Management",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [],
+ "sequence_id": 2.0,
+ "shortcuts": [
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Purchase Order",
+   "link_to": "Purchase Order",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Kisan Master Settings",
+   "link_to": "Kisan Master Settings",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Aggregator Booking",
+   "link_to": "Aggregator Booking",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Broker Commission",
+   "link_to": "Broker Commission",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Purchase Invoice",
+   "link_to": "Purchase Invoice",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Deduction Type",
+   "link_to": "Deduction Type",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Sales Order",
+   "link_to": "Sales Order",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Sales Invoice",
+   "link_to": "Sales Invoice",
+   "stats_filter": "[]",
+   "type": "DocType"
+  }
+ ],
+ "title": "Deducation Management"
+}

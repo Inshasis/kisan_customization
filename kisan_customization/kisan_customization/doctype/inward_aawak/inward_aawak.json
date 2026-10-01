@@ -175,20 +175,22 @@
    "fieldname": "total_bags",
    "fieldtype": "Int",
    "in_list_view": 1,
-   "label": "Total Bags",
+   "label": "Total Qty",
    "read_only": 1,
    "reqd": 1
   },
   {
    "fieldname": "released_bags",
    "fieldtype": "Int",
-   "label": "Released Bags",
+   "hidden": 1,
+   "label": "Released Qty",
    "read_only": 1
   },
   {
    "fieldname": "remaining_bags",
    "fieldtype": "Int",
-   "label": "Remaining Bags",
+   "hidden": 1,
+   "label": "Remaining Qty",
    "read_only": 1
   },
   {
@@ -267,7 +269,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-08-25 10:02:02.844386",
+ "modified": "2026-10-01 14:34:08.199630",
  "modified_by": "Administrator",
  "module": "Kisan Customization",
  "name": "Inward Aawak",

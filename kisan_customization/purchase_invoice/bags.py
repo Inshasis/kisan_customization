@@ -31,7 +31,9 @@ def get_pi_avg_rate(doc):
 
 
 def get_pi_item_rate(doc):
-	return get_pi_avg_rate(doc)
+	from kisan_customization.purchase_invoice.item_gross_weight import get_pi_weighted_item_rate
+
+	return get_pi_weighted_item_rate(doc)
 
 
 def get_accepted_qty_kg(doc):
@@ -100,6 +102,7 @@ def get_bag_rows(doc):
 				"bag_type": row.bag_type,
 				"no_of_bags": flt(row.no_of_bags),
 				"bag_line_key": bag_line_key,
+				"bag_line_index": idx,
 				"charges": flt(row.charges),
 				"gross_weight_kg": gross,
 				"deduct_weight_kg": flt(row.deduct_weight_kg),

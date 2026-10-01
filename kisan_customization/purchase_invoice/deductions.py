@@ -5,7 +5,7 @@ import re
 
 import frappe
 from frappe import _
-from frappe.utils import flt
+from frappe.utils import cint, flt
 
 from kisan_customization.purchase_invoice.bags import (
 	calculate_bag_deduction,
@@ -83,26 +83,30 @@ def _deduction_type_order_index(deduction_type_name):
 	return len(_DEDUCTION_TYPE_ORDER) + 100
 
 
-def _deduction_row_sort_key(row):
+def _deduction_row_sort_key(row, bag_line_order=None):
 	if isinstance(row, dict):
 		get_val = row.get
 	else:
 		get_val = lambda key, r=row: r.get(key)
 
 	if get_val("is_bag_deduction"):
-		return (_DEDUCTION_TYPE_ORDER.get(BAG_DEDUCTION_NAME, 900), 0, "", 0, "")
+		return (_DEDUCTION_TYPE_ORDER.get(BAG_DEDUCTION_NAME, 900), 0, 0, "")
 	if get_val("is_weight_deduction"):
-		return (_DEDUCTION_TYPE_ORDER.get(WEIGHT_DEDUCTION_NAME, 901), 0, "", 0, "")
+		return (_DEDUCTION_TYPE_ORDER.get(WEIGHT_DEDUCTION_NAME, 901), 0, 0, "")
 
 	display_name = get_val("deduction_type_name") or ""
 	base_idx = _deduction_type_order_index(display_name)
-	bag_type = get_val("bag_type") or ""
+	bag_key = get_val("bag_detail_name") or get_val("bag_line_key") or ""
+	if bag_line_order and bag_key in bag_line_order:
+		bag_idx = bag_line_order.index(bag_key)
+	else:
+		bag_idx = cint(get_val("bag_line_index")) if get_val("bag_line_index") else 999
 	no_of_bags = flt(get_val("no_of_bags"))
-	return (base_idx, bag_type, no_of_bags, display_name)
+	return (base_idx, bag_idx, no_of_bags, display_name)
 
 
-def _sort_deduction_rows(rows):
-	return sorted(rows, key=_deduction_row_sort_key)
+def _sort_deduction_rows(rows, bag_line_order=None):
+	return sorted(rows, key=lambda row: _deduction_row_sort_key(row, bag_line_order))
 
 
 def _get_active_deduction_types(company):
@@ -437,6 +441,7 @@ def _build_deduction_row(dt, ctx, saved=None, bag=None):
 		"bag_type": bag_type or "",
 		"no_of_bags": flt(bag["no_of_bags"]) if bag else 0,
 		"bag_line_key": bag.get("bag_line_key") if bag else "",
+		"bag_line_index": bag.get("bag_line_index") if bag else 0,
 		"related_account": dt.related_account or saved.get("related_account") or "",
 		"qty_deducation": dt.qty_deducation,
 		"tiered_calculation": dt.tiered_calculation,
@@ -612,8 +617,9 @@ def _reorder_child_deduction_table(doc):
 	if len(rows) < 2:
 		return
 
+	bag_line_order = [bag["bag_line_key"] for bag in get_bag_rows(doc)]
 	doc.set(CHILD_TABLE_FIELD, [])
-	for row in _sort_deduction_rows(rows):
+	for row in _sort_deduction_rows(rows, bag_line_order):
 		doc.append(CHILD_TABLE_FIELD, row.as_dict() if hasattr(row, "as_dict") else row)
 
 
@@ -878,7 +884,8 @@ def get_deduction_data(purchase_invoice):
 	if weight_row:
 		result.append(weight_row)
 
-	return _sort_deduction_rows(result)
+	bag_line_order = [bag["bag_line_key"] for bag in get_bag_rows(pi)]
+	return _sort_deduction_rows(result, bag_line_order)
 
 
 @frappe.whitelist()

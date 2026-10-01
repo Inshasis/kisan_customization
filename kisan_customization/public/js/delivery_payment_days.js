@@ -68,8 +68,21 @@ kisan_customization.delivery_payment_days.apply_delivery_days = function (frm) {
 	}
 };
 
-kisan_customization.delivery_payment_days.sync_payment_amounts = function (frm) {
+kisan_customization.delivery_payment_days.should_sync_schedule = function (frm) {
 	if (!kisan_customization.delivery_payment_days.is_active(frm)) {
+		return false;
+	}
+	if (frm.doc.doctype === "Purchase Invoice" && frm.doc.is_return) {
+		return false;
+	}
+	if (frm.doc.docstatus === 1) {
+		return false;
+	}
+	return true;
+};
+
+kisan_customization.delivery_payment_days.sync_payment_amounts = function (frm) {
+	if (!kisan_customization.delivery_payment_days.should_sync_schedule(frm)) {
 		return;
 	}
 	const schedule = frm.doc.payment_schedule || [];
@@ -82,7 +95,7 @@ kisan_customization.delivery_payment_days.sync_payment_amounts = function (frm) 
 };
 
 kisan_customization.delivery_payment_days.apply_payment_days = function (frm) {
-	if (!kisan_customization.delivery_payment_days.is_active(frm)) {
+	if (!kisan_customization.delivery_payment_days.should_sync_schedule(frm)) {
 		return;
 	}
 	const days = frm.doc.custom_payment_days;
@@ -125,7 +138,7 @@ kisan_customization.delivery_payment_days.is_active = function (frm) {
 };
 
 kisan_customization.delivery_payment_days.apply_all = function (frm) {
-	if (!kisan_customization.delivery_payment_days.is_active(frm)) {
+	if (!kisan_customization.delivery_payment_days.should_sync_schedule(frm)) {
 		return;
 	}
 	if (frm.doc.custom_delivery_days) {

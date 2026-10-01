@@ -26,15 +26,13 @@
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Bag Configuration",
-   "options": "Bag Configuration",
-   "read_only": 1
+   "options": "Bag Configuration"
   },
   {
    "columns": 2,
    "fetch_from": "bag_configuration.rate_type",
    "fieldname": "rate_type",
    "fieldtype": "Data",
-   "in_list_view": 1,
    "label": "Rate Type",
    "read_only": 1
   },
@@ -57,10 +55,12 @@
   },
   {
    "columns": 1,
+   "fetch_from": "bag_configuration.weight_kg",
    "fieldname": "bag_weight",
    "fieldtype": "Int",
    "in_list_view": 1,
-   "label": "Bag Weight"
+   "label": "Bag Weight",
+   "read_only": 1
   },
   {
    "fetch_from": "bag_configuration.weight_kg",
@@ -70,7 +70,7 @@
    "read_only": 1
   },
   {
-   "columns": 1,
+   "columns": 2,
    "default": "0",
    "description": "Enter quantity in the row UOM",
    "fieldname": "number_of_bags",
@@ -89,7 +89,7 @@
    "reqd": 1
   },
   {
-   "columns": 1,
+   "columns": 2,
    "description": "Auto-calculated: Bag Weight \u00d7 Quantity",
    "fieldname": "total_weight",
    "fieldtype": "Float",
@@ -100,10 +100,13 @@
   },
   {
    "columns": 1,
+   "fetch_from": "bag_configuration.rate",
    "fieldname": "rate",
    "fieldtype": "Currency",
    "in_list_view": 1,
-   "label": "Rate per Month"
+   "label": "Rate per Month",
+   "precision": "2",
+   "read_only": 1
   },
   {
    "default": "0",
@@ -116,7 +119,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-09-15 21:01:56.411852",
+ "modified": "2026-10-01 14:37:53.613962",
  "modified_by": "Administrator",
  "module": "Kisan Customization",
  "name": "Bag Details",

@@ -13,10 +13,10 @@ def is_kisan_custom(doc):
 		return True
 
 	mode = doc.get(MODE_FIELD)
-	if not mode:
-		return True
+	if mode == MODE_REGULAR:
+		return False
 
-	return mode == MODE_KISAN
+	return mode == MODE_KISAN or not mode
 
 
 def copy_transaction_mode(source, target):

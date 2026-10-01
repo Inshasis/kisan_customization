@@ -276,6 +276,9 @@ doc_events = {
 			"kisan_customization.purchase_invoice.purchase_invoice.validate",
 			"kisan_customization.purchase_invoice.broker_commission.validate",
 		],
+		"on_update_after_submit": (
+			"kisan_customization.purchase_invoice.payment_schedule.preserve_submitted_payment_schedule"
+		),
 		"before_submit": "kisan_customization.purchase_invoice.broker_commission.before_submit",
 		"before_cancel": "kisan_customization.purchase_invoice.broker_commission.before_cancel",
 		"on_submit": "kisan_customization.purchase_invoice.broker_commission.on_submit",

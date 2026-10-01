@@ -37,18 +37,6 @@
  },
  {
   "doctype": "Deduction Type",
-  "name": "PP",
-  "deduction_type_name": "PP",
-  "required_value": 0.0,
-  "charges_per_unit": 10.0,
-  "calculation": "plastic_gross_weight * charges_per_unit / 100",
-  "deduction_category": "single",
-  "tiered_calculation": 0,
-  "qty_deducation": 0,
-  "is_active": 1
- },
- {
-  "doctype": "Deduction Type",
   "name": "Others",
   "deduction_type_name": "Others",
   "required_value": 0.0,
@@ -66,6 +54,18 @@
   "required_value": 0.0,
   "charges_per_unit": 12.0,
   "calculation": "total_bags * charges_per_unit",
+  "deduction_category": "single",
+  "tiered_calculation": 0,
+  "qty_deducation": 0,
+  "is_active": 1
+ },
+ {
+  "doctype": "Deduction Type",
+  "name": "PP",
+  "deduction_type_name": "PP",
+  "required_value": 0.0,
+  "charges_per_unit": 10.0,
+  "calculation": "plastic_gross_weight * charges_per_unit / 100",
   "deduction_category": "single",
   "tiered_calculation": 0,
   "qty_deducation": 0,

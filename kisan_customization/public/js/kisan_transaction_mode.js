@@ -11,11 +11,18 @@ kisan_customization.transaction_mode.is_kisan_custom = function (frm) {
 	}
 
 	const mode = frm.doc[kisan_customization.transaction_mode.FIELD];
-	if (mode) {
-		return mode === kisan_customization.transaction_mode.MODE_KISAN;
+	if (mode === kisan_customization.transaction_mode.MODE_REGULAR) {
+		return false;
+	}
+	if (mode === kisan_customization.transaction_mode.MODE_KISAN) {
+		return true;
 	}
 
-	// Mode not set yet on a new document — treat as Kisan until chosen/inherited.
+	// Unset mode on PO/SO-linked invoice: hide Kisan fields until mode is inherited or chosen.
+	if (kisan_customization.transaction_mode.get_source_order(frm)) {
+		return false;
+	}
+
 	return true;
 };
 
@@ -137,31 +144,39 @@ kisan_customization.transaction_mode.toggle_ui = function (frm) {
 	}
 
 	kisan_customization.transaction_mode.get_kisan_fieldnames(frm).forEach((fieldname) => {
+		frm.set_df_property(fieldname, "hidden", show_kisan ? 0 : 1);
 		if (frm.fields_dict[fieldname]) {
 			frm.toggle_display(fieldname, show_kisan);
 		}
-		frm.set_df_property(fieldname, "hidden", show_kisan ? 0 : 1);
 	});
 
 	if (frm.fields_dict.custom_supplier_invoice_amount) {
 		frm.toggle_reqd("custom_supplier_invoice_amount", show_kisan && !frm.doc.is_return);
+		frm.toggle_display("custom_supplier_invoice_amount", show_kisan);
+	}
+
+	if (typeof frm.refresh_fields === "function") {
+		frm.refresh_fields(
+			kisan_customization.transaction_mode.get_kisan_fieldnames(frm)
+		);
 	}
 };
 
 kisan_customization.transaction_mode.sync_ui_visibility = function (frm) {
 	const sync = () => {
-		kisan_customization.transaction_mode.toggle_ui(frm);
 		if (
 			frm.doctype === "Purchase Invoice" &&
 			kisan_customization.purchase_invoice?.apply_return_layout
 		) {
 			kisan_customization.purchase_invoice.apply_return_layout(frm);
 		}
+		kisan_customization.transaction_mode.toggle_ui(frm);
 	};
 	sync();
 	frappe.after_ajax(sync);
 	setTimeout(sync, 100);
 	setTimeout(sync, 350);
+	setTimeout(sync, 800);
 };
 
 kisan_customization.transaction_mode.apply_mode_side_effects = function (frm) {

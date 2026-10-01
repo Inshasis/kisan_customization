@@ -94,6 +94,7 @@ def _apply_debit_note_settings(doc, source):
 		_set_item_qty_from_deduction_kg(doc, source, return_kg)
 
 	clear_broker_commission_fields(doc)
+	_clear_return_payment_term_fields(doc)
 	# Quality & Other: other deduction amounts only (not bag/weight auto rows).
 	sync_deduction_item_row(doc)
 
@@ -106,6 +107,13 @@ def _calculate_return_deductions(source):
 	weight_kg, _, weight_amt = _calculate_weight_deduction_amount(source)
 	bag_kg, _, bag_amt = _calculate_bag_deduction_amount(source)
 	return flt(weight_kg), flt(bag_kg), flt(weight_amt), flt(bag_amt)
+
+
+def _clear_return_payment_term_fields(doc):
+	"""Debit notes must not auto-build payment_schedule from custom_payment_days on load."""
+	for fieldname in ("custom_payment_days", "custom_delivery_days"):
+		if doc.meta.has_field(fieldname):
+			doc.set(fieldname, None)
 
 
 def _copy_weight_context_from_source(doc, source):
@@ -144,14 +152,18 @@ def _set_item_qty_from_deduction_kg(doc, source, deduction_kg):
 		return
 
 	allocations = []
-	total_source_qty = 0
+	total_weight = 0
 
 	for item in commodity_items:
 		source_item = source_items.get(item.purchase_invoice_item)
-		source_qty = flt(source_item.qty) if source_item else 0
-		if source_qty > 0:
-			allocations.append((item, source_qty))
-			total_source_qty += source_qty
+		if not source_item:
+			continue
+		line_gross = flt(source_item.get("custom_gross_weight_kg"))
+		if line_gross <= 0:
+			line_gross = flt(source_item.qty) * 100
+		if line_gross > 0:
+			allocations.append((item, line_gross))
+			total_weight += line_gross
 
 	if not allocations:
 		equal_share = return_qty_quintal / len(commodity_items)
@@ -160,11 +172,11 @@ def _set_item_qty_from_deduction_kg(doc, source, deduction_kg):
 		return
 
 	remaining_quintal = return_qty_quintal
-	for index, (item, source_qty) in enumerate(allocations):
+	for index, (item, line_weight) in enumerate(allocations):
 		if index == len(allocations) - 1:
 			line_quintal = remaining_quintal
 		else:
-			share = source_qty / total_source_qty
+			share = line_weight / total_weight
 			line_quintal = flt(return_qty_quintal * share, 3)
 			remaining_quintal = flt(remaining_quintal - line_quintal, 6)
 

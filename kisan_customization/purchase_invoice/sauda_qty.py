@@ -4,6 +4,10 @@ import frappe
 from frappe import _
 from frappe.utils import flt
 
+from kisan_customization.utils.deduction_utils import get_pi_total_gross_weight
+
+QUINTAL_TO_KG = 100
+
 
 def validate_sauda_qty_range(doc):
 	if doc.get("is_return"):
@@ -12,27 +16,36 @@ def validate_sauda_qty_range(doc):
 	if not frappe.db.has_column("Purchase Order", "custom_sauda_qty_from"):
 		return
 
-	for item in doc.get("items") or []:
-		if not item.get("purchase_order"):
-			continue
+	gross_kg = flt(get_pi_total_gross_weight(doc))
+	if not gross_kg:
+		return
 
-		qty_from, qty_to = _get_sauda_qty_range(item.purchase_order)
+	purchase_orders = {
+		row.get("purchase_order")
+		for row in doc.get("items") or []
+		if row.get("purchase_order")
+	}
+
+	for purchase_order in purchase_orders:
+		qty_from, qty_to = _get_sauda_qty_range(purchase_order)
 		if not qty_from and not qty_to:
 			continue
 
-		qty = flt(item.qty)
-		if qty_from and qty < qty_from:
+		min_kg = flt(qty_from) * QUINTAL_TO_KG if qty_from else 0
+		max_kg = flt(qty_to) * QUINTAL_TO_KG if qty_to else 0
+
+		if qty_from and gross_kg < min_kg:
 			frappe.throw(
 				_(
-					"Row #{0}: Qty {1} cannot be less than Sauda Qty From {2} for Purchase Order {3}"
-				).format(item.idx, qty, qty_from, item.purchase_order)
+					"Total Gross Weight ({0} Kg) cannot be less than Sauda Qty From {1} quintal ({2} Kg) for Purchase Order {3}."
+				).format(gross_kg, qty_from, min_kg, purchase_order)
 			)
 
-		if qty_to and qty > qty_to:
+		if qty_to and gross_kg > max_kg:
 			frappe.throw(
 				_(
-					"Row #{0}: Qty {1} cannot be greater than Sauda Qty To {2} for Purchase Order {3}"
-				).format(item.idx, qty, qty_to, item.purchase_order)
+					"Total Gross Weight ({0} Kg) cannot be greater than Sauda Qty To {1} quintal ({2} Kg) for Purchase Order {3}."
+				).format(gross_kg, qty_to, max_kg, purchase_order)
 			)
 
 

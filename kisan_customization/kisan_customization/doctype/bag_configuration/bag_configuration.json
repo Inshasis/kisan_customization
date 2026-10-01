@@ -38,10 +38,10 @@
   {
    "default": "Bag",
    "fieldname": "uom",
-   "fieldtype": "Select",
+   "fieldtype": "Link",
    "in_list_view": 1,
    "label": "UOM",
-   "options": "Kg\nBag\nCrate\nBox\nNos\nMogam",
+   "options": "UOM",
    "reqd": 1
   },
   {
@@ -74,7 +74,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-08-12 15:01:14.579670",
+ "modified": "2026-10-01 14:13:09.594256",
  "modified_by": "Administrator",
  "module": "Kisan Customization",
  "name": "Bag Configuration",

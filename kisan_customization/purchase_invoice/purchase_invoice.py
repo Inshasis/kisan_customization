@@ -13,6 +13,7 @@ from kisan_customization.purchase_invoice.payment_terms import (
 	apply_payment_days_to_invoice,
 	sync_payment_terms_from_linked_po,
 )
+from kisan_customization.purchase_invoice.item_gross_weight import validate_item_gross_weights
 from kisan_customization.purchase_invoice.sauda_qty import validate_sauda_qty_range
 from kisan_customization.purchase_invoice.debit_note import validate_unique_debit_note
 from kisan_customization.purchase_invoice.validation import (
@@ -35,6 +36,7 @@ def validate(doc, method=None):
 		recalculate_bag_weights(doc)
 		recalculate_existing_deductions(doc)
 		validate_sauda_qty_range(doc)
+		validate_item_gross_weights(doc)
 		remove_kisan_deduction_taxes(doc)
 		clear_booking_purchase_invoice_taxes(doc)
 		sync_payment_terms_from_linked_po(doc)

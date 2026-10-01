@@ -82,24 +82,24 @@ function get_pi_return_hidden_fields(frm) {
 
 function toggle_return_pi_sections(frm) {
 	const is_return = cint(frm.doc.is_return);
+	if (!is_return) {
+		return;
+	}
 
 	get_pi_return_hidden_fields(frm).forEach((fieldname) => {
-		if (frm.fields_dict[fieldname]) {
-			frm.toggle_display(fieldname, !is_return);
+		if (!frm.fields_dict[fieldname]) {
+			return;
 		}
-		if (is_return) {
-			frm.set_df_property(fieldname, "hidden", 1);
-		}
+		frm.toggle_display(fieldname, false);
+		frm.set_df_property(fieldname, "hidden", 1);
 	});
 
-	if (is_return) {
-		PI_TOTAL_FIELDS_ALWAYS_VISIBLE.forEach((fieldname) => {
-			if (frm.fields_dict[fieldname]) {
-				frm.toggle_display(fieldname, true);
-				frm.set_df_property(fieldname, "hidden", 0);
-			}
-		});
-	}
+	PI_TOTAL_FIELDS_ALWAYS_VISIBLE.forEach((fieldname) => {
+		if (frm.fields_dict[fieldname]) {
+			frm.toggle_display(fieldname, true);
+			frm.set_df_property(fieldname, "hidden", 0);
+		}
+	});
 }
 
 kisan_customization.purchase_invoice.apply_return_layout = toggle_return_pi_sections;
@@ -111,6 +111,7 @@ frappe.ui.form.on("Purchase Invoice", {
 
 	onload(frm) {
 		toggle_return_pi_sections(frm);
+		toggle_pi_item_gross_weight_column(frm);
 		if (
 			kisan_customization.transaction_mode.is_kisan_custom(frm) &&
 			frm.doc[kisan_customization.transaction_mode.FIELD]
@@ -120,6 +121,7 @@ frappe.ui.form.on("Purchase Invoice", {
 	},
 
 	kisan_transaction_mode_set(frm) {
+		toggle_pi_item_gross_weight_column(frm);
 		if (!kisan_customization.transaction_mode.is_kisan_custom(frm)) {
 			return;
 		}
@@ -131,6 +133,7 @@ frappe.ui.form.on("Purchase Invoice", {
 	},
 
 	refresh(frm) {
+		toggle_pi_item_gross_weight_column(frm);
 		if (
 			kisan_customization.transaction_mode.is_kisan_custom(frm) &&
 			frm.doc[kisan_customization.transaction_mode.FIELD]
@@ -186,6 +189,7 @@ frappe.ui.form.on("Purchase Invoice", {
 		}
 
 		validate_supplier_invoice_amount_client(frm);
+		validate_item_gross_weight_sum_client(frm);
 
 		const total_bags = flt(frm.doc.custom_total_bags);
 		const child_sum = get_child_bag_sum(frm);
@@ -216,7 +220,25 @@ frappe.ui.form.on("Purchase Invoice Item", {
 	qty(frm) {
 		update_deduction_header_fields(frm);
 	},
+
+	custom_gross_weight_kg(frm) {
+		update_deduction_header_fields(frm);
+	},
 });
+
+function toggle_pi_item_gross_weight_column(frm) {
+	if (!frm.fields_dict.items?.grid) {
+		return;
+	}
+	const show =
+		kisan_customization.transaction_mode.is_kisan_custom(frm) && !cint(frm.doc.is_return);
+	frm.fields_dict.items.grid.update_docfield_property(
+		"custom_gross_weight_kg",
+		"hidden",
+		show ? 0 : 1
+	);
+	frm.refresh_field("items");
+}
 
 kisan_customization.transaction_mode.init_kisan_purchase_invoice_ui = function (frm) {
 	load_bag_type_options(frm);
@@ -292,6 +314,31 @@ function make_kisan_debit_note(frm) {
 		method: "kisan_customization.purchase_invoice.debit_note.make_debit_note",
 		frm,
 	});
+}
+
+function validate_item_gross_weight_sum_client(frm) {
+	if (frm.doc.is_return) {
+		return;
+	}
+
+	const header_gross = flt(frm.doc.custom_total_gross_weight);
+	const line_total = (frm.doc.items || []).reduce(
+		(sum, row) => sum + flt(row.custom_gross_weight_kg),
+		0
+	);
+
+	if (!header_gross || !line_total) {
+		return;
+	}
+
+	if (Math.abs(line_total - header_gross) > 0.5) {
+		frappe.throw(
+			__(
+				"Sum of item Gross Weight (Kg) ({0}) must match Total Gross Weight ({1}).",
+				[line_total, header_gross]
+			)
+		);
+	}
 }
 
 function validate_supplier_invoice_amount_client(frm) {
@@ -419,6 +466,22 @@ function recalculate_all_bag_rows(frm) {
 }
 
 function get_pi_avg_rate(frm) {
+	let total_gross = 0;
+	let weighted_sum = 0;
+
+	(frm.doc.items || []).forEach((row) => {
+		const gross = flt(row.custom_gross_weight_kg);
+		const rate = flt(row.rate);
+		if (gross > 0 && rate > 0) {
+			total_gross += gross;
+			weighted_sum += gross * rate;
+		}
+	});
+
+	if (total_gross) {
+		return weighted_sum / total_gross;
+	}
+
 	const rates = (frm.doc.items || []).map((row) => flt(row.rate)).filter((rate) => rate);
 	if (!rates.length) {
 		return 0;

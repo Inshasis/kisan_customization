@@ -10,6 +10,8 @@ from kisan_customization.kisan_customization.doctype.bag_configuration.naming im
 	ensure_unique_bag_configuration_name,
 )
 
+COLD_STORAGE_ITEM_GROUP = "Cold Storage Item"
+
 
 class BagConfiguration(Document):
 	def autoname(self):
@@ -46,6 +48,9 @@ class BagConfiguration(Document):
 		if self.rate_type == "Specific" and not self.commodity:
 			frappe.throw(_("Commodity / Item is required when Rate Type is Specific"))
 
+		if self.commodity:
+			self._validate_cold_storage_item()
+
 		if self.rate_type == "General":
 			self.commodity = None
 
@@ -53,6 +58,15 @@ class BagConfiguration(Document):
 			self.weight_kg = None
 
 		self._validate_unique_combination()
+
+	def _validate_cold_storage_item(self):
+		item_group = frappe.db.get_value("Item", self.commodity, "item_group")
+		if item_group != COLD_STORAGE_ITEM_GROUP:
+			frappe.throw(
+				_("Commodity / Item must belong to item group {0}").format(
+					frappe.bold(COLD_STORAGE_ITEM_GROUP)
+				)
+			)
 
 	def _validate_unique_combination(self):
 		filters = {"uom": self.uom}

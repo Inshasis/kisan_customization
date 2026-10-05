@@ -3,6 +3,12 @@ frappe.provide("kisan_customization.purchase_invoice");
 kisan_customization.broker_commission.bind("Purchase Invoice");
 kisan_customization.delivery_payment_days.bind("Purchase Invoice");
 
+frappe.ui.form.on("Purchase Invoice", {
+	custom_deducation(frm) {
+			open_deductions_dialog(frm);
+	}
+});
+
 const HIDDEN_PI_CREATE_BUTTONS = [__("Return / Debit Note")];
 
 function hide_purchase_invoice_create_options(frm) {
@@ -1083,3 +1089,5 @@ function get_deduction_styles() {
 		.b6{background:linear-gradient(135deg,#44403c,#78716c)}.b7{background:linear-gradient(135deg,#881337,#f43f5e)}
 		.b8{background:linear-gradient(135deg,#312e81,#6366f1)}`;
 }
+
+

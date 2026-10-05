@@ -9,74 +9,10 @@ required_apps = ["erpnext"]
 
 from kisan_customization.setup.company_master_data import COMPANY_MASTER_DOCTYPES
 
+# Custom Field definitions live in kisan_customization/custom/*.json (sync_on_migrate).
+# Re-export after Customize Form changes:
+#   bench --site SITE execute kisan_customization.setup.export_customizations.run
 fixtures = [
-	{
-		"dt": "Custom Field",
-		"filters": [
-			[
-				"name",
-				"in",
-				[
-					"Purchase Invoice-custom_bag_details_section",
-					"Purchase Invoice-custom_bag_details",
-					"Purchase Invoice-custom_weight_info_section",
-					"Purchase Invoice-custom_total_bags",
-					"Purchase Invoice-custom_total_gross_weight",
-					"Purchase Invoice-custom_total_arrival_weight",
-					"Purchase Invoice-custom_weight_deduction",
-					"Purchase Invoice-custom_bag_deduction",
-					"Purchase Invoice-custom_bag_deduction_amount",
-					"Purchase Invoice-custom_weight_deduction_amount",
-					"Purchase Invoice-custom_deductions_section",
-					"Purchase Invoice-custom_deductions",
-					"Purchase Invoice-custom_section_break_lqipi",
-					"Purchase Invoice-custom_broker",
-					"Purchase Invoice-custom_column_break_1ked0",
-					"Purchase Invoice-custom_commission_type",
-					"Purchase Invoice-custom_commission_percent",
-					"Purchase Invoice-custom_commission_amount",
-					"Purchase Invoice-custom_broker_commission_amount",
-					"Purchase Invoice-custom_payment_days",
-					"Purchase Invoice-custom_supplier_invoice_amount",
-					"Purchase Order-custom_kisan_transaction_mode",
-					"Purchase Invoice-custom_kisan_transaction_mode",
-					"Sales Order-custom_kisan_transaction_mode",
-					"Sales Invoice-custom_kisan_transaction_mode",
-					"Purchase Order-custom_section_break_lqipi",
-					"Purchase Order-custom_broker",
-					"Purchase Order-custom_column_break_1ked0",
-					"Purchase Order-custom_commission_type",
-					"Purchase Order-custom_column_break_y5zpm",
-					"Purchase Order-custom_commission_percent",
-					"Purchase Order-custom_commission_amount",
-					"Purchase Order-custom_broker_commission_amount",
-					"Purchase Order-custom_delivery_days",
-					"Purchase Order-custom_payment_days",
-					"Sales Order-custom_section_break_lqipi",
-					"Sales Order-custom_broker",
-					"Sales Order-custom_column_break_1ked0",
-					"Sales Order-custom_commission_type",
-					"Sales Order-custom_column_break_y5zpm",
-					"Sales Order-custom_commission_percent",
-					"Sales Order-custom_commission_amount",
-					"Sales Order-custom_broker_commission_amount",
-					"Sales Order-custom_delivery_days",
-					"Sales Order-custom_payment_days",
-					"Sales Invoice-custom_delivery_days",
-					"Sales Invoice-custom_payment_days",
-					"Sales Invoice-custom_delivery_date",
-					"Sales Invoice-custom_section_break_lqipi",
-					"Sales Invoice-custom_broker",
-					"Sales Invoice-custom_column_break_1ked0",
-					"Sales Invoice-custom_commission_type",
-					"Sales Invoice-custom_column_break_y5zpm",
-					"Sales Invoice-custom_commission_percent",
-					"Sales Invoice-custom_commission_amount",
-					"Sales Invoice-custom_broker_commission_amount",
-				],
-			]
-		],
-	},
     {"dt": "Item Group", "filters": [
 		[
 			"name",
@@ -104,7 +40,7 @@ fixtures = [
 	]},
 ]
 
-# bench --site kisan_custom export-fixtures --app kisan_customization
+# bench --site SITE execute kisan_customization.setup.export_customizations.run
 
 # Apps
 # ------------------

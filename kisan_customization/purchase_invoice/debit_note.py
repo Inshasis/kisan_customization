@@ -14,6 +14,9 @@ from kisan_customization.purchase_invoice.deductions import (
 	get_deduction_item_code,
 	sync_deduction_item_row,
 )
+from kisan_customization.utils.deduction_utils import get_pi_total_gross_weight
+
+QUINTAL_TO_KG = 100
 
 WEIGHT_CONTEXT_FIELDS = (
 	"custom_total_bags",
@@ -88,10 +91,8 @@ def _apply_debit_note_settings(doc, source):
 	weight_kg, bag_kg, weight_amt, bag_amt = _calculate_return_deductions(source)
 	_sync_return_deduction_fields(doc, weight_kg, bag_kg, weight_amt, bag_amt)
 
-	# Commodity lines: Weight + Bag deduction (kg) → quintal (÷ 100), split by item qty %.
-	return_kg = flt(weight_kg) + flt(bag_kg)
-	if return_kg > 0:
-		_set_item_qty_from_deduction_kg(doc, source, return_kg)
+	# Per item: weight deduction (accepted kg − line gross) + bag deduction (total split by gross %).
+	_set_return_item_qty_per_line(doc, source, flt(bag_kg))
 
 	clear_broker_commission_fields(doc)
 	_clear_return_payment_term_fields(doc)
@@ -135,52 +136,76 @@ def _sync_return_deduction_fields(doc, weight_kg, bag_kg, weight_amt=0, bag_amt=
 		doc.custom_bag_deduction_amount = flt(bag_amt)
 
 
-def _set_item_qty_from_deduction_kg(doc, source, deduction_kg):
-	"""Return qty in quintal = deduction kg / 100, split by each source item line qty share."""
-	return_qty_quintal = flt(deduction_kg) / 100
-	if return_qty_quintal <= 0 or not doc.get("items"):
-		return
+def _item_accepted_qty_kg(source_item):
+	return flt(source_item.qty) * QUINTAL_TO_KG
 
+
+def _item_line_gross_kg(source_item):
+	gross = flt(source_item.get("custom_gross_weight_kg"))
+	if gross > 0:
+		return gross
+	return _item_accepted_qty_kg(source_item)
+
+
+def _calculate_item_weight_deduction_kg(source_item):
+	accepted_kg = _item_accepted_qty_kg(source_item)
+	line_gross = _item_line_gross_kg(source_item)
+	return max(0, flt(accepted_kg) - flt(line_gross))
+
+
+def _get_debit_note_commodity_items(doc):
 	deduction_item_code = get_deduction_item_code()
-	source_items = {item.name: item for item in source.get("items") or []}
-	commodity_items = [
+	return [
 		item
 		for item in doc.get("items") or []
 		if not deduction_item_code or item.item_code != deduction_item_code
 	]
+
+
+def _set_return_item_qty_per_line(doc, source, total_bag_kg):
+	"""Item return qty (quintal) = (line weight deduction + bag share) / 100."""
+	source_items = {item.name: item for item in source.get("items") or []}
+	commodity_items = _get_debit_note_commodity_items(doc)
 	if not commodity_items:
 		return
 
-	allocations = []
-	total_weight = 0
+	total_gross = flt(get_pi_total_gross_weight(source))
+	if not total_gross:
+		total_gross = sum(
+			_item_line_gross_kg(source_items[item.purchase_invoice_item])
+			for item in commodity_items
+			if source_items.get(item.purchase_invoice_item)
+		)
 
+	lines = []
 	for item in commodity_items:
 		source_item = source_items.get(item.purchase_invoice_item)
 		if not source_item:
 			continue
-		line_gross = flt(source_item.get("custom_gross_weight_kg"))
-		if line_gross <= 0:
-			line_gross = flt(source_item.qty) * 100
-		if line_gross > 0:
-			allocations.append((item, line_gross))
-			total_weight += line_gross
+		line_gross = _item_line_gross_kg(source_item)
+		weight_ded_kg = _calculate_item_weight_deduction_kg(source_item)
+		lines.append((item, line_gross, weight_ded_kg))
 
-	if not allocations:
-		equal_share = return_qty_quintal / len(commodity_items)
-		for item in commodity_items:
-			_apply_return_item_qty(doc, item, -flt(equal_share, 3))
+	if not lines:
 		return
 
-	remaining_quintal = return_qty_quintal
-	for index, (item, line_weight) in enumerate(allocations):
-		if index == len(allocations) - 1:
-			line_quintal = remaining_quintal
+	remaining_bag_kg = flt(total_bag_kg)
+	for index, (item, line_gross, weight_ded_kg) in enumerate(lines):
+		if total_bag_kg and total_gross and line_gross:
+			if index == len(lines) - 1:
+				bag_ded_kg = remaining_bag_kg
+			else:
+				bag_ded_kg = flt(total_bag_kg * line_gross / total_gross, 6)
+				remaining_bag_kg = flt(remaining_bag_kg - bag_ded_kg, 6)
 		else:
-			share = line_weight / total_weight
-			line_quintal = flt(return_qty_quintal * share, 3)
-			remaining_quintal = flt(remaining_quintal - line_quintal, 6)
+			bag_ded_kg = 0
 
-		_apply_return_item_qty(doc, item, -flt(line_quintal, 3))
+		return_kg = flt(weight_ded_kg) + flt(bag_ded_kg)
+		if return_kg <= 0:
+			_apply_return_item_qty(doc, item, 0)
+			continue
+
+		_apply_return_item_qty(doc, item, -flt(return_kg / QUINTAL_TO_KG, 3))
 
 
 def _apply_return_item_qty(doc, item, qty):

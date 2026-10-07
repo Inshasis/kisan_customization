@@ -115,15 +115,7 @@ html, body { margin: 0; padding: 0; }
 		<tr>
 			<td class="nob logo-cell">
 				<div class="logo-wrap">
-					{% if d.settlement_logo %}
-						<img src="{{ d.settlement_logo | e }}" alt="{{ d.company_name | e }}" data-logo-path="{{ d.settlement_logo_path | e }}">
-					{% elif letter_head and letter_head.image %}
-						<img src="{{ letter_head.image }}" alt="{{ d.company_name }}">
-					{% elif letter_head and letter_head.content %}
-						{{ letter_head.content }}
-					{% else %}
-						<span class="logo-ph">{{ d.company_abbr or "KISAN" }}</span>
-					{% endif %}
+					<img src="/files/kisan_logo.jpeg" alt="{{ d.company_name }}">
 				</div>
 			</td>
 			<td class="nob co-cell">

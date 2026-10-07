@@ -136,11 +136,12 @@ doctype_list_js = {
 # Jinja
 # ----------
 
-# add methods and filters to jinja environment
-# jinja = {
-# 	"methods": "kisan_customization.utils.jinja_methods",
-# 	"filters": "kisan_customization.utils.jinja_filters"
-# }
+# Print format templates call these server-side (avoid frappe.call in Jinja during preview/PDF).
+jinja = {
+	"methods": [
+		"kisan_customization.purchase_invoice.print_context.get_kisan_settlement_print_data",
+	]
+}
 
 # Installation
 # ------------

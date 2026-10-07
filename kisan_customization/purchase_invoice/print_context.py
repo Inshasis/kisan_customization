@@ -3,7 +3,7 @@
 import re
 
 import frappe
-from frappe.utils import flt, fmt_money, get_url, now_datetime, strip_html
+from frappe.utils import flt, fmt_money, now_datetime, strip_html
 
 
 def _load_pi(purchase_invoice):
@@ -47,15 +47,6 @@ def _company_address(company_name):
 def _address_one_line(address_html):
 	text = strip_html(address_html or "").replace("\n", ", ")
 	return re.sub(r"\s+", " ", text).strip(" ,")
-
-
-def _company_logo_url(company_doc):
-	logo = company_doc.get("company_logo")
-	if not logo:
-		return ""
-	if logo.startswith("http"):
-		return logo
-	return get_url(logo)
 
 
 def _broker_label(broker):
@@ -328,9 +319,16 @@ def _summary_row(label, doc, currency):
 	}
 
 
+def get_kisan_settlement_print_data(purchase_invoice):
+	"""Registered as Jinja method for Kisan Purchase Settlement Advice print format."""
+	return get_settlement_print_data(purchase_invoice)
+
+
 @frappe.whitelist()
 def get_settlement_print_data(purchase_invoice):
 	pi = _load_pi(purchase_invoice)
+	if frappe.session.user != "Guest":
+		pi.check_permission("print")
 	debit = _get_debit_note(pi)
 	company = frappe.get_doc("Company", pi.company)
 	supplier = pi.supplier
@@ -351,7 +349,6 @@ def get_settlement_print_data(purchase_invoice):
 		"currency": pi.currency,
 		"company_name": company.company_name,
 		"company_abbr": company.abbr or "",
-		"company_logo": _company_logo_url(company),
 		"company_address": company_address,
 		"company_address_line": _address_one_line(company_address),
 		"company_gstin": company.gstin or "",

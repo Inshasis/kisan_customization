@@ -49,13 +49,64 @@ def _address_one_line(address_html):
 	return re.sub(r"\s+", " ", text).strip(" ,")
 
 
+KISAN_SETTLEMENT_LOGO_PATH = "/files/kisan_logo.jpeg"
+KISAN_SETTLEMENT_LOGO_CANDIDATES = (
+	KISAN_SETTLEMENT_LOGO_PATH,
+	"/files/kisan_logo.jpg",
+	"/files/kisan_logo.png",
+)
+
+
+def _file_url_exists(file_url):
+	if not file_url:
+		return False
+	if frappe.db.exists("File", {"file_url": file_url, "is_folder": 0}):
+		return True
+	# Public file may exist on disk before File row is synced (e.g. manual upload).
+	public_path = frappe.get_site_path("public", file_url.lstrip("/"))
+	return public_path and frappe.utils.path_exists(public_path)
+
+
+def _site_base_url():
+	"""Use browser host (e.g. 192.168.x.x:8001) for print/PDF; fall back to site URL."""
+	from frappe.utils.data import get_host_name_from_request
+
+	request_host = get_host_name_from_request()
+	if request_host:
+		return request_host.rstrip("/")
+	return get_url().rstrip("/")
+
+
+def _absolute_file_url(file_url):
+	if not file_url:
+		return ""
+	if file_url.startswith("http://") or file_url.startswith("https://"):
+		return file_url
+	path = file_url if file_url.startswith("/") else f"/{file_url}"
+	return f"{_site_base_url()}{path}"
+
+
+def _resolve_kisan_logo_path():
+	for file_url in KISAN_SETTLEMENT_LOGO_CANDIDATES:
+		if _file_url_exists(file_url):
+			return file_url
+	return KISAN_SETTLEMENT_LOGO_PATH
+
+
+def _kisan_settlement_logo_url():
+	"""Same file path on every site; absolute URL uses that site's host + port."""
+	return _absolute_file_url(_resolve_kisan_logo_path())
+
+
 def _company_logo_url(company_doc):
 	logo = company_doc.get("company_logo")
 	if not logo:
 		return ""
-	if logo.startswith("http"):
-		return logo
-	return get_url(logo)
+	return _absolute_file_url(logo)
+
+
+def _settlement_header_logo(company_doc):
+	return _kisan_settlement_logo_url() or _company_logo_url(company_doc)
 
 
 def _broker_label(broker):
@@ -328,9 +379,16 @@ def _summary_row(label, doc, currency):
 	}
 
 
+def get_kisan_settlement_print_data(purchase_invoice):
+	"""Registered as Jinja method for Kisan Purchase Settlement Advice print format."""
+	return get_settlement_print_data(purchase_invoice)
+
+
 @frappe.whitelist()
 def get_settlement_print_data(purchase_invoice):
 	pi = _load_pi(purchase_invoice)
+	if frappe.session.user != "Guest":
+		pi.check_permission("print")
 	debit = _get_debit_note(pi)
 	company = frappe.get_doc("Company", pi.company)
 	supplier = pi.supplier
@@ -352,6 +410,9 @@ def get_settlement_print_data(purchase_invoice):
 		"company_name": company.company_name,
 		"company_abbr": company.abbr or "",
 		"company_logo": _company_logo_url(company),
+		"settlement_logo_path": _resolve_kisan_logo_path(),
+		"settlement_logo": _settlement_header_logo(company),
+		"kisan_logo": _kisan_settlement_logo_url(),
 		"company_address": company_address,
 		"company_address_line": _address_one_line(company_address),
 		"company_gstin": company.gstin or "",

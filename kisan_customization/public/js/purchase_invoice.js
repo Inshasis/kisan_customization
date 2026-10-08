@@ -359,11 +359,14 @@ function validate_supplier_invoice_amount_client(frm) {
 		frappe.throw(__("Supplier Invoice Amount must be greater than 0."));
 	}
 
-	const rounded_total = flt(frm.doc.rounded_total) || flt(frm.doc.grand_total) || 0;
+	let rounded_total = flt(frm.doc.rounded_total);
+	if (!rounded_total) {
+		rounded_total = Math.round(flt(frm.doc.grand_total) || 0);
+	}
 	if (Math.abs(supplier_amount - rounded_total) > SUPPLIER_INVOICE_AMOUNT_TOLERANCE) {
 		frappe.throw(
 			__(
-				"Supplier Invoice Amount ({0}) must match Rounded Total ({1}) (allowed difference: {2}).",
+				"Supplier Invoice Amount ({0}) must match Rounded Total ({1}). Allowed difference up to {2}.",
 				[
 					format_currency(supplier_amount, frm.doc.currency),
 					format_currency(rounded_total, frm.doc.currency),

@@ -1,5 +1,6 @@
 {# GOODS RECEIPT NOTE / PURCHASE SETTLEMENT ADVICE — compact A4 #}
 {% set d = get_kisan_settlement_print_data(doc.name) %}
+{% set sf = d.summary_footer %}
 
 <style>
 :root {
@@ -287,7 +288,7 @@ html, body { margin: 0; padding: 0; }
 
 	<table class="block">
 		<colgroup>
-			<col style="width:22%"><col style="width:38%"><col style="width:18%"><col style="width:22%">
+			<col style="width:22%"><col style="width:26%"><col style="width:26%"><col style="width:26%">
 		</colgroup>
 		<tr class="sec-bar"><td colspan="4">Settlement Summary</td></tr>
 		<tr class="tbl-hdr">
@@ -305,7 +306,12 @@ html, body { margin: 0; padding: 0; }
 			<td class="rgt">{{ d.summary_debit.gst }}</td>
 			<td class="rgt">{{ d.summary_debit.net_payable }}</td>
 		</tr>
-		<tr class="net-row"><td>Net Payable</td><td colspan="2"></td><td class="rgt">{{ d.net_payable }}</td></tr>
+		<tr class="net-row">
+			<td class="b">{{ sf.document }}</td>
+			<td class="rgt b">{{ sf.basic_net_tds }}</td>
+			<td class="rgt b">{{ sf.gst }}</td>
+			<td class="rgt b">{{ sf.net_payable }}</td>
+		</tr>
 	</table>
 
 	<div class="foot">

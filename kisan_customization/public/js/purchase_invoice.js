@@ -347,6 +347,8 @@ function validate_item_gross_weight_sum_client(frm) {
 	}
 }
 
+const SUPPLIER_INVOICE_AMOUNT_TOLERANCE = 1;
+
 function validate_supplier_invoice_amount_client(frm) {
 	if (frm.doc.is_return || !frm.fields_dict.custom_supplier_invoice_amount) {
 		return;
@@ -357,15 +359,15 @@ function validate_supplier_invoice_amount_client(frm) {
 		frappe.throw(__("Supplier Invoice Amount must be greater than 0."));
 	}
 
-	const grand_total =
-		flt(frm.doc.grand_total) || flt(frm.doc.rounded_total) || flt(frm.doc.base_grand_total) || 0;
-	if (grand_total > supplier_amount) {
+	const rounded_total = flt(frm.doc.rounded_total) || flt(frm.doc.grand_total) || 0;
+	if (Math.abs(supplier_amount - rounded_total) > SUPPLIER_INVOICE_AMOUNT_TOLERANCE) {
 		frappe.throw(
 			__(
-				"Grand Total ({0}) cannot be greater than Supplier Invoice Amount ({1}).",
+				"Supplier Invoice Amount ({0}) must match Rounded Total ({1}) (allowed difference: {2}).",
 				[
-					format_currency(grand_total, frm.doc.currency),
 					format_currency(supplier_amount, frm.doc.currency),
+					format_currency(rounded_total, frm.doc.currency),
+					format_currency(SUPPLIER_INVOICE_AMOUNT_TOLERANCE, frm.doc.currency),
 				]
 			)
 		);

@@ -82,9 +82,9 @@ def make_debit_note(source_name, target_doc=None):
 def _apply_debit_note_settings(doc, source):
 	doc.is_return = 1
 	doc.return_against = source.name
-	doc.update_outstanding_for_self = 1
+	doc.update_outstanding_for_self = 0
 	doc.update_billed_amount_in_purchase_order = 0
-	doc.update_billed_amount_in_purchase_receipt = 1
+	doc.update_billed_amount_in_purchase_receipt = 0
 
 	_copy_weight_context_from_source(doc, source)
 

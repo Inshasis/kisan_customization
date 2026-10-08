@@ -5,7 +5,7 @@ from erpnext.accounts.doctype.purchase_invoice.purchase_invoice import (
 	make_debit_note as erpnext_make_debit_note,
 )
 from frappe import _
-from frappe.utils import flt
+from frappe.utils import cint, flt
 
 from kisan_customization.broker_commission.service import clear_broker_commission_fields
 from kisan_customization.purchase_invoice.deductions import (
@@ -98,6 +98,7 @@ def _apply_debit_note_settings(doc, source):
 	_clear_return_payment_term_fields(doc)
 	# Quality & Other: other deduction amounts only (not bag/weight auto rows).
 	sync_deduction_item_row(doc)
+	_copy_stock_settings_from_source(doc, source)
 
 	if hasattr(doc, "calculate_taxes_and_totals"):
 		doc.calculate_taxes_and_totals()
@@ -123,6 +124,29 @@ def _copy_weight_context_from_source(doc, source):
 			continue
 		if source.get(fieldname) is not None:
 			doc.set(fieldname, source.get(fieldname))
+
+
+def _copy_stock_settings_from_source(doc, source):
+	"""When PI updated stock, carry update_stock + warehouse to the debit note."""
+	if not cint(source.get("update_stock")):
+		return
+
+	doc.update_stock = 1
+
+	set_warehouse = source.get("set_warehouse")
+	if set_warehouse and doc.meta.has_field("set_warehouse"):
+		doc.set_warehouse = set_warehouse
+
+	source_items = {row.name: row for row in source.get("items") or []}
+	for row in doc.get("items") or []:
+		source_item = source_items.get(row.get("purchase_invoice_item"))
+		warehouse = None
+		if source_item and source_item.get("warehouse"):
+			warehouse = source_item.warehouse
+		elif set_warehouse:
+			warehouse = set_warehouse
+		if warehouse:
+			row.warehouse = warehouse
 
 
 def _sync_return_deduction_fields(doc, weight_kg, bag_kg, weight_amt=0, bag_amt=0):

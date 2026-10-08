@@ -8,7 +8,12 @@ SUPPLIER_INVOICE_AMOUNT_TOLERANCE = 1.0
 
 
 def _purchase_invoice_rounded_total(doc):
-	return flt(doc.get("rounded_total")) or flt(doc.get("grand_total"))
+	"""Payable total for supplier bill match — rounded_total only (not grand_total)."""
+	rounded = flt(doc.get("rounded_total"))
+	if rounded:
+		return rounded
+	grand = flt(doc.get("grand_total"))
+	return round(grand) if grand else 0.0
 
 
 def validate_supplier_invoice_amount(doc):
@@ -23,7 +28,7 @@ def validate_supplier_invoice_amount(doc):
 	if abs(supplier_amount - rounded_total) > SUPPLIER_INVOICE_AMOUNT_TOLERANCE:
 		frappe.throw(
 			_(
-				"Supplier Invoice Amount ({0}) must match Rounded Total ({1}) (allowed difference: {2})."
+				"Supplier Invoice Amount ({0}) must match Rounded Total ({1}). Allowed difference up to {2}."
 			).format(
 				frappe.format(supplier_amount, {"fieldtype": "Currency", "currency": doc.currency}),
 				frappe.format(rounded_total, {"fieldtype": "Currency", "currency": doc.currency}),

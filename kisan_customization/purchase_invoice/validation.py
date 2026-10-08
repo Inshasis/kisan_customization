@@ -4,6 +4,12 @@ import frappe
 from frappe import _
 from frappe.utils import flt
 
+SUPPLIER_INVOICE_AMOUNT_TOLERANCE = 1.0
+
+
+def _purchase_invoice_rounded_total(doc):
+	return flt(doc.get("rounded_total")) or flt(doc.get("grand_total"))
+
 
 def validate_supplier_invoice_amount(doc):
 	if not doc.meta.has_field("custom_supplier_invoice_amount") or doc.get("is_return"):
@@ -13,12 +19,18 @@ def validate_supplier_invoice_amount(doc):
 	if supplier_amount <= 0:
 		frappe.throw(_("Supplier Invoice Amount must be greater than 0."))
 
-	grand_total = flt(doc.base_grand_total) or flt(doc.grand_total) or flt(doc.rounded_total)
-	if grand_total > supplier_amount:
+	rounded_total = _purchase_invoice_rounded_total(doc)
+	if abs(supplier_amount - rounded_total) > SUPPLIER_INVOICE_AMOUNT_TOLERANCE:
 		frappe.throw(
-			_("Grand Total ({0}) cannot be greater than Supplier Invoice Amount ({1}).").format(
-				frappe.format(grand_total, {"fieldtype": "Currency"}),
-				frappe.format(supplier_amount, {"fieldtype": "Currency"}),
+			_(
+				"Supplier Invoice Amount ({0}) must match Rounded Total ({1}) (allowed difference: {2})."
+			).format(
+				frappe.format(supplier_amount, {"fieldtype": "Currency", "currency": doc.currency}),
+				frappe.format(rounded_total, {"fieldtype": "Currency", "currency": doc.currency}),
+				frappe.format(
+					SUPPLIER_INVOICE_AMOUNT_TOLERANCE,
+					{"fieldtype": "Currency", "currency": doc.currency},
+				),
 			)
 		)
 

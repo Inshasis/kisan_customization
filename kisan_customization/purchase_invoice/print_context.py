@@ -172,13 +172,30 @@ def _pi_lines(pi):
 	return lines
 
 
+def _line_net_weight_quintal(pi, item, total_arrival_kg):
+	uom = (item.uom or "").lower()
+	if len(pi.items) == 1 and total_arrival_kg:
+		return flt(total_arrival_kg) / 100
+	if uom == "quintal":
+		return flt(item.qty)
+	return flt(item.qty) / 100
+
+
+def _line_arrival_weight_kg(pi, item, total_arrival_kg):
+	uom = (item.uom or "").lower()
+	if len(pi.items) == 1 and total_arrival_kg:
+		return total_arrival_kg
+	return flt(item.qty) * 100 if uom == "quintal" else flt(item.qty)
+
+
 def _bargain_rows(pi):
 	arrival = flt(pi.get("custom_total_arrival_weight"))
 	gross = flt(pi.get("custom_total_gross_weight"))
 	bags = flt(pi.get("custom_total_bags"))
 	rows = []
+	bargain_total = 0.0
 	for idx, item in enumerate(pi.get("items") or [], start=1):
-		sauda_rate = item.rate
+		sauda_rate = flt(item.rate)
 		if item.purchase_order:
 			po_rate = frappe.db.get_value(
 				"Purchase Order Item",
@@ -186,12 +203,12 @@ def _bargain_rows(pi):
 				"rate",
 			)
 			if po_rate is not None:
-				sauda_rate = po_rate
+				sauda_rate = flt(po_rate)
 		lot = item.purchase_order or pi.get("custom_aggregator_booking") or ""
-		line_arrival = flt(item.qty) * 100 if (item.uom or "").lower() == "quintal" else flt(item.qty)
-		if len(pi.items) == 1 and arrival:
-			line_arrival = arrival
-		amount = flt(item.amount)
+		net_wt = _line_net_weight_quintal(pi, item, arrival)
+		arr_wt = _line_arrival_weight_kg(pi, item, arrival)
+		amount = flt(sauda_rate * net_wt, 2)
+		bargain_total += amount
 		rows.append(
 			{
 				"lot_no": lot,
@@ -199,14 +216,13 @@ def _bargain_rows(pi):
 				"bags": bags if idx == 1 else "",
 				"bags_wt": gross if idx == 1 else "",
 				"sauda_rate": fmt_money(sauda_rate, currency=pi.currency),
-				"arrival_weight": line_arrival,
+				"arrival_weight": arr_wt,
 				"oil_pct": "",
 				"oil_rate": "",
-				"net_wt": line_arrival,
+				"net_wt": net_wt,
 				"amount": fmt_money(amount, currency=pi.currency),
 			}
 		)
-	bargain_total = sum(flt(item.amount) for item in pi.get("items") or [])
 	return rows, fmt_money(bargain_total, currency=pi.currency)
 
 
@@ -231,70 +247,77 @@ def _quality_rows(pi):
 	return rows, total
 
 
-def _debit_lines(debit):
+def _debit_deduction_item_row(debit):
+	from kisan_customization.purchase_invoice.deductions import get_deduction_item_code
+
+	item_code = get_deduction_item_code()
+	if not item_code:
+		return None
+	for row in debit.get("items") or []:
+		if row.item_code == item_code:
+			return row
+	return None
+
+
+def _debit_lines(debit, pi):
 	if not debit:
 		return []
+	currency = pi.currency
+	weight_kg = flt(pi.get("custom_weight_deduction"))
+	weight_amt = flt(pi.get("custom_weight_deduction_amount"))
+	bag_kg = flt(pi.get("custom_bag_deduction"))
+	bag_amt = flt(pi.get("custom_bag_deduction_amount"))
 	lines = []
 	sr = 0
-	if flt(debit.get("custom_weight_deduction")):
+	if weight_kg or weight_amt:
 		sr += 1
 		lines.append(
 			{
 				"sr": sr,
-				"particulars": "Weight Shortage",
+				"particulars": "Weight Deduction",
 				"hsn": "",
-				"qty": f"{flt(debit.custom_weight_deduction):g} kg",
+				"qty": f"{weight_kg:g} kg" if weight_kg else "—",
 				"rate": "",
-				"amount": fmt_money(debit.get("custom_weight_deduction_amount") or 0, currency=debit.currency),
+				"amount": fmt_money(weight_amt, currency=currency),
 			}
 		)
-	if flt(debit.get("custom_bag_deduction")):
+	if bag_kg or bag_amt:
 		sr += 1
 		lines.append(
 			{
 				"sr": sr,
-				"particulars": "Bags Weight",
+				"particulars": "Bag Deduction",
 				"hsn": "",
-				"qty": f"{flt(debit.custom_bag_deduction):g} kg",
+				"qty": f"{bag_kg:g} kg" if bag_kg else "—",
 				"rate": "",
-				"amount": fmt_money(debit.get("custom_bag_deduction_amount") or 0, currency=debit.currency),
+				"amount": fmt_money(bag_amt, currency=currency),
 			}
 		)
-	deduction_item = None
-	for row in debit.get("items") or []:
-		label = (row.item_name or row.item_code or "").lower()
-		if "quality" in label:
-			deduction_item = row
-			break
+	deduction_item = _debit_deduction_item_row(debit)
+	quality_amt = 0.0
+	qty_txt = "—"
+	rate_txt = "—"
+	hsn = ""
 	if deduction_item:
-		sr += 1
-		rate_suffix = "/QT"
+		quality_amt = flt(deduction_item.amount)
 		uom = (deduction_item.uom or "Quintal").strip()
-		if not uom.lower().startswith("quint"):
-			rate_suffix = f"/{uom[:3].upper()}"
-		rate_txt = fmt_money(deduction_item.rate, currency=debit.currency)
-		lines.append(
-			{
-				"sr": sr,
-				"particulars": "Quality and other deductions",
-				"hsn": deduction_item.gst_hsn_code or "",
-				"qty": f"{abs(flt(deduction_item.qty)):g} {deduction_item.uom or ''}".strip(),
-				"rate": f"{rate_txt} {rate_suffix}".strip(),
-				"amount": fmt_money(deduction_item.amount, currency=debit.currency),
-			}
-		)
-	for row in debit.get("items") or []:
-		if deduction_item and row.name == deduction_item.name:
-			continue
+		rate_suffix = "/QT" if uom.lower().startswith("quint") else f"/{uom[:3].upper()}"
+		rate_txt = f"{fmt_money(deduction_item.rate, currency=currency)} {rate_suffix}".strip()
+		qty_txt = f"{abs(flt(deduction_item.qty)):g} {deduction_item.uom or ''}".strip()
+		hsn = deduction_item.gst_hsn_code or ""
+	else:
+		_, quality_total = _quality_rows(pi)
+		quality_amt = flt(quality_total)
+	if quality_amt or deduction_item:
 		sr += 1
 		lines.append(
 			{
 				"sr": sr,
-				"particulars": row.item_name or row.item_code,
-				"hsn": row.gst_hsn_code or "",
-				"qty": f"{abs(flt(row.qty)):g} {row.uom or ''}".strip(),
-				"rate": fmt_money(row.rate, currency=debit.currency),
-				"amount": fmt_money(row.amount, currency=debit.currency),
+				"particulars": "Quality Deduction",
+				"hsn": hsn or "—",
+				"qty": qty_txt,
+				"rate": rate_txt,
+				"amount": fmt_money(quality_amt, currency=currency),
 			}
 		)
 	return lines
@@ -319,9 +342,36 @@ def _summary_row(label, doc, currency):
 	}
 
 
+def _summary_footer(pi, debit, currency):
+	basic_net = 0.0
+	gst = 0.0
+	net_payable = 0.0
+	for doc in (pi, debit):
+		if not doc:
+			continue
+		taxes = _tax_breakup(doc)
+		basic = flt(doc.net_total) or flt(doc.total)
+		basic_net += basic - taxes["tds"]
+		gst += taxes["gst_total"]
+		net_payable += flt(doc.grand_total)
+	return {
+		"document": "Net Payable",
+		"basic_net_tds": fmt_money(basic_net, currency=currency),
+		"gst": fmt_money(gst, currency=currency),
+		"net_payable": fmt_money(net_payable, currency=currency),
+	}
+
+
 def get_kisan_settlement_print_data(purchase_invoice):
 	"""Registered as Jinja method for Kisan Purchase Settlement Advice print format."""
-	return get_settlement_print_data(purchase_invoice)
+	data = get_settlement_print_data(purchase_invoice)
+	if not isinstance(data, dict):
+		data = dict(data)
+	if not data.get("summary_footer"):
+		pi = _load_pi(purchase_invoice)
+		debit = _get_debit_note(pi)
+		data["summary_footer"] = _summary_footer(pi, debit, pi.currency)
+	return data
 
 
 @frappe.whitelist()
@@ -376,12 +426,13 @@ def get_settlement_print_data(purchase_invoice):
 		"bargain_total": bargain_total,
 		"quality_rows": quality_rows,
 		"quality_total": fmt_money(quality_total, currency=pi.currency),
-		"debit_lines": _debit_lines(debit),
+		"debit_lines": _debit_lines(debit, pi),
 		"debit_tax": debit_tax,
 		"debit_tax_sidebar": _tax_sidebar(debit, pi.currency) if debit else [],
 		"debit_grand_total": fmt_money(debit.grand_total, currency=pi.currency) if debit else fmt_money(0, currency=pi.currency),
 		"summary_pi": _summary_row("Purchase Invoice", pi, pi.currency),
 		"summary_debit": _summary_row("Debit Note", debit, pi.currency),
+		"summary_footer": _summary_footer(pi, debit, pi.currency),
 		"net_payable": fmt_money(net_payable, currency=pi.currency),
 		"final_rate": fmt_money(final_rate, currency=pi.currency) if final_rate else "",
 		"printed_by": frappe.session.user,

@@ -5,6 +5,11 @@ import re
 import frappe
 from frappe.utils import flt, fmt_money, now_datetime, strip_html
 
+from kisan_customization.purchase_invoice.deductions import (
+	_calculate_bag_deduction_amount,
+	_calculate_weight_deduction_amount,
+)
+
 
 def _load_pi(purchase_invoice):
 	doc = frappe.get_doc("Purchase Invoice", purchase_invoice)
@@ -172,20 +177,51 @@ def _pi_lines(pi):
 	return lines
 
 
-def _line_net_weight_quintal(pi, item, total_arrival_kg):
-	uom = (item.uom or "").lower()
-	if len(pi.items) == 1 and total_arrival_kg:
-		return flt(total_arrival_kg) / 100
-	if uom == "quintal":
-		return flt(item.qty)
-	return flt(item.qty) / 100
-
-
 def _line_arrival_weight_kg(pi, item, total_arrival_kg):
 	uom = (item.uom or "").lower()
 	if len(pi.items) == 1 and total_arrival_kg:
 		return total_arrival_kg
 	return flt(item.qty) * 100 if uom == "quintal" else flt(item.qty)
+
+
+def _arrival_quintal(arr_wt_kg):
+	return flt(arr_wt_kg) / 100
+
+
+def _pi_commodity_item_rates(pi):
+	from kisan_customization.purchase_invoice.item_gross_weight import get_commodity_items
+
+	return [flt(row.rate) for row in get_commodity_items(pi) if flt(row.rate)]
+
+
+def _pi_item_table_avg_rate(pi):
+	from kisan_customization.purchase_invoice.bags import get_pi_avg_rate
+	from kisan_customization.purchase_invoice.item_gross_weight import get_pi_weighted_item_rate
+
+	rate = flt(get_pi_weighted_item_rate(pi))
+	if rate:
+		return rate
+	rates = _pi_commodity_item_rates(pi)
+	if not rates:
+		rates = [flt(row.rate) for row in pi.get("items") or [] if flt(row.rate)]
+	if rates:
+		return flt(sum(rates) / len(rates))
+	return flt(get_pi_avg_rate(pi))
+
+
+def _resolve_deduction_line_rate(calc_rate, kg, amt, fallback_rate):
+	rate = flt(calc_rate) or flt(fallback_rate)
+	if not rate and kg and amt:
+		rate = flt(amt * 100 / kg, 2)
+	return rate
+
+
+def _deduction_rate_display(rate, currency):
+	rate = flt(rate)
+	if not rate:
+		return ""
+	formatted = fmt_money(rate, currency=currency) or f"{rate:,.2f}"
+	return f"{formatted} /QT"
 
 
 def _bargain_rows(pi):
@@ -205,21 +241,22 @@ def _bargain_rows(pi):
 			if po_rate is not None:
 				sauda_rate = flt(po_rate)
 		lot = item.purchase_order or pi.get("custom_aggregator_booking") or ""
-		net_wt = _line_net_weight_quintal(pi, item, arrival)
 		arr_wt = _line_arrival_weight_kg(pi, item, arrival)
-		amount = flt(sauda_rate * net_wt, 2)
+		arr_quintal = _arrival_quintal(arr_wt)
+		amount = flt(sauda_rate * arr_quintal, 2)
 		bargain_total += amount
+		gross_cell = gross if idx == 1 else ""
 		rows.append(
 			{
 				"lot_no": lot,
 				"item": item.item_name or item.item_code,
 				"bags": bags if idx == 1 else "",
-				"bags_wt": gross if idx == 1 else "",
+				"gross_weight": gross_cell,
+				"bags_wt": gross_cell,
 				"sauda_rate": fmt_money(sauda_rate, currency=pi.currency),
 				"arrival_weight": arr_wt,
 				"oil_pct": "",
 				"oil_rate": "",
-				"net_wt": net_wt,
 				"amount": fmt_money(amount, currency=pi.currency),
 			}
 		)
@@ -263,10 +300,15 @@ def _debit_lines(debit, pi):
 	if not debit:
 		return []
 	currency = pi.currency
-	weight_kg = flt(pi.get("custom_weight_deduction"))
-	weight_amt = flt(pi.get("custom_weight_deduction_amount"))
-	bag_kg = flt(pi.get("custom_bag_deduction"))
-	bag_amt = flt(pi.get("custom_bag_deduction_amount"))
+	calc_weight_kg, calc_weight_rate, calc_weight_amt = _calculate_weight_deduction_amount(pi)
+	calc_bag_kg, calc_bag_rate, calc_bag_amt = _calculate_bag_deduction_amount(pi)
+	weight_kg = flt(pi.get("custom_weight_deduction")) or calc_weight_kg
+	bag_kg = flt(pi.get("custom_bag_deduction")) or calc_bag_kg
+	weight_amt = flt(pi.get("custom_weight_deduction_amount")) or calc_weight_amt
+	bag_amt = flt(pi.get("custom_bag_deduction_amount")) or calc_bag_amt
+	item_table_rate = _pi_item_table_avg_rate(pi)
+	weight_rate = _resolve_deduction_line_rate(calc_weight_rate, weight_kg, weight_amt, item_table_rate)
+	bag_rate = _resolve_deduction_line_rate(calc_bag_rate, bag_kg, bag_amt, item_table_rate)
 	lines = []
 	sr = 0
 	if weight_kg or weight_amt:
@@ -276,9 +318,10 @@ def _debit_lines(debit, pi):
 				"sr": sr,
 				"particulars": "Weight Deduction",
 				"hsn": "",
-				"qty": f"{weight_kg:g} kg" if weight_kg else "—",
-				"rate": "",
+				"dn_qty": f"{weight_kg:g} kg",
+				"dn_rate": _deduction_rate_display(weight_rate, currency),
 				"amount": fmt_money(weight_amt, currency=currency),
+				"is_quality_row": 0,
 			}
 		)
 	if bag_kg or bag_amt:
@@ -288,22 +331,17 @@ def _debit_lines(debit, pi):
 				"sr": sr,
 				"particulars": "Bag Deduction",
 				"hsn": "",
-				"qty": f"{bag_kg:g} kg" if bag_kg else "—",
-				"rate": "",
+				"dn_qty": f"{bag_kg:g} kg",
+				"dn_rate": _deduction_rate_display(bag_rate, currency),
 				"amount": fmt_money(bag_amt, currency=currency),
+				"is_quality_row": 0,
 			}
 		)
 	deduction_item = _debit_deduction_item_row(debit)
 	quality_amt = 0.0
-	qty_txt = "—"
-	rate_txt = "—"
 	hsn = ""
 	if deduction_item:
 		quality_amt = flt(deduction_item.amount)
-		uom = (deduction_item.uom or "Quintal").strip()
-		rate_suffix = "/QT" if uom.lower().startswith("quint") else f"/{uom[:3].upper()}"
-		rate_txt = f"{fmt_money(deduction_item.rate, currency=currency)} {rate_suffix}".strip()
-		qty_txt = f"{abs(flt(deduction_item.qty)):g} {deduction_item.uom or ''}".strip()
 		hsn = deduction_item.gst_hsn_code or ""
 	else:
 		_, quality_total = _quality_rows(pi)
@@ -315,9 +353,10 @@ def _debit_lines(debit, pi):
 				"sr": sr,
 				"particulars": "Quality Deduction",
 				"hsn": hsn or "—",
-				"qty": qty_txt,
-				"rate": rate_txt,
+				"dn_qty": "",
+				"dn_rate": "",
 				"amount": fmt_money(quality_amt, currency=currency),
+				"is_quality_row": 1,
 			}
 		)
 	return lines
@@ -360,6 +399,27 @@ def _summary_footer(pi, debit, currency):
 		"gst": fmt_money(gst, currency=currency),
 		"net_payable": fmt_money(net_payable, currency=currency),
 	}
+
+
+def _lorry_no_from_pi(pi):
+	"""Print Lorry No. from PI Vehicle No (GST India field) and fallbacks."""
+	if not pi or not pi.name:
+		return ""
+	candidate_fields = ("vehicle_no", "custom_lorry_no", "lr_no")
+	for fieldname in candidate_fields:
+		value = pi.get(fieldname)
+		if value and str(value).strip():
+			return str(value).strip()
+
+	db_fields = [f for f in candidate_fields if frappe.db.has_column("Purchase Invoice", f)]
+	if db_fields:
+		row = frappe.db.get_value("Purchase Invoice", pi.name, db_fields, as_dict=True)
+		if row:
+			for fieldname in candidate_fields:
+				value = row.get(fieldname)
+				if value and str(value).strip():
+					return str(value).strip()
+	return ""
 
 
 def get_kisan_settlement_print_data(purchase_invoice):
@@ -419,7 +479,7 @@ def get_settlement_print_data(purchase_invoice):
 		"vendor_bill_amount": fmt_money(
 			pi.get("custom_supplier_invoice_amount") or pi.grand_total, currency=pi.currency
 		),
-		"lorry_no": pi.get("lr_no") or pi.get("custom_lorry_no") or "",
+		"lorry_no": _lorry_no_from_pi(pi),
 		"pi_lines": _pi_lines(pi),
 		"pi_total_payable": fmt_money(pi.grand_total, currency=pi.currency),
 		"bargain_rows": bargain_rows,

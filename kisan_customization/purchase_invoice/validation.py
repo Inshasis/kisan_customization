@@ -24,14 +24,16 @@ def validate_supplier_invoice_amount(doc):
 	if supplier_amount <= 0:
 		frappe.throw(_("Supplier Invoice Amount must be greater than 0."))
 
-	rounded_total = _purchase_invoice_rounded_total(doc)
-	if abs(supplier_amount - rounded_total) > SUPPLIER_INVOICE_AMOUNT_TOLERANCE:
+	our_amount = _purchase_invoice_rounded_total(doc)
+	if our_amount <= supplier_amount:
+		return
+	if flt(our_amount - supplier_amount) > SUPPLIER_INVOICE_AMOUNT_TOLERANCE:
 		frappe.throw(
 			_(
-				"Supplier Invoice Amount ({0}) must match Rounded Total ({1}). Allowed difference up to {2}."
+				"Rounded Total ({0}) cannot be greater than Supplier Invoice Amount ({1}) by more than {2}."
 			).format(
+				frappe.format(our_amount, {"fieldtype": "Currency", "currency": doc.currency}),
 				frappe.format(supplier_amount, {"fieldtype": "Currency", "currency": doc.currency}),
-				frappe.format(rounded_total, {"fieldtype": "Currency", "currency": doc.currency}),
 				frappe.format(
 					SUPPLIER_INVOICE_AMOUNT_TOLERANCE,
 					{"fieldtype": "Currency", "currency": doc.currency},

@@ -1,3 +1,17 @@
+/* Deduction section Button field — ERP primary theme */
+.form-page .frappe-control[data-fieldname="custom_deducation"] .btn {
+	background-color: var(--btn-primary, var(--primary));
+	border-color: var(--btn-primary, var(--primary));
+	color: var(--text-on-primary, var(--gray-0, #fff));
+}
+
+.form-page .frappe-control[data-fieldname="custom_deducation"] .btn:hover,
+.form-page .frappe-control[data-fieldname="custom_deducation"] .btn:focus {
+	background-color: var(--btn-primary-hover, var(--primary));
+	border-color: var(--btn-primary-hover, var(--primary));
+	color: var(--text-on-primary, var(--gray-0, #fff));
+}
+
 /* Kisan Purchase Invoice Deductions Dialog */
 
 .kisan-deduction-dialog .modal-dialog {

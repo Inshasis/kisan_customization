@@ -15,6 +15,7 @@ from kisan_customization.purchase_invoice.deductions import (
 	sync_deduction_item_row,
 )
 from kisan_customization.utils.deduction_utils import get_pi_total_gross_weight
+from kisan_customization.utils.transaction_mode import is_kisan_custom
 
 QUINTAL_TO_KG = 100
 
@@ -77,6 +78,34 @@ def make_debit_note(source_name, target_doc=None):
 	source = frappe.get_doc("Purchase Invoice", source_name)
 	_apply_debit_note_settings(doc, source)
 	return doc
+
+
+@frappe.whitelist()
+def create_and_submit_debit_note(purchase_invoice):
+	"""Create Kisan debit note from a submitted PI and submit (no form / outstanding prompt)."""
+	frappe.has_permission("Purchase Invoice", "create", throw=True)
+	frappe.has_permission("Purchase Invoice", "submit", throw=True)
+
+	source = frappe.get_doc("Purchase Invoice", purchase_invoice)
+	if source.docstatus != 1:
+		frappe.throw(_("Purchase Invoice must be submitted."), title=_("Cannot Create Debit Note"))
+	if source.get("is_return"):
+		frappe.throw(_("Cannot create a Debit Note from a return invoice."))
+	if not is_kisan_custom(source):
+		frappe.throw(_("Debit Note can only be created for Kisan Custom Purchase Invoices."))
+
+	doc = make_debit_note(purchase_invoice)
+	doc.flags.ignore_permissions = True
+
+	previous_mute = frappe.flags.mute_messages
+	frappe.flags.mute_messages = True
+	try:
+		doc.insert()
+		doc.submit()
+	finally:
+		frappe.flags.mute_messages = previous_mute
+
+	return {"name": doc.name}
 
 
 def _apply_debit_note_settings(doc, source):

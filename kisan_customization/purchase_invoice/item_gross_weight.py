@@ -1,10 +1,7 @@
 # Copyright (c) 2026, Hidayatali and contributors
 
 import frappe
-from frappe import _
 from frappe.utils import flt
-
-from kisan_customization.utils.deduction_utils import get_pi_total_gross_weight
 
 
 def _get_deduction_item_code():
@@ -59,22 +56,18 @@ def get_gross_weight_share(item, doc):
 	return 0
 
 
-def validate_item_gross_weights(doc):
+def get_items_gross_weight_total(doc):
+	return sum(get_item_line_gross_weight_kg(row) for row in get_commodity_items(doc))
+
+
+def sync_total_gross_weight_from_items(doc):
+	"""Total Gross Weight (kg) = sum of item line Gross Weight (Kg)."""
 	if doc.get("is_return"):
 		return
-
-	lines = [get_item_line_gross_weight_kg(row) for row in get_commodity_items(doc) if flt(row.rate)]
-	if not any(lines):
+	if not doc.meta.has_field("custom_total_gross_weight"):
 		return
+	doc.custom_total_gross_weight = flt(get_items_gross_weight_total(doc))
 
-	line_total = sum(lines)
-	header_gross = get_pi_total_gross_weight(doc)
-	if not header_gross or not line_total:
-		return
 
-	if abs(line_total - header_gross) > 0.5:
-		frappe.throw(
-			_(
-				"Sum of item Gross Weight (Kg) ({0}) must match Total Gross Weight ({1}) on the invoice."
-			).format(line_total, header_gross)
-		)
+def validate_item_gross_weights(doc):
+	sync_total_gross_weight_from_items(doc)

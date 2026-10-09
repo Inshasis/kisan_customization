@@ -124,6 +124,7 @@ frappe.ui.form.on("Purchase Invoice", {
 		) {
 			kisan_customization.transaction_mode.init_kisan_purchase_invoice_ui(frm);
 		}
+		style_deduction_section_button(frm);
 	},
 
 	kisan_transaction_mode_set(frm) {
@@ -132,6 +133,7 @@ frappe.ui.form.on("Purchase Invoice", {
 			return;
 		}
 		kisan_customization.transaction_mode.init_kisan_purchase_invoice_ui(frm);
+		style_deduction_section_button(frm);
 	},
 
 	is_return(frm) {
@@ -159,14 +161,19 @@ frappe.ui.form.on("Purchase Invoice", {
 		) {
 			return;
 		}
-		if (!can_show_deduction_button(frm)) return;
 
-		const total = get_existing_deduction_total(frm);
-		const currency = frm.doc.currency || frappe.defaults.get_global_default("currency");
-		const label =
-			total > 0 ? __("Deductions") + ` (${format_currency(total, currency)})` : __("Deductions");
+		if (can_show_deduction_button(frm)) {
+			const total = get_existing_deduction_total(frm);
+			const currency = frm.doc.currency || frappe.defaults.get_global_default("currency");
+			const label =
+				total > 0
+					? __("Deductions") + ` (${format_currency(total, currency)})`
+					: __("Deductions");
 
-		frm.add_custom_button(label, () => open_deductions_dialog(frm));
+			frm.add_custom_button(label, () => open_deductions_dialog(frm));
+		}
+
+		style_deduction_section_button(frm);
 	},
 
 	custom_total_bags(frm) {
@@ -174,6 +181,9 @@ frappe.ui.form.on("Purchase Invoice", {
 	},
 
 	custom_total_gross_weight(frm) {
+		if (kisan_customization.transaction_mode.is_kisan_custom(frm) && !frm.doc.is_return) {
+			sync_total_gross_weight_from_items(frm);
+		}
 		recalculate_all_bag_rows(frm);
 	},
 
@@ -182,10 +192,12 @@ frappe.ui.form.on("Purchase Invoice", {
 	},
 
 	items_add(frm) {
+		sync_total_gross_weight_from_items(frm);
 		recalculate_all_bag_rows(frm);
 	},
 
 	items_remove(frm) {
+		sync_total_gross_weight_from_items(frm);
 		recalculate_all_bag_rows(frm);
 	},
 
@@ -194,8 +206,8 @@ frappe.ui.form.on("Purchase Invoice", {
 			return;
 		}
 
+		sync_total_gross_weight_from_items(frm);
 		validate_supplier_invoice_amount_client(frm);
-		validate_item_gross_weight_sum_client(frm);
 
 		const total_bags = flt(frm.doc.custom_total_bags);
 		const child_sum = get_child_bag_sum(frm);
@@ -227,7 +239,9 @@ frappe.ui.form.on("Purchase Invoice Item", {
 		update_deduction_header_fields(frm);
 	},
 
-	custom_gross_weight_kg(frm) {
+	custom_gross_weight_kg(frm, cdt, cdn) {
+		sync_total_gross_weight_from_items(frm);
+		recalculate_all_bag_rows(frm);
 		update_deduction_header_fields(frm);
 	},
 });
@@ -243,7 +257,33 @@ function toggle_pi_item_gross_weight_column(frm) {
 		"hidden",
 		show ? 0 : 1
 	);
+	if (frm.fields_dict.custom_total_gross_weight) {
+		frm.set_df_property(
+			"custom_total_gross_weight",
+			"read_only",
+			show ? 1 : 0
+		);
+	}
+	if (show) {
+		sync_total_gross_weight_from_items(frm);
+	}
 	frm.refresh_field("items");
+}
+
+function sync_total_gross_weight_from_items(frm) {
+	if (!kisan_customization.transaction_mode.is_kisan_custom(frm) || frm.doc.is_return) {
+		return;
+	}
+	if (!frm.fields_dict.custom_total_gross_weight) {
+		return;
+	}
+	const total = (frm.doc.items || []).reduce(
+		(sum, row) => sum + flt(row.custom_gross_weight_kg),
+		0
+	);
+	if (flt(frm.doc.custom_total_gross_weight) !== flt(total)) {
+		frm.set_value("custom_total_gross_weight", total);
+	}
 }
 
 kisan_customization.transaction_mode.init_kisan_purchase_invoice_ui = function (frm) {
@@ -316,35 +356,26 @@ function add_post_submit_buttons(frm) {
 }
 
 function make_kisan_debit_note(frm) {
-	frappe.model.open_mapped_doc({
-		method: "kisan_customization.purchase_invoice.debit_note.make_debit_note",
-		frm,
+	frappe.call({
+		method: "kisan_customization.purchase_invoice.debit_note.create_and_submit_debit_note",
+		args: { purchase_invoice: frm.doc.name },
+		freeze: true,
+		freeze_message: __("Creating Debit Note..."),
+		callback(r) {
+			if (!r.message?.name) {
+				return;
+			}
+			const debit_note = r.message.name;
+			frappe.msgprint({
+				title: __("Success"),
+				message: __("Successfully Created Debit Note {0}", [
+					frappe.utils.get_form_link("Purchase Invoice", debit_note, true),
+				]),
+				indicator: "green",
+			});
+			frm.reload_doc();
+		},
 	});
-}
-
-function validate_item_gross_weight_sum_client(frm) {
-	if (frm.doc.is_return) {
-		return;
-	}
-
-	const header_gross = flt(frm.doc.custom_total_gross_weight);
-	const line_total = (frm.doc.items || []).reduce(
-		(sum, row) => sum + flt(row.custom_gross_weight_kg),
-		0
-	);
-
-	if (!header_gross || !line_total) {
-		return;
-	}
-
-	if (Math.abs(line_total - header_gross) > 0.5) {
-		frappe.throw(
-			__(
-				"Sum of item Gross Weight (Kg) ({0}) must match Total Gross Weight ({1}).",
-				[line_total, header_gross]
-			)
-		);
-	}
 }
 
 const SUPPLIER_INVOICE_AMOUNT_TOLERANCE = 1;
@@ -359,22 +390,39 @@ function validate_supplier_invoice_amount_client(frm) {
 		frappe.throw(__("Supplier Invoice Amount must be greater than 0."));
 	}
 
-	let rounded_total = flt(frm.doc.rounded_total);
-	if (!rounded_total) {
-		rounded_total = Math.round(flt(frm.doc.grand_total) || 0);
+	let our_amount = flt(frm.doc.rounded_total);
+	if (!our_amount) {
+		our_amount = Math.round(flt(frm.doc.grand_total) || 0);
 	}
-	if (Math.abs(supplier_amount - rounded_total) > SUPPLIER_INVOICE_AMOUNT_TOLERANCE) {
+	if (our_amount <= supplier_amount) {
+		return;
+	}
+	if (flt(our_amount - supplier_amount) > SUPPLIER_INVOICE_AMOUNT_TOLERANCE) {
 		frappe.throw(
 			__(
-				"Supplier Invoice Amount ({0}) must match Rounded Total ({1}). Allowed difference up to {2}.",
+				"Rounded Total ({0}) cannot be greater than Supplier Invoice Amount ({1}) by more than {2}.",
 				[
+					format_currency(our_amount, frm.doc.currency),
 					format_currency(supplier_amount, frm.doc.currency),
-					format_currency(rounded_total, frm.doc.currency),
 					format_currency(SUPPLIER_INVOICE_AMOUNT_TOLERANCE, frm.doc.currency),
 				]
 			)
 		);
 	}
+}
+
+function style_deduction_section_button(frm) {
+	if (
+		frm.doc.is_return ||
+		!kisan_customization.transaction_mode.is_kisan_custom(frm)
+	) {
+		return;
+	}
+	const field = frm.fields_dict.custom_deducation;
+	if (!field?.$wrapper?.length) {
+		return;
+	}
+	field.$wrapper.find("button.btn").removeClass("btn-default").addClass("btn-primary");
 }
 
 function can_show_deduction_button(frm) {

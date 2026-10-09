@@ -104,6 +104,9 @@ doctype_js = {
 		"public/js/sales_invoice.js",
 	],
 }
+doctype_css = {
+	"Purchase Invoice": "public/css/purchase_invoice_deductions.css",
+}
 doctype_list_js = {
 	"Purchase Order": "public/js/purchase_order_list.js",
 }
@@ -216,7 +219,10 @@ doc_events = {
 		"on_update_after_submit": (
 			"kisan_customization.purchase_invoice.payment_schedule.preserve_submitted_payment_schedule"
 		),
-		"before_submit": "kisan_customization.purchase_invoice.broker_commission.before_submit",
+		"before_submit": [
+			"kisan_customization.purchase_invoice.purchase_invoice.before_submit",
+			"kisan_customization.purchase_invoice.broker_commission.before_submit",
+		],
 		"before_cancel": "kisan_customization.purchase_invoice.broker_commission.before_cancel",
 		"on_submit": "kisan_customization.purchase_invoice.broker_commission.on_submit",
 		"on_trash": "kisan_customization.purchase_invoice.aggregator_booking.on_trash",

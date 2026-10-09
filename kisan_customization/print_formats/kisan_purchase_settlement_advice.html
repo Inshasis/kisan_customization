@@ -5,10 +5,10 @@
 <style>
 :root {
 	--kpsa-w: 210mm;
-	--kpsa-m: 4mm;
+	--kpsa-m: 5mm;
 	--kpsa-blue: #b4c6e7;
 }
-@page { size: A4 portrait; margin: 4mm; }
+@page { size: A4 portrait; margin: 5mm; }
 html, body { margin: 0; padding: 0; }
 .print-format { padding: 0 !important; margin: 0 !important; max-width: none !important; }
 .print-format .print-format-margin { margin: 0 !important; padding: 0 !important; }
@@ -17,11 +17,25 @@ html, body { margin: 0; padding: 0; }
 	box-sizing: border-box;
 	width: var(--kpsa-w);
 	max-width: var(--kpsa-w);
+	min-height: 287mm;
 	margin: 0 auto;
 	padding: var(--kpsa-m);
 	background: #fff;
+	display: flex;
+	flex-direction: column;
 }
+.kpsa-page {
+	display: flex;
+	flex-direction: column;
+	flex: 1 1 auto;
+	min-height: 100%;
+}
+.kpsa-main { flex: 1 1 auto; min-height: 0; }
 .kpsa {
+	display: flex;
+	flex-direction: column;
+	flex: 1 1 auto;
+	min-height: 100%;
 	font-family: Arial, Helvetica, sans-serif;
 	font-size: 6px;
 	color: #111;
@@ -77,17 +91,20 @@ html, body { margin: 0; padding: 0; }
 .kpsa .hdr-co { font-size: 12px; font-weight: 700; text-align: center; color: #0f172a; line-height: 1.15; }
 .kpsa .hdr-addr { font-size: 6px; text-align: center; line-height: 1.15; margin-top: 1px; color: #334155; }
 .kpsa .hdr-gst { font-size: 6px; text-align: center; margin-top: 1px; }
-.kpsa .hdr-title {
+.kpsa .hdr-title-top {
 	font-size: 7px;
 	font-weight: 700;
 	text-transform: uppercase;
 	border: 1px solid #222;
 	border-top: none;
+	border-bottom: none;
 	padding: 2px 1px;
 	text-align: center;
 	background: var(--kpsa-blue);
 	letter-spacing: 0.03em;
+	margin: 0;
 }
+.kpsa .meta3.block { margin-top: 0; }
 .kpsa .meta3 > tbody > tr > td { font-size: 6px; vertical-align: top; padding: 1px 2px; }
 .kpsa .meta3 .lbl { font-weight: 700; width: 44%; padding-right: 1px; white-space: nowrap; }
 .kpsa .meta3 .lbl + td { width: 56%; word-break: break-word; }
@@ -98,10 +115,44 @@ html, body { margin: 0; padding: 0; }
 .kpsa .tax-side .lbl { font-weight: 700; width: 54%; }
 .kpsa .tax-side .tax-hdr td { background: var(--kpsa-blue); font-weight: 700; text-align: center; font-size: 6px; }
 .kpsa .net-row td { background: #dce6f2; font-weight: 700; }
-.kpsa .foot { margin-top: 1px; font-size: 5.5px; color: #333; line-height: 1.15; }
-.kpsa .foot p { margin: 0; }
-.kpsa .sign { margin-top: 2px; }
-.kpsa .sign td { border: none; text-align: center; padding-top: 6px; border-top: 1px solid #222 !important; font-size: 5.5px; }
+.kpsa-tail { margin-top: 1px; }
+.kpsa-bottom {
+	margin-top: auto;
+	padding-top: 4px;
+	flex-shrink: 0;
+}
+.kpsa-sign {
+	width: 100%;
+	border-collapse: collapse;
+	table-layout: fixed;
+	border: 1px solid #222;
+}
+.kpsa-sign td {
+	border: none;
+	width: 50%;
+	vertical-align: bottom;
+	padding: 0 12px 4px;
+}
+.kpsa-sign .sign-pad {
+	height: 28px;
+	border-bottom: 1px solid #222;
+	margin: 6px 0 3px;
+}
+.kpsa-sign .sign-lbl {
+	font-size: 5.5px;
+	font-weight: 700;
+	text-align: center;
+	line-height: 1.2;
+}
+.kpsa-foot-line {
+	margin-top: 2px;
+	padding: 2px 3px;
+	font-size: 5.5px;
+	line-height: 1.25;
+	color: #222;
+	text-align: center;
+	border-top: 1px solid #222;
+}
 
 @media screen {
 	body[data-route="print"] .print-format, .print-format { background: #cfd4da !important; padding: 6px !important; }
@@ -109,8 +160,9 @@ html, body { margin: 0; padding: 0; }
 }
 @media print {
 	.print-format, .print-format .print-format-margin { background: transparent !important; padding: 0 !important; }
-	.kpsa-a4 { width: auto; padding: 0; box-shadow: none !important; max-height: 287mm; overflow: hidden; }
-	.kpsa .block { page-break-inside: avoid; }
+	.print-format .page-break, .print-format .print-heading { display: none !important; }
+	.kpsa-a4 { width: auto; padding: 0; box-shadow: none !important; }
+	.kpsa-bottom, .kpsa-tail { page-break-inside: avoid; break-inside: avoid; }
 	.kpsa .sec-bar td, .kpsa .tbl-hdr th, .kpsa .tax-side .tax-hdr td, .kpsa .net-row td, .kpsa .sec-total td {
 		-webkit-print-color-adjust: exact;
 		print-color-adjust: exact;
@@ -119,8 +171,10 @@ html, body { margin: 0; padding: 0; }
 </style>
 
 <div class="kpsa-a4">
+<div class="kpsa-page">
 <div class="kpsa">
 
+	<div class="kpsa-main">
 	<table class="nob block hdr-band" style="margin-top:0;">
 		<colgroup><col style="width:20%"><col style="width:80%"></colgroup>
 		<tr>
@@ -139,7 +193,7 @@ html, body { margin: 0; padding: 0; }
 		</tr>
 	</table>
 
-	<div class="hdr-title">Goods Receipt Note &middot; Purchase Settlement Advice</div>
+	<div class="hdr-title-top">Goods Receipt Note &middot; Purchase Settlement Advice</div>
 
 	<table class="meta3 block">
 		<colgroup><col style="width:33.33%"><col style="width:33.33%"><col style="width:33.34%"></colgroup>
@@ -289,7 +343,8 @@ html, body { margin: 0; padding: 0; }
 		</tr>
 	</table>
 
-	<table class="block">
+	<div class="kpsa-tail">
+	<table class="block" style="margin-top:0;">
 		<colgroup>
 			<col style="width:22%"><col style="width:26%"><col style="width:26%"><col style="width:26%">
 		</colgroup>
@@ -316,17 +371,28 @@ html, body { margin: 0; padding: 0; }
 			<td class="rgt b">{{ sf.net_payable }}</td>
 		</tr>
 	</table>
-
-	<div class="foot">
-		<p>Payment subject to realization. Verify qty, rate &amp; deductions. Disputes subject to company jurisdiction. &nbsp;|&nbsp; Printed: {{ d.printed_by }} &nbsp;{{ d.printed_on }}</p>
 	</div>
 
-	<table class="sign nob">
-		<tr>
-			<td class="nob" style="width:40%;">Authorized Signatory</td>
-			<td class="nob" style="width:20%; border-top:none !important;"></td>
-			<td class="nob" style="width:40%;">Party Acknowledgement</td>
-		</tr>
-	</table>
+	</div>
+
+	<div class="kpsa-bottom">
+		<table class="kpsa-sign">
+			<tr>
+				<td>
+					<div class="sign-pad"></div>
+					<div class="sign-lbl">Authorized Signatory</div>
+				</td>
+				<td>
+					<div class="sign-pad"></div>
+					<div class="sign-lbl">Party Acknowledgement</div>
+				</td>
+			</tr>
+		</table>
+		<div class="kpsa-foot-line">
+			Payment subject to realization. Verify qty, rate &amp; deductions. Disputes subject to company jurisdiction.
+		</div>
+	</div>
+
+</div>
 </div>
 </div>

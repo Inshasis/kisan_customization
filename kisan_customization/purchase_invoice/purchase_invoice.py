@@ -17,7 +17,10 @@ from kisan_customization.purchase_invoice.payment_terms import (
 )
 from kisan_customization.purchase_invoice.item_gross_weight import validate_item_gross_weights
 from kisan_customization.purchase_invoice.sauda_qty import validate_sauda_qty_range
-from kisan_customization.purchase_invoice.debit_note import validate_unique_debit_note
+from kisan_customization.purchase_invoice.debit_note import (
+	clear_kisan_debit_note_tax_withholding,
+	validate_unique_debit_note,
+)
 from kisan_customization.purchase_invoice.validation import (
 	clear_booking_purchase_invoice_taxes,
 	remove_kisan_deduction_taxes,
@@ -38,6 +41,7 @@ def before_submit(doc, method=None):
 
 def validate(doc, method=None):
 	if doc.get("is_return"):
+		clear_kisan_debit_note_tax_withholding(doc)
 		recalculate_bag_weights(doc)
 		remove_deduction_item_rows(doc)
 		validate_unique_debit_note(doc)

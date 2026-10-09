@@ -7,10 +7,10 @@ import frappe
 PRINT_FORMAT_NAME = "Kisan Purchase Settlement Advice"
 
 PRINT_FORMAT_SETTINGS = {
-	"margin_top": 6.0,
-	"margin_bottom": 6.0,
-	"margin_left": 6.0,
-	"margin_right": 6.0,
+	"margin_top": 5.0,
+	"margin_bottom": 5.0,
+	"margin_left": 5.0,
+	"margin_right": 5.0,
 	"font_size": 7,
 	"page_number": "Hide",
 }

@@ -108,6 +108,30 @@ def create_and_submit_debit_note(purchase_invoice):
 	return {"name": doc.name}
 
 
+def clear_kisan_debit_note_tax_withholding(doc, source=None):
+	"""Debit notes from Kisan PI must keep Apply Tax Withholding Amount unchecked."""
+	if not doc.get("is_return"):
+		return
+
+	if source is None:
+		if not doc.get("return_against"):
+			return
+		source = frappe.get_doc("Purchase Invoice", doc.return_against)
+
+	if not is_kisan_custom(source):
+		return
+
+	doc.apply_tds = 0
+	if doc.meta.has_field("tax_withholding_category"):
+		doc.tax_withholding_category = None
+	doc.set("advance_tax", [])
+	doc.set("tax_withheld_vouchers", [])
+
+	doc.taxes = [
+		row for row in doc.get("taxes") or [] if not cint(row.get("is_tax_withholding_account"))
+	]
+
+
 def _apply_debit_note_settings(doc, source):
 	doc.is_return = 1
 	doc.return_against = source.name
@@ -128,6 +152,7 @@ def _apply_debit_note_settings(doc, source):
 	# Quality & Other: other deduction amounts only (not bag/weight auto rows).
 	sync_deduction_item_row(doc)
 	_copy_stock_settings_from_source(doc, source)
+	clear_kisan_debit_note_tax_withholding(doc, source=source)
 
 	if hasattr(doc, "calculate_taxes_and_totals"):
 		doc.calculate_taxes_and_totals()

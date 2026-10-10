@@ -177,15 +177,77 @@ def _pi_lines(pi):
 	return lines
 
 
-def _line_arrival_weight_kg(pi, item, total_arrival_kg):
-	uom = (item.uom or "").lower()
-	if len(pi.items) == 1 and total_arrival_kg:
-		return total_arrival_kg
-	return flt(item.qty) * 100 if uom == "quintal" else flt(item.qty)
+def _accepted_qty_kg(item):
+	uom = (item.uom or "Quintal").lower()
+	qty = flt(item.qty)
+	if uom == "quintal":
+		return abs(qty) * 100
+	return abs(qty)
 
 
-def _arrival_quintal(arr_wt_kg):
-	return flt(arr_wt_kg) / 100
+def _debit_return_kg_by_pi_item(debit):
+	if not debit:
+		return {}
+
+	out = {}
+	for row in debit.get("items") or []:
+		pi_item_name = row.get("purchase_invoice_item")
+		if not pi_item_name:
+			continue
+		out[pi_item_name] = flt(out.get(pi_item_name)) + _accepted_qty_kg(row)
+	return out
+
+
+def _po_line_for_pi_item(pi_row):
+	if not pi_row.get("purchase_order"):
+		return None
+	if pi_row.get("po_detail"):
+		return frappe.db.get_value(
+			"Purchase Order Item",
+			pi_row.po_detail,
+			["name", "parent", "item_code", "item_name", "rate"],
+			as_dict=True,
+		)
+	return frappe.db.get_value(
+		"Purchase Order Item",
+		{"parent": pi_row.purchase_order, "item_code": pi_row.item_code},
+		["name", "parent", "item_code", "item_name", "rate"],
+		as_dict=True,
+	)
+
+
+def _display_kg(kg):
+	value = flt(kg)
+	if not value:
+		return ""
+	if value == int(value):
+		return f"{int(value):,}"
+	return f"{value:,.2f}"
+
+
+def _bargain_row_dict(
+	po_name,
+	item_label,
+	sauda_rate,
+	gross_kg,
+	arr_kg,
+	bags_cell,
+	currency,
+):
+	amount = flt(sauda_rate * (flt(arr_kg) / 100), 2)
+	return {
+		"lot_no": po_name,
+		"item": item_label,
+		"bags": bags_cell,
+		"gross_weight": _display_kg(gross_kg),
+		"bags_wt": _display_kg(gross_kg),
+		"sauda_rate": fmt_money(sauda_rate, currency=currency),
+		"arrival_weight": flt(arr_kg),
+		"oil_pct": "",
+		"oil_rate": "",
+		"amount": fmt_money(amount, currency=currency),
+		"_amount_raw": amount,
+	}
 
 
 def _pi_commodity_item_rates(pi):
@@ -224,42 +286,45 @@ def _deduction_rate_display(rate, currency):
 	return f"{formatted} /QT"
 
 
-def _bargain_rows(pi):
-	arrival = flt(pi.get("custom_total_arrival_weight"))
-	gross = flt(pi.get("custom_total_gross_weight"))
-	bags = flt(pi.get("custom_total_bags"))
+def _bargain_rows(pi, debit=None):
+	"""One print row per PI item line; gross weight from that line only (not summed)."""
+	from kisan_customization.purchase_invoice.item_gross_weight import (
+		get_commodity_items,
+		get_item_line_gross_weight_kg,
+	)
+
+	debit_by_pi_item = _debit_return_kg_by_pi_item(debit)
+	bags_total = flt(pi.get("custom_total_bags"))
 	rows = []
 	bargain_total = 0.0
-	for idx, item in enumerate(pi.get("items") or [], start=1):
-		sauda_rate = flt(item.rate)
-		if item.purchase_order:
-			po_rate = frappe.db.get_value(
-				"Purchase Order Item",
-				{"parent": item.purchase_order, "item_code": item.item_code},
-				"rate",
-			)
-			if po_rate is not None:
-				sauda_rate = flt(po_rate)
-		lot = item.purchase_order or pi.get("custom_aggregator_booking") or ""
-		arr_wt = _line_arrival_weight_kg(pi, item, arrival)
-		arr_quintal = _arrival_quintal(arr_wt)
-		amount = flt(sauda_rate * arr_quintal, 2)
-		bargain_total += amount
-		gross_cell = gross if idx == 1 else ""
-		rows.append(
-			{
-				"lot_no": lot,
-				"item": item.item_name or item.item_code,
-				"bags": bags if idx == 1 else "",
-				"gross_weight": gross_cell,
-				"bags_wt": gross_cell,
-				"sauda_rate": fmt_money(sauda_rate, currency=pi.currency),
-				"arrival_weight": arr_wt,
-				"oil_pct": "",
-				"oil_rate": "",
-				"amount": fmt_money(amount, currency=pi.currency),
-			}
+
+	for idx, pi_row in enumerate(get_commodity_items(pi), start=1):
+		po_line = _po_line_for_pi_item(pi_row)
+		if po_line:
+			lot_no = po_line.parent
+			item_label = po_line.item_name or po_line.item_code
+			sauda_rate = flt(po_line.rate)
+		else:
+			lot_no = pi_row.purchase_order or pi.get("custom_aggregator_booking") or ""
+			item_label = pi_row.item_name or pi_row.item_code
+			sauda_rate = flt(pi_row.rate)
+
+		gross_kg = get_item_line_gross_weight_kg(pi_row)
+		pi_kg = _accepted_qty_kg(pi_row)
+		arr_kg = max(0, pi_kg - flt(debit_by_pi_item.get(pi_row.name, 0)))
+
+		row = _bargain_row_dict(
+			lot_no,
+			item_label,
+			sauda_rate,
+			gross_kg,
+			arr_kg,
+			bags_total if idx == 1 else "",
+			pi.currency,
 		)
+		bargain_total += row.pop("_amount_raw")
+		rows.append(row)
+
 	return rows, fmt_money(bargain_total, currency=pi.currency)
 
 
@@ -447,7 +512,7 @@ def get_settlement_print_data(purchase_invoice):
 	our_loc = company_address
 	quality_rows, quality_total = _quality_rows(pi)
 	debit_tax = _tax_breakup(debit) if debit else _tax_breakup(None)
-	bargain_rows, bargain_total = _bargain_rows(pi)
+	bargain_rows, bargain_total = _bargain_rows(pi, debit)
 	net_payable = flt(pi.grand_total) + flt(debit.grand_total if debit else 0)
 	arrival = flt(pi.get("custom_total_arrival_weight"))
 	final_rate = 0.0

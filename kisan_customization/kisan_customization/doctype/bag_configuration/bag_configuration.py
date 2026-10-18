@@ -10,7 +10,7 @@ from kisan_customization.kisan_customization.doctype.bag_configuration.naming im
 	ensure_unique_bag_configuration_name,
 )
 
-COLD_STORAGE_ITEM_GROUP = "Cold Storage Item"
+from kisan_customization.utils.master_groups import RENTAL_ITEM_GROUP
 
 
 class BagConfiguration(Document):
@@ -61,10 +61,10 @@ class BagConfiguration(Document):
 
 	def _validate_cold_storage_item(self):
 		item_group = frappe.db.get_value("Item", self.commodity, "item_group")
-		if item_group != COLD_STORAGE_ITEM_GROUP:
+		if item_group != RENTAL_ITEM_GROUP:
 			frappe.throw(
 				_("Commodity / Item must belong to item group {0}").format(
-					frappe.bold(COLD_STORAGE_ITEM_GROUP)
+					frappe.bold(RENTAL_ITEM_GROUP)
 				)
 			)
 

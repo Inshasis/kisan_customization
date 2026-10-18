@@ -2,7 +2,10 @@ kisan_customization.delivery_payment_days.bind("Purchase Order");
 kisan_customization.broker_commission.bind("Purchase Order");
 
 const PO_SUPPLIER_GROUP = "Purchase";
-const PO_ITEM_GROUP = "Products";
+frappe.provide("kisan_customization.master_groups");
+
+const PO_ITEM_GROUP =
+	kisan_customization.master_groups.TRADING_ITEM_GROUP || "Trading Commodity";
 
 const HIDDEN_PO_CREATE_BUTTONS = [__("Purchase Receipt"), __("Payment Request")];
 

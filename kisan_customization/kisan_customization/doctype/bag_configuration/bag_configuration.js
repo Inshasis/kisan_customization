@@ -1,12 +1,15 @@
 // Copyright (c) 2026, Hidayatali and contributors
 
-const COLD_STORAGE_ITEM_GROUP = "Cold Storage Item";
+frappe.provide("kisan_customization.master_groups");
+
+const RENTAL_ITEM_GROUP =
+	kisan_customization.master_groups.RENTAL_ITEM_GROUP || "Rental Commodity";
 
 frappe.ui.form.on("Bag Configuration", {
 	refresh(frm) {
 		frm.set_query("commodity", () => ({
 			filters: {
-				item_group: COLD_STORAGE_ITEM_GROUP,
+				item_group: RENTAL_ITEM_GROUP,
 				disabled: 0,
 			},
 		}));

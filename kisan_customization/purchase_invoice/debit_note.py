@@ -27,6 +27,7 @@ WEIGHT_CONTEXT_FIELDS = (
 
 
 def get_active_debit_note(purchase_invoice, exclude_name=None):
+	"""Draft or submitted debit note linked to PI (used to block duplicates)."""
 	if not purchase_invoice:
 		return None
 
@@ -41,9 +42,30 @@ def get_active_debit_note(purchase_invoice, exclude_name=None):
 	return frappe.db.get_value("Purchase Invoice", filters, "name")
 
 
+def get_submitted_debit_note(purchase_invoice, exclude_name=None):
+	"""Submitted debit note only (cancelled/deleted notes are ignored for UI)."""
+	if not purchase_invoice:
+		return None
+
+	filters = {
+		"return_against": purchase_invoice,
+		"is_return": 1,
+		"docstatus": 1,
+	}
+	if exclude_name:
+		filters["name"] = ("!=", exclude_name)
+
+	return frappe.db.get_value("Purchase Invoice", filters, "name")
+
+
+@frappe.whitelist()
+def get_debit_note_for_purchase_invoice(purchase_invoice):
+	return get_submitted_debit_note(purchase_invoice)
+
+
 @frappe.whitelist()
 def has_active_debit_note(purchase_invoice):
-	return bool(get_active_debit_note(purchase_invoice))
+	return bool(get_submitted_debit_note(purchase_invoice))
 
 
 def validate_unique_debit_note(doc):
@@ -80,6 +102,42 @@ def make_debit_note(source_name, target_doc=None):
 	return doc
 
 
+def _create_and_submit_debit_note_doc(source):
+	if source.get("is_return") or not is_kisan_custom(source):
+		return None
+
+	existing = get_submitted_debit_note(source.name)
+	if existing:
+		return existing
+
+	if get_active_debit_note(source.name):
+		frappe.throw(
+			_("A draft Debit Note already exists against this Purchase Invoice."),
+			title=_("Cannot Create Debit Note"),
+		)
+
+	doc = make_debit_note(source.name)
+	doc.flags.ignore_permissions = True
+
+	previous_mute = frappe.flags.mute_messages
+	frappe.flags.mute_messages = True
+	try:
+		doc.insert()
+		doc.submit()
+	finally:
+		frappe.flags.mute_messages = previous_mute
+
+	return doc.name
+
+
+def auto_create_debit_note_on_pi_submit(doc, method=None):
+	if doc.get("is_return") or not is_kisan_custom(doc):
+		return
+	if get_submitted_debit_note(doc.name):
+		return
+	_create_and_submit_debit_note_doc(doc)
+
+
 @frappe.whitelist()
 def create_and_submit_debit_note(purchase_invoice):
 	"""Create Kisan debit note from a submitted PI and submit (no form / outstanding prompt)."""
@@ -94,18 +152,8 @@ def create_and_submit_debit_note(purchase_invoice):
 	if not is_kisan_custom(source):
 		frappe.throw(_("Debit Note can only be created for Kisan Custom Purchase Invoices."))
 
-	doc = make_debit_note(purchase_invoice)
-	doc.flags.ignore_permissions = True
-
-	previous_mute = frappe.flags.mute_messages
-	frappe.flags.mute_messages = True
-	try:
-		doc.insert()
-		doc.submit()
-	finally:
-		frappe.flags.mute_messages = previous_mute
-
-	return {"name": doc.name}
+	name = _create_and_submit_debit_note_doc(source)
+	return {"name": name}
 
 
 def clear_kisan_debit_note_tax_withholding(doc, source=None):

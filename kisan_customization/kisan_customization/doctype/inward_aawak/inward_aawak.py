@@ -5,7 +5,7 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.model.naming import make_autoname
-from frappe.utils import add_months, cint
+from frappe.utils import add_months, cint, flt
 
 from kisan_customization.inward_aawak.delivery import (
 	STATUS_SUBMITTED,
@@ -71,6 +71,9 @@ class InwardAawak(Document):
 		if self.is_new() and not self.firm:
 			frappe.throw(_("Firm is mandatory for new Inward Aawak records"))
 
+		self._validate_bag_lorry_weights()
+		self._sync_total_lorry_weight()
+
 		if self.chamber_allocations:
 			for row in self.chamber_allocations:
 				if row.allocation_date:
@@ -99,6 +102,26 @@ class InwardAawak(Document):
 			},
 			update_modified=False,
 		)
+
+	def _validate_bag_lorry_weights(self):
+		for idx, row in enumerate(self.get("bag_details") or [], start=1):
+			if row.lorry_weight_kg in (None, ""):
+				continue
+			if flt(row.lorry_weight_kg) < 0:
+				frappe.throw(
+					_("Row {0}: Lorry Weight (Kg) cannot be negative.").format(idx),
+					title=_("Bag Details Error"),
+				)
+
+	def _sync_total_lorry_weight(self):
+		"""Sum bag line lorry weights when present; else keep manual total_lorry_weight on the form."""
+		lorry_values = [
+			flt(row.lorry_weight_kg)
+			for row in self.get("bag_details") or []
+			if row.lorry_weight_kg not in (None, "") and flt(row.lorry_weight_kg) > 0
+		]
+		if lorry_values:
+			self.total_lorry_weight = flt(sum(lorry_values), 2)
 
 	def _sync_delivery_totals(self):
 		update_inward_delivery_status(self.name)

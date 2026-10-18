@@ -1,7 +1,10 @@
 // Copyright (c) 2026, Hidayatali and contributors
 
+frappe.provide("kisan_customization.master_groups");
+
 const BOOKING_SUPPLIER_GROUP = "Purchase";
-const BOOKING_ITEM_GROUP = "Products";
+const BOOKING_ITEM_GROUP =
+	kisan_customization.master_groups.TRADING_ITEM_GROUP || "Trading Commodity";
 const BOOKING_UOM = "Quintal";
 
 frappe.ui.form.on("Aggregator Booking", {

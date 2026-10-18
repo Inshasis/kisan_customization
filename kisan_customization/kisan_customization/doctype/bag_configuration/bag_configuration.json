@@ -45,6 +45,7 @@
    "reqd": 1
   },
   {
+   "default": "1",
    "fieldname": "weight_kg",
    "fieldtype": "Int",
    "in_list_view": 1,
@@ -74,7 +75,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-01 14:13:09.594256",
+ "modified": "2026-10-18 09:42:57.318216",
  "modified_by": "Administrator",
  "module": "Kisan Customization",
  "name": "Bag Configuration",
@@ -96,8 +97,10 @@
  ],
  "row_format": "Dynamic",
  "search_fields": "uom,weight_kg,commodity",
+ "show_title_field_in_link": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
+ "title_field": "commodity",
  "track_changes": 1
 }

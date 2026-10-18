@@ -49,9 +49,73 @@ def _company_address(company_name):
 	return _address_display(addr_name)
 
 
+def _is_gstin_address_line(line):
+	return bool(re.search(r"\bgstin\b", line or "", re.I))
+
+
+def _address_plain_lines(address_html, skip_gstin=False):
+	if not address_html:
+		return []
+	text = re.sub(r"<br\s*/?>", "\n", address_html, flags=re.I)
+	text = strip_html(text)
+	lines = []
+	seen = set()
+	for raw in text.split("\n"):
+		ln = _normalize_address_line(re.sub(r"\s+", " ", raw).strip())
+		if not ln or (skip_gstin and _is_gstin_address_line(ln)):
+			continue
+		key = ln.lower()
+		if key in seen:
+			continue
+		seen.add(key)
+		lines.append(ln)
+	return lines
+
+
+def _normalize_address_line(line):
+	if not line:
+		return ""
+	line = re.sub(r"(?<=[a-z])(?=[A-Z])", " ", line)
+	line = re.sub(r"(?<=\d)(PIN Code)", r", \1", line, flags=re.I)
+	line = re.sub(r"PIN Code:\s*", "PIN Code: ", line, flags=re.I)
+	line = re.sub(r"(?<=\d)(India)\b", r", \1", line, flags=re.I)
+	line = re.sub(r"State Code:\s*(\d+)", r"State Code: \1", line, flags=re.I)
+	line = re.sub(r"(\d{6})([A-Za-z])", r"\1, \2", line)
+	return re.sub(r"\s+", " ", line).strip(" ,")
+
+
 def _address_one_line(address_html):
-	text = strip_html(address_html or "").replace("\n", ", ")
-	return re.sub(r"\s+", " ", text).strip(" ,")
+	return ", ".join(_address_plain_lines(address_html))
+
+
+def _address_for_print(address_html, skip_gstin=False):
+	lines = _address_plain_lines(address_html, skip_gstin=skip_gstin)
+	return "<br>".join(lines) if lines else ""
+
+
+def _address_compact_meta(address_html):
+	"""Single-line address for meta block (saves vertical space on A4)."""
+	lines = _address_plain_lines(address_html, skip_gstin=True)
+	if not lines:
+		return ""
+	text = ", ".join(lines)
+	text = re.sub(r",\s*,+", ", ", text).strip(" ,")
+	return text
+
+
+def _address_header_two_lines(address_html):
+	"""Letterhead address: at most two lines (GSTIN shown separately)."""
+	lines = _address_plain_lines(address_html, skip_gstin=True)
+	if not lines:
+		return ""
+	if len(lines) == 1:
+		return lines[0]
+	if len(lines) == 2:
+		return "<br>".join(lines)
+	mid = max(1, (len(lines) + 1) // 2)
+	line1 = ", ".join(lines[:mid])
+	line2 = ", ".join(lines[mid:])
+	return f"{line1}<br>{line2}"
 
 
 def _broker_label(broker):
@@ -328,6 +392,9 @@ def _bargain_rows(pi, debit=None):
 	return rows, fmt_money(bargain_total, currency=pi.currency)
 
 
+MAX_QUALITY_PRINT_ROWS = 15
+
+
 def _quality_rows(pi):
 	rows = []
 	total = 0.0
@@ -336,6 +403,8 @@ def _quality_rows(pi):
 			continue
 		amt = flt(row.amount)
 		total += amt
+		if len(rows) >= MAX_QUALITY_PRINT_ROWS:
+			continue
 		rows.append(
 			{
 				"sr": row.idx,
@@ -446,6 +515,11 @@ def _summary_row(label, doc, currency):
 	}
 
 
+def _fmt_rounded_net_payable(amount, currency):
+	"""Settlement footer: whole-currency net payable (standard round-off)."""
+	return fmt_money(round(flt(amount)), currency=currency, precision=0)
+
+
 def _summary_footer(pi, debit, currency):
 	basic_net = 0.0
 	gst = 0.0
@@ -462,7 +536,7 @@ def _summary_footer(pi, debit, currency):
 		"document": "Net Payable",
 		"basic_net_tds": fmt_money(basic_net, currency=currency),
 		"gst": fmt_money(gst, currency=currency),
-		"net_payable": fmt_money(net_payable, currency=currency),
+		"net_payable": _fmt_rounded_net_payable(net_payable, currency),
 	}
 
 
@@ -526,14 +600,19 @@ def get_settlement_print_data(purchase_invoice):
 		"company_abbr": company.abbr or "",
 		"company_address": company_address,
 		"company_address_line": _address_one_line(company_address),
+		"company_address_print": _address_header_two_lines(company_address),
 		"company_gstin": company.gstin or "",
 		"party": pi.supplier_name or pi.supplier,
 		"party_location": party_loc,
+		"party_location_print": _address_for_print(party_loc, skip_gstin=True),
+		"party_location_compact": _address_compact_meta(party_loc),
 		"party_gstin": frappe.db.get_value("Supplier", supplier, "gstin") if supplier else "",
 		"broker": _broker_label(pi.get("custom_broker")),
 		"our_invoice_no": pi.name,
 		"invoice_date": frappe.format(pi.posting_date, {"fieldtype": "Date"}),
 		"our_location": our_loc,
+		"our_location_print": _address_for_print(our_loc, skip_gstin=True),
+		"our_location_compact": _address_compact_meta(our_loc),
 		"our_gstin": company.gstin or "",
 		"po_no": _purchase_orders(pi),
 		"arrival_date": frappe.format(pi.bill_date or pi.posting_date, {"fieldtype": "Date"}),
@@ -558,7 +637,7 @@ def get_settlement_print_data(purchase_invoice):
 		"summary_pi": _summary_row("Purchase Invoice", pi, pi.currency),
 		"summary_debit": _summary_row("Debit Note", debit, pi.currency),
 		"summary_footer": _summary_footer(pi, debit, pi.currency),
-		"net_payable": fmt_money(net_payable, currency=pi.currency),
+		"net_payable": _fmt_rounded_net_payable(net_payable, pi.currency),
 		"final_rate": fmt_money(final_rate, currency=pi.currency) if final_rate else "",
 		"printed_by": frappe.session.user,
 		"printed_on": now_datetime().strftime("%d-%m-%Y %H:%M"),

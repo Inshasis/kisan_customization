@@ -5,10 +5,14 @@
 <style>
 :root {
 	--kpsa-w: 210mm;
-	--kpsa-m: 5mm;
+	--kpsa-h: 297mm;
+	--kpsa-m: 3mm;
 	--kpsa-blue: #b4c6e7;
+	--kpsa-fs: 9.66px;
+	--kpsa-fs-sm: 8.97px;
+	--kpsa-fs-hdr: 11.04px;
 }
-@page { size: A4 portrait; margin: 5mm; }
+@page { size: A4 portrait; margin: 3mm; }
 html, body { margin: 0; padding: 0; }
 .print-format { padding: 0 !important; margin: 0 !important; max-width: none !important; }
 .print-format .print-format-margin { margin: 0 !important; padding: 0 !important; }
@@ -17,29 +21,15 @@ html, body { margin: 0; padding: 0; }
 	box-sizing: border-box;
 	width: var(--kpsa-w);
 	max-width: var(--kpsa-w);
-	min-height: 287mm;
 	margin: 0 auto;
 	padding: var(--kpsa-m);
 	background: #fff;
-	display: flex;
-	flex-direction: column;
 }
-.kpsa-page {
-	display: flex;
-	flex-direction: column;
-	flex: 1 1 auto;
-	min-height: 100%;
-}
-.kpsa-main { flex: 1 1 auto; min-height: 0; }
 .kpsa {
-	display: flex;
-	flex-direction: column;
-	flex: 1 1 auto;
-	min-height: 100%;
 	font-family: Arial, Helvetica, sans-serif;
-	font-size: 6px;
+	font-size: var(--kpsa-fs);
 	color: #111;
-	line-height: 1.1;
+	line-height: 1.15;
 }
 .kpsa table { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .kpsa td, .kpsa th {
@@ -49,7 +39,7 @@ html, body { margin: 0; padding: 0; }
 	word-wrap: break-word;
 	overflow-wrap: anywhere;
 }
-.kpsa .tbl-hdr th { white-space: normal; font-size: 6px; }
+.kpsa .tbl-hdr th { white-space: normal; font-size: var(--kpsa-fs-sm); }
 .kpsa td:nth-child(2), .kpsa th:nth-child(2) { text-align: left; }
 .kpsa .nob { border: none !important; }
 .kpsa .ctr { text-align: center; }
@@ -60,16 +50,17 @@ html, body { margin: 0; padding: 0; }
 	font-weight: 700;
 	text-align: center;
 	padding: 1px;
-	font-size: 6.5px;
+	font-size: var(--kpsa-fs-hdr);
 }
 .kpsa .tbl-hdr th {
 	background: var(--kpsa-blue);
 	font-weight: 700;
 	text-align: center;
-	padding: 0;
+	padding: 1px 2px;
 }
-.kpsa .sec-total td { background: #eef2f8; font-weight: 700; font-size: 6.5px; }
+.kpsa .sec-total td { background: #eef2f8; font-weight: 700; font-size: var(--kpsa-fs-sm); }
 .kpsa .block { margin-top: 1px; }
+.kpsa .block:first-of-type { margin-top: 0; }
 .kpsa .hdr-band {
 	border: 1px solid #222;
 	border-bottom: 2px solid var(--kpsa-blue);
@@ -78,21 +69,28 @@ html, body { margin: 0; padding: 0; }
 .kpsa .hdr-band .logo-cell { vertical-align: middle; padding: 1px 2px; }
 .kpsa .hdr-band .co-cell { vertical-align: middle; padding: 2px; text-align: center; }
 .kpsa .logo-wrap {
-	height: 36px;
-	width: 24mm;
-	min-width: 24mm;
+	height: 28px;
+	width: 20mm;
+	min-width: 20mm;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	padding: 1px;
 	box-sizing: border-box;
 }
-.kpsa .logo-wrap img { max-height: 34px; max-width: 100%; object-fit: contain; }
-.kpsa .hdr-co { font-size: 12px; font-weight: 700; text-align: center; color: #0f172a; line-height: 1.15; }
-.kpsa .hdr-addr { font-size: 6px; text-align: center; line-height: 1.15; margin-top: 1px; color: #334155; }
-.kpsa .hdr-gst { font-size: 6px; text-align: center; margin-top: 1px; }
+.kpsa .logo-wrap img { max-height: 26px; max-width: 100%; object-fit: contain; }
+.kpsa .hdr-co { font-size: 13.8px; font-weight: 700; text-align: center; color: #0f172a; line-height: 1.2; }
+.kpsa .hdr-addr {
+	font-size: 9.66px;
+	text-align: center;
+	line-height: 1.22;
+	margin-top: 1px;
+	padding: 0 2px;
+	color: #334155;
+}
+.kpsa .hdr-gst { font-size: 9.66px; text-align: center; margin-top: 1px; line-height: 1.2; }
 .kpsa .hdr-title-top {
-	font-size: 7px;
+	font-size: 11.04px;
 	font-weight: 700;
 	text-transform: uppercase;
 	border: 1px solid #222;
@@ -101,25 +99,85 @@ html, body { margin: 0; padding: 0; }
 	padding: 2px 1px;
 	text-align: center;
 	background: var(--kpsa-blue);
-	letter-spacing: 0.03em;
+	letter-spacing: 0.04em;
 	margin: 0;
 }
-.kpsa .meta3.block { margin-top: 0; }
-.kpsa .meta3 > tbody > tr > td { font-size: 6px; vertical-align: top; padding: 1px 2px; }
-.kpsa .meta3 .lbl { font-weight: 700; width: 44%; padding-right: 1px; white-space: nowrap; }
-.kpsa .meta3 .lbl + td { width: 56%; word-break: break-word; }
-.kpsa .rate-uom { font-size: 5px; display: block; text-align: right; line-height: 1; color: #444; }
+.kpsa .meta-grid {
+	width: 100%;
+	border-collapse: collapse;
+	table-layout: fixed;
+	margin-top: 0;
+}
+.kpsa .meta-grid > tbody > tr > td {
+	vertical-align: top;
+	padding: 2px 3px;
+	border: 1px solid #222;
+	font-size: var(--kpsa-fs-sm);
+	line-height: 1.12;
+}
+.kpsa .meta-grid > tbody > tr > td + td { border-left: 1px solid #222; }
+.kpsa .meta-line {
+	display: table;
+	width: 100%;
+	table-layout: fixed;
+	margin: 0;
+	padding: 0;
+}
+.kpsa .meta-line + .meta-line { margin-top: 1px; }
+.kpsa .meta-line .mk,
+.kpsa .meta-line .mv {
+	display: table-cell;
+	vertical-align: top;
+	padding: 0;
+}
+.kpsa .meta-line .mk {
+	width: 42%;
+	font-weight: 700;
+	padding-right: 3px;
+	white-space: normal;
+}
+.kpsa .meta-line .mv {
+	width: 58%;
+	word-break: break-word;
+}
+.kpsa .meta-line.addr .mv {
+	font-size: calc(var(--kpsa-fs-sm) * 0.96);
+	line-height: 1.1;
+}
+.kpsa .data-table td,
+.kpsa .data-table th {
+	font-size: var(--kpsa-fs-sm);
+	line-height: 1.1;
+	padding: 0 1px;
+}
+.kpsa .data-table.quality-table td,
+.kpsa .data-table.quality-table th {
+	line-height: 1.08;
+	font-size: 8.51px;
+}
+.kpsa .rate-uom { font-size: 7.59px; display: block; text-align: right; line-height: 1.05; color: #444; }
 .kpsa .pair-main { width: 72%; vertical-align: top; padding: 0 !important; }
 .kpsa .pair-side { width: 28%; vertical-align: top; padding: 0 0 0 1px !important; }
-.kpsa .tax-side td { font-size: 6px; padding: 0 1px; }
+.kpsa .tax-side td { font-size: var(--kpsa-fs-sm); padding: 1px 2px; }
 .kpsa .tax-side .lbl { font-weight: 700; width: 54%; }
-.kpsa .tax-side .tax-hdr td { background: var(--kpsa-blue); font-weight: 700; text-align: center; font-size: 6px; }
-.kpsa .net-row td { background: #dce6f2; font-weight: 700; }
-.kpsa-tail { margin-top: 1px; }
-.kpsa-bottom {
-	margin-top: auto;
-	padding-top: 4px;
-	flex-shrink: 0;
+.kpsa .tax-side .tax-hdr td { background: var(--kpsa-blue); font-weight: 700; text-align: center; font-size: var(--kpsa-fs-sm); }
+.kpsa .net-row td {
+	background: #dce6f2;
+	font-weight: 700;
+	font-size: var(--kpsa-fs-sm);
+	padding: 2px 3px;
+}
+.kpsa .net-row td.net-payable-amt {
+	font-size: 13.8px;
+	font-weight: 800;
+	color: #0f172a;
+	padding: 2px 3px;
+	letter-spacing: 0.02em;
+}
+.kpsa-closing {
+	margin-top: 1px;
+	page-break-inside: avoid;
+	break-inside: avoid;
 }
 .kpsa-sign {
 	width: 100%;
@@ -134,20 +192,20 @@ html, body { margin: 0; padding: 0; }
 	padding: 0 12px 4px;
 }
 .kpsa-sign .sign-pad {
-	height: 28px;
+	height: 14px;
 	border-bottom: 1px solid #222;
-	margin: 6px 0 3px;
+	margin: 2px 0 1px;
 }
 .kpsa-sign .sign-lbl {
-	font-size: 5.5px;
+	font-size: 8.28px;
 	font-weight: 700;
 	text-align: center;
 	line-height: 1.2;
 }
 .kpsa-foot-line {
-	margin-top: 2px;
-	padding: 2px 3px;
-	font-size: 5.5px;
+	margin-top: 1px;
+	padding: 1px 3px;
+	font-size: 8.28px;
 	line-height: 1.25;
 	color: #222;
 	text-align: center;
@@ -155,14 +213,58 @@ html, body { margin: 0; padding: 0; }
 }
 
 @media screen {
-	body[data-route="print"] .print-format, .print-format { background: #cfd4da !important; padding: 6px !important; }
-	.kpsa-a4 { box-shadow: 0 0 0 1px #999, 0 2px 6px rgba(0, 0, 0, 0.12); }
+	html, body {
+		background: #b8bcc4 !important;
+	}
+	body[data-route="print"],
+	body[data-route^="print"] {
+		background: #b8bcc4 !important;
+	}
+	.layout-main-section-wrapper,
+	.print-preview-wrapper,
+	.print-format-gutter {
+		background: #b8bcc4 !important;
+		max-width: none !important;
+		width: 100% !important;
+	}
+	.print-format,
+	body[data-route="print"] .print-format {
+		box-sizing: border-box !important;
+		width: var(--kpsa-w) !important;
+		min-width: var(--kpsa-w) !important;
+		max-width: var(--kpsa-w) !important;
+		min-height: auto !important;
+		height: auto !important;
+		margin: 12px auto !important;
+		padding: 0 !important;
+		background: #fff !important;
+		box-shadow: 0 2px 14px rgba(0, 0, 0, 0.18) !important;
+		transform: none !important;
+		zoom: 1 !important;
+	}
+	.print-format .print-format-margin {
+		width: 100% !important;
+		max-width: none !important;
+		margin: 0 !important;
+		padding: 0 !important;
+	}
+	.kpsa-a4 {
+		width: var(--kpsa-w) !important;
+		min-height: auto !important;
+		margin: 0 auto !important;
+		box-shadow: none !important;
+	}
 }
 @media print {
 	.print-format, .print-format .print-format-margin { background: transparent !important; padding: 0 !important; }
 	.print-format .page-break, .print-format .print-heading { display: none !important; }
-	.kpsa-a4 { width: auto; padding: 0; box-shadow: none !important; }
-	.kpsa-bottom, .kpsa-tail { page-break-inside: avoid; break-inside: avoid; }
+	.kpsa-a4 {
+		width: 100%;
+		max-width: 100%;
+		padding: 0;
+		box-shadow: none !important;
+	}
+	.kpsa-closing { page-break-inside: avoid; break-inside: avoid; }
 	.kpsa .sec-bar td, .kpsa .tbl-hdr th, .kpsa .tax-side .tax-hdr td, .kpsa .net-row td, .kpsa .sec-total td {
 		-webkit-print-color-adjust: exact;
 		print-color-adjust: exact;
@@ -171,10 +273,7 @@ html, body { margin: 0; padding: 0; }
 </style>
 
 <div class="kpsa-a4">
-<div class="kpsa-page">
 <div class="kpsa">
-
-	<div class="kpsa-main">
 	<table class="nob block hdr-band" style="margin-top:0;">
 		<colgroup><col style="width:20%"><col style="width:80%"></colgroup>
 		<tr>
@@ -185,8 +284,8 @@ html, body { margin: 0; padding: 0; }
 			</td>
 			<td class="nob co-cell">
 				<div class="hdr-co">{{ d.company_name }}</div>
-				{% if d.company_address_line or d.company_address %}
-				<div class="hdr-addr">{{ d.company_address_line or (d.company_address | striptags) }}</div>
+				{% if d.company_address_print or d.company_address_line %}
+				<div class="hdr-addr">{{ (d.company_address_print or d.company_address_line) | safe }}</div>
 				{% endif %}
 				{% if d.company_gstin %}<div class="hdr-gst"><span class="b">GSTIN:</span> {{ d.company_gstin }}</div>{% endif %}
 			</td>
@@ -195,41 +294,34 @@ html, body { margin: 0; padding: 0; }
 
 	<div class="hdr-title-top">Goods Receipt Note &middot; Purchase Settlement Advice</div>
 
-	<table class="meta3 block">
+	<table class="meta-grid block">
 		<colgroup><col style="width:33.33%"><col style="width:33.33%"><col style="width:33.34%"></colgroup>
 		<tr>
-			<td style="border-right:1px solid #222;">
-				<table class="nob" style="width:100%;">
-					<tr><td class="lbl nob">Party</td><td class="nob">{{ d.party }}</td></tr>
-					<tr><td class="lbl nob">Party Location</td><td class="nob">{{ (d.party_location or "—") | striptags }}</td></tr>
-					<tr><td class="lbl nob">Broker</td><td class="nob">{{ d.broker or "—" }}</td></tr>
-					<tr><td class="lbl nob">Party GSTIN</td><td class="nob">{{ d.party_gstin or "—" }}</td></tr>
-				</table>
-			</td>
-			<td style="border-right:1px solid #222;">
-				<table class="nob" style="width:100%;">
-					<tr><td class="lbl nob">Our Invoice No.</td><td class="nob">{{ d.our_invoice_no }}</td></tr>
-					<tr><td class="lbl nob">Date</td><td class="nob">{{ d.invoice_date }}</td></tr>
-					<tr><td class="lbl nob">Our Location</td><td class="nob">{{ (d.our_location or "—") | striptags }}</td></tr>
-					<tr><td class="lbl nob">Our GSTIN</td><td class="nob">{{ d.our_gstin or "—" }}</td></tr>
-					<tr><td class="lbl nob">PO No.</td><td class="nob">{{ d.po_no or "—" }}</td></tr>
-					<tr><td class="lbl nob">Arrival Date</td><td class="nob">{{ d.arrival_date }}</td></tr>
-				</table>
+			<td>
+				<div class="meta-line"><span class="mk">Party</span><span class="mv">{{ d.party }}</span></div>
+				<div class="meta-line addr"><span class="mk">Location</span><span class="mv">{{ d.party_location_compact or "—" }}</span></div>
+				<div class="meta-line"><span class="mk">Party GSTIN</span><span class="mv">{{ d.party_gstin or "—" }}</span></div>
+				{% if d.broker %}<div class="meta-line"><span class="mk">Broker</span><span class="mv">{{ d.broker }}</span></div>{% endif %}
 			</td>
 			<td>
-				<table class="nob" style="width:100%;">
-					<tr><td class="lbl nob">Debit Note No.</td><td class="nob">{{ d.debit_note_no or "—" }}</td></tr>
-					<tr><td class="lbl nob">Debit Note Date</td><td class="nob">{{ d.debit_note_date or "—" }}</td></tr>
-					<tr><td class="lbl nob">Vendor Doc No.</td><td class="nob">{{ d.vendor_doc_no or "—" }}</td></tr>
-					<tr><td class="lbl nob">Vendor Doc Date</td><td class="nob">{{ d.vendor_doc_date or "—" }}</td></tr>
-					<tr><td class="lbl nob">Vendor Bill Amount</td><td class="nob rgt">{{ d.vendor_bill_amount }}</td></tr>
-					<tr><td class="lbl nob">Lorry No.</td><td class="nob">{{ d.lorry_no or "—" }}</td></tr>
-				</table>
+				<div class="meta-line"><span class="mk">Our Invoice No.</span><span class="mv">{{ d.our_invoice_no }}</span></div>
+				<div class="meta-line"><span class="mk">Date</span><span class="mv">{{ d.invoice_date }} &nbsp;|&nbsp; Arr: {{ d.arrival_date }}</span></div>
+				<div class="meta-line addr"><span class="mk">Our Location</span><span class="mv">{{ d.our_location_compact or "—" }}</span></div>
+				<div class="meta-line"><span class="mk">Our GSTIN</span><span class="mv">{{ d.our_gstin or "—" }}</span></div>
+				<div class="meta-line"><span class="mk">PO No.</span><span class="mv">{{ d.po_no or "—" }}</span></div>
+			</td>
+			<td>
+				<div class="meta-line"><span class="mk">Debit Note No.</span><span class="mv">{{ d.debit_note_no or "—" }}</span></div>
+				<div class="meta-line"><span class="mk">Debit Note Date</span><span class="mv">{{ d.debit_note_date or "—" }}</span></div>
+				<div class="meta-line"><span class="mk">Vendor Doc No.</span><span class="mv">{{ d.vendor_doc_no or "—" }}</span></div>
+				<div class="meta-line"><span class="mk">Vendor Doc Date</span><span class="mv">{{ d.vendor_doc_date or "—" }}</span></div>
+				<div class="meta-line"><span class="mk">Vendor Bill Amt</span><span class="mv rgt">{{ d.vendor_bill_amount }}</span></div>
+				<div class="meta-line"><span class="mk">Lorry No.</span><span class="mv">{{ d.lorry_no or "—" }}</span></div>
 			</td>
 		</tr>
 	</table>
 
-	<table class="block">
+	<table class="block data-table">
 		<colgroup>
 			<col style="width:4%"><col style="width:19%"><col style="width:8%"><col style="width:11%">
 			<col style="width:9%"><col style="width:12%"><col style="width:14%"><col style="width:7%"><col style="width:16%">
@@ -255,7 +347,7 @@ html, body { margin: 0; padding: 0; }
 		<tr class="sec-total"><td colspan="8" class="rgt">Total Payable</td><td class="rgt">{{ d.pi_total_payable }}</td></tr>
 	</table>
 
-	<table class="block">
+	<table class="block data-table">
 		<colgroup>
 			<col style="width:8%"><col style="width:20%"><col style="width:8%"><col style="width:12%">
 			<col style="width:12%"><col style="width:12%"><col style="width:7%"><col style="width:8%"><col style="width:13%">
@@ -276,7 +368,7 @@ html, body { margin: 0; padding: 0; }
 		<tr class="sec-total"><td colspan="8" class="rgt">Total Amount</td><td class="rgt">{{ d.bargain_total }}</td></tr>
 	</table>
 
-	<table class="block">
+	<table class="block data-table quality-table">
 		<colgroup>
 			<col style="width:5%"><col style="width:50%"><col style="width:10%">
 			<col style="width:10%"><col style="width:10%"><col style="width:15%">
@@ -298,10 +390,10 @@ html, body { margin: 0; padding: 0; }
 		<tr class="sec-total"><td colspan="5" class="rgt">Total Deduction</td><td class="rgt">{{ d.quality_total }}</td></tr>
 	</table>
 
-	<table class="nob block">
+	<table class="nob block data-table">
 		<tr>
 			<td class="nob pair-main">
-				<table>
+				<table class="data-table">
 					<colgroup>
 						<col style="width:5%"><col style="width:42%"><col style="width:10%">
 						<col style="width:14%"><col style="width:12%"><col style="width:17%">
@@ -343,8 +435,8 @@ html, body { margin: 0; padding: 0; }
 		</tr>
 	</table>
 
-	<div class="kpsa-tail">
-	<table class="block" style="margin-top:0;">
+	<div class="kpsa-closing">
+	<table class="block data-table" style="margin-top:0;">
 		<colgroup>
 			<col style="width:22%"><col style="width:26%"><col style="width:26%"><col style="width:26%">
 		</colgroup>
@@ -368,31 +460,25 @@ html, body { margin: 0; padding: 0; }
 			<td class="b">{{ sf.document }}</td>
 			<td class="rgt b">{{ sf.basic_net_tds }}</td>
 			<td class="rgt b">{{ sf.gst }}</td>
-			<td class="rgt b">{{ sf.net_payable }}</td>
+			<td class="rgt b net-payable-amt">{{ sf.net_payable }}</td>
 		</tr>
 	</table>
+	<table class="kpsa-sign block">
+		<tr>
+			<td>
+				<div class="sign-pad"></div>
+				<div class="sign-lbl">Authorized Signatory</div>
+			</td>
+			<td>
+				<div class="sign-pad"></div>
+				<div class="sign-lbl">Party Acknowledgement</div>
+			</td>
+		</tr>
+	</table>
+	<div class="kpsa-foot-line">
+		Payment subject to realization. Verify qty, rate &amp; deductions. Disputes subject to company jurisdiction.
+	</div>
 	</div>
 
-	</div>
-
-	<div class="kpsa-bottom">
-		<table class="kpsa-sign">
-			<tr>
-				<td>
-					<div class="sign-pad"></div>
-					<div class="sign-lbl">Authorized Signatory</div>
-				</td>
-				<td>
-					<div class="sign-pad"></div>
-					<div class="sign-lbl">Party Acknowledgement</div>
-				</td>
-			</tr>
-		</table>
-		<div class="kpsa-foot-line">
-			Payment subject to realization. Verify qty, rate &amp; deductions. Disputes subject to company jurisdiction.
-		</div>
-	</div>
-
-</div>
 </div>
 </div>

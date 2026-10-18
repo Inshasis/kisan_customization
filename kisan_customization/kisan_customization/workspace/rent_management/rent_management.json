@@ -13,7 +13,7 @@
  "is_hidden": 0,
  "label": "Rent Management",
  "links": [],
- "modified": "2026-10-05 12:55:03.627097",
+ "modified": "2026-10-18 09:10:44.124765",
  "modified_by": "Administrator",
  "module": "Kisan Customization",
  "name": "Rent Management",
@@ -51,25 +51,9 @@
   {
    "color": "Grey",
    "doc_view": "List",
-   "label": "Customer",
-   "link_to": "Customer",
-   "stats_filter": "[[\"Customer\",\"customer_group\",\"=\",\"Cold Storage Customer\",false]]",
-   "type": "DocType"
-  },
-  {
-   "color": "Grey",
-   "doc_view": "List",
    "label": "Outward Jawak",
    "link_to": "Outward Jawak",
    "stats_filter": "[]",
-   "type": "DocType"
-  },
-  {
-   "color": "Grey",
-   "doc_view": "List",
-   "label": "Commodity",
-   "link_to": "Item",
-   "stats_filter": "[[\"Item\",\"item_group\",\"=\",\"Cold Storage Item\",false]]",
    "type": "DocType"
   },
   {
@@ -83,9 +67,25 @@
   {
    "color": "Grey",
    "doc_view": "List",
+   "label": "Customer",
+   "link_to": "Customer",
+   "stats_filter": "[[\"Customer\",\"customer_group\",\"=\",\"Rental Customers\",false]]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
    "label": "Godown Floor",
    "link_to": "Godown Floor",
    "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Commodity",
+   "link_to": "Item",
+   "stats_filter": "[[\"Item\",\"item_group\",\"=\",\"Rental Commodity\",false]]",
    "type": "DocType"
   },
   {

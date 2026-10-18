@@ -32,6 +32,13 @@ def compute_general_chargeable_days(actual_days, settings=None):
 	return actual_days + extra_days
 
 
+def _specific_rent_threshold(settings):
+	min_days = cint(settings.specific_minimum_days) or 30
+	extra_days = cint(settings.specific_extra_days) or 2
+	days_per_month = cint(settings.specific_days_per_month) or 30
+	return min_days, extra_days, days_per_month, min_days + extra_days
+
+
 def compute_specific_chargeable_months(actual_days, settings=None):
 	"""Bill in full months using Specific settings.
 
@@ -40,16 +47,24 @@ def compute_specific_chargeable_months(actual_days, settings=None):
 	toward the next month in blocks of Days Per Month (33–62 → 2 months).
 	"""
 	settings = settings or get_master_rent_settings()
-	min_days = cint(settings.specific_minimum_days) or 30
-	extra_days = cint(settings.specific_extra_days) or 2
-	days_per_month = cint(settings.specific_days_per_month) or 30
-
-	threshold = min_days + extra_days
+	_min_days, _extra_days, days_per_month, threshold = _specific_rent_threshold(settings)
 	if actual_days <= threshold:
 		return 1
 
 	remaining = actual_days - threshold
 	return 1 + math.ceil(remaining / days_per_month)
+
+
+def compute_specific_chargeable_days(actual_days, settings=None):
+	"""Day count shown as Total Days on Specific lines (aligned with month slabs)."""
+	settings = settings or get_master_rent_settings()
+	min_days, _extra_days, _days_per_month, threshold = _specific_rent_threshold(settings)
+	months = compute_specific_chargeable_months(actual_days, settings)
+
+	if months == 1 and actual_days <= threshold:
+		return max(actual_days, min_days)
+
+	return actual_days
 
 
 def compute_rent_line(
@@ -83,12 +98,13 @@ def compute_rent_line(
 
 	if rate_type == "Specific":
 		chargeable_months = compute_specific_chargeable_months(actual_days, settings)
+		chargeable_days = compute_specific_chargeable_days(actual_days, settings)
 		base_amount = qty * rate * chargeable_months
 		result.update(
 			{
 				"chargeable_period": chargeable_months,
 				"chargeable_period_uom": "Months",
-				"total_days": 0,
+				"total_days": chargeable_days,
 			}
 		)
 	else:

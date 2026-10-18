@@ -16,18 +16,24 @@ fixtures = [
     {"dt": "Item Group", "filters": [
 		[
 			"name",
-		"in",
-		{
-			"Cold Storage Item"
-		}]
+			"in",
+			{
+				"Trading Commodity",
+				"Rental Commodity",
+				"Cold Storage Item",
+			},
+		]
 	]},
 	{"dt": "Customer Group", "filters": [
 		[
 			"name",
-		"in",
-		{
-			"Cold Storage Customer"
-		}]
+			"in",
+			{
+				"Trading Customers",
+				"Rental Customers",
+				"Cold Storage Customer",
+			},
+		]
 	]},
     {"dt": "Supplier Group", "filters": [
 		[
@@ -61,7 +67,7 @@ fixtures = [
 
 # include js, css files in header of desk.html
 # app_include_css = "/assets/kisan_customization/css/kisan_customization.css"
-# app_include_js = "/assets/kisan_customization/js/kisan_customization.js"
+app_include_js = "/assets/kisan_customization/js/kisan_master_groups.js"
 
 # include js, css files in header of web template
 # web_include_css = "/assets/kisan_customization/css/kisan_customization.css"
@@ -79,6 +85,9 @@ fixtures = [
 
 # include js in doctype views
 doctype_js = {
+	"Aggregator Booking": ["public/js/kisan_master_groups.js"],
+	"Bag Configuration": ["public/js/kisan_master_groups.js"],
+	"Inward Aawak": ["public/js/kisan_master_groups.js"],
 	"Purchase Invoice": [
 		"public/js/kisan_transaction_mode.js",
 		"public/js/broker_commission.js",
@@ -86,12 +95,14 @@ doctype_js = {
 		"public/js/purchase_invoice.js",
 	],
 	"Purchase Order": [
+		"public/js/kisan_master_groups.js",
 		"public/js/kisan_transaction_mode.js",
 		"public/js/delivery_payment_days.js",
 		"public/js/broker_commission.js",
 		"public/js/purchase_order.js",
 	],
 	"Sales Order": [
+		"public/js/kisan_master_groups.js",
 		"public/js/kisan_transaction_mode.js",
 		"public/js/delivery_payment_days.js",
 		"public/js/broker_commission.js",
@@ -224,7 +235,10 @@ doc_events = {
 			"kisan_customization.purchase_invoice.broker_commission.before_submit",
 		],
 		"before_cancel": "kisan_customization.purchase_invoice.broker_commission.before_cancel",
-		"on_submit": "kisan_customization.purchase_invoice.broker_commission.on_submit",
+		"on_submit": [
+			"kisan_customization.purchase_invoice.broker_commission.on_submit",
+			"kisan_customization.purchase_invoice.debit_note.auto_create_debit_note_on_pi_submit",
+		],
 		"on_trash": "kisan_customization.purchase_invoice.aggregator_booking.on_trash",
 	},
 	"Purchase Order": {

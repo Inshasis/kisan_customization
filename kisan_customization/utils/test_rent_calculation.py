@@ -8,6 +8,7 @@ from kisan_customization.kisan_customization.doctype.bag_configuration.naming im
 from kisan_customization.utils.rent_calculation import (
 	compute_general_chargeable_days,
 	compute_rent_line,
+	compute_specific_chargeable_days,
 	compute_specific_chargeable_months,
 )
 
@@ -54,6 +55,13 @@ class TestRentCalculation(FrappeTestCase):
 		self.assertEqual(compute_specific_chargeable_months(62, settings), 2)
 		self.assertEqual(compute_specific_chargeable_months(63, settings), 3)
 
+	def test_specific_total_days(self):
+		settings = self._mock_settings()
+		self.assertEqual(compute_specific_chargeable_days(10, settings), 30)
+		self.assertEqual(compute_specific_chargeable_days(32, settings), 32)
+		self.assertEqual(compute_specific_chargeable_days(33, settings), 33)
+		self.assertEqual(compute_specific_chargeable_days(63, settings), 63)
+
 	def test_specific_rent_eggs_crate(self):
 		settings = self._mock_settings()
 
@@ -67,6 +75,7 @@ class TestRentCalculation(FrappeTestCase):
 		)
 		self.assertEqual(result["chargeable_period"], 2)
 		self.assertEqual(result["chargeable_period_uom"], "Months")
+		self.assertEqual(result["total_days"], 33)
 		self.assertEqual(result["total_amount"], 400)
 
 

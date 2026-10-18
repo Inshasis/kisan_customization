@@ -359,6 +359,9 @@ function loadAawakContext(frm, aawakName) {
 			}
 
 			validateJawakDate(frm);
+			if (frm.doc.jawak_date) {
+				recalculateAllAmounts(frm);
+			}
 		}
 	});
 }

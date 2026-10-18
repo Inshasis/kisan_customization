@@ -1,8 +1,12 @@
 kisan_customization.delivery_payment_days.bind("Sales Order");
 kisan_customization.broker_commission.bind("Sales Order");
 
-const SO_CUSTOMER_GROUP = "Sales";
-const SO_ITEM_GROUP = "Products";
+frappe.provide("kisan_customization.master_groups");
+
+const SO_CUSTOMER_GROUP =
+	kisan_customization.master_groups.TRADING_CUSTOMER_GROUP || "Trading Customers";
+const SO_ITEM_GROUP =
+	kisan_customization.master_groups.TRADING_ITEM_GROUP || "Trading Commodity";
 
 const HIDDEN_SO_CREATE_BUTTONS = [
 	__("Pick List"),

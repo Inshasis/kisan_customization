@@ -5,18 +5,25 @@ function weightRequiredForRow(row) {
 	return ['Kg', 'Bag', 'Nos'].includes(uom);
 }
 
+frappe.provide("kisan_customization.master_groups");
+
+const RENTAL_ITEM_GROUP =
+	kisan_customization.master_groups.RENTAL_ITEM_GROUP || "Rental Commodity";
+const RENTAL_CUSTOMER_GROUP =
+	kisan_customization.master_groups.RENTAL_CUSTOMER_GROUP || "Rental Customers";
+
 frappe.ui.form.on('Inward Aawak', {
 	refresh(frm) {
 		frm.set_query('commodities', () => ({
 			filters: {
-				item_group: 'Cold Storage Item',
+				item_group: RENTAL_ITEM_GROUP,
 				disabled: 0,
 			},
 		}));
 
 		frm.set_query('storage_customer', () => ({
 			filters: {
-				customer_group: 'Cold Storage Customer',
+				customer_group: RENTAL_CUSTOMER_GROUP,
 				disabled: 0,
 			},
 		}));
@@ -43,6 +50,16 @@ frappe.ui.form.on('Inward Aawak', {
 
 		if (frm.doc.naming_series && frm.doc.naming_series.includes('YYYY')) {
 			frm.refresh_field('naming_series');
+		}
+
+		calculateGrandTotals(frm);
+
+		if (frm.fields_dict.bag_details?.grid) {
+			frm.fields_dict.bag_details.grid.update_docfield_property(
+				'lorry_weight_kg',
+				'read_only',
+				0
+			);
 		}
 	},
 
@@ -118,6 +135,16 @@ frappe.ui.form.on('Inward Aawak', {
 				frappe.msgprint({
 					title: __('Bag Details Error'),
 					message: __('Row {0}: Quantity must be greater than 0', [index + 1]),
+					indicator: 'red',
+				});
+				frappe.validated = false;
+				return;
+			}
+
+			if (flt(row.lorry_weight_kg) < 0) {
+				frappe.msgprint({
+					title: __('Bag Details Error'),
+					message: __('Row {0}: Lorry Weight (Kg) cannot be negative', [index + 1]),
 					indicator: 'red',
 				});
 				frappe.validated = false;
@@ -206,6 +233,14 @@ frappe.ui.form.on('Bag Details', {
 	},
 
 	number_of_bags(frm, cdt, cdn) {
+		calculateRowTotal(frm, cdt, cdn);
+		calculateGrandTotals(frm);
+	},
+
+	lorry_weight_kg(frm, cdt, cdn) {
+		if (!validateLorryWeightKg(frm, cdt, cdn)) {
+			return;
+		}
 		calculateRowTotal(frm, cdt, cdn);
 		calculateGrandTotals(frm);
 	},
@@ -347,16 +382,47 @@ function calculateRowTotal(frm, cdt, cdn) {
 			totalWeight = Math.round(totalWeight * 100) / 100;
 			frappe.model.set_value(cdt, cdn, 'total_weight', totalWeight);
 		}
-	} else if (row.lorry_weight_kg) {
-		frappe.model.set_value(cdt, cdn, 'total_weight', row.lorry_weight_kg);
+	} else if (flt(row.lorry_weight_kg) > 0) {
+		frappe.model.set_value(cdt, cdn, 'total_weight', flt(row.lorry_weight_kg));
 	} else {
 		frappe.model.set_value(cdt, cdn, 'total_weight', 0);
 	}
 }
 
+function isLorryWeightProvided(row) {
+	return flt(row.lorry_weight_kg) > 0;
+}
+
+function validateLorryWeightKg(frm, cdt, cdn) {
+	const row = locals[cdt][cdn];
+	if (row.lorry_weight_kg === '' || row.lorry_weight_kg == null) {
+		return true;
+	}
+	const weight = flt(row.lorry_weight_kg);
+	if (weight < 0) {
+		frappe.msgprint({
+			title: __('Invalid Lorry Weight'),
+			message: __('Lorry Weight (Kg) cannot be negative'),
+			indicator: 'red',
+		});
+		frappe.model.set_value(cdt, cdn, 'lorry_weight_kg', null);
+		return false;
+	}
+	if (weight === 0) {
+		frappe.model.set_value(cdt, cdn, 'lorry_weight_kg', null);
+	}
+	return true;
+}
+
+function flt(value) {
+	return parseFloat(value) || 0;
+}
+
 function calculateGrandTotals(frm) {
 	let totalBags = 0;
 	let totalWeight = 0;
+	let totalLorryWeight = 0;
+	let hasLorryInGrid = false;
 	if (frm.doc.bag_details) {
 		frm.doc.bag_details.forEach((row) => {
 			if (row.number_of_bags) {
@@ -365,11 +431,26 @@ function calculateGrandTotals(frm) {
 			if (row.total_weight) {
 				totalWeight += parseFloat(row.total_weight) || 0;
 			}
+			if (isLorryWeightProvided(row)) {
+				hasLorryInGrid = true;
+				totalLorryWeight += flt(row.lorry_weight_kg);
+			}
 		});
 	}
 	totalWeight = Math.round(totalWeight * 100) / 100;
+	totalLorryWeight = Math.round(totalLorryWeight * 100) / 100;
 	frm.set_value('total_bags', totalBags);
 	frm.set_value('total_weight', totalWeight);
+
+	if (hasLorryInGrid) {
+		frm.set_value('total_lorry_weight', totalLorryWeight);
+		if (frm.fields_dict.total_lorry_weight) {
+			frm.set_df_property('total_lorry_weight', 'read_only', 1);
+		}
+	} else if (frm.fields_dict.total_lorry_weight) {
+		frm.set_df_property('total_lorry_weight', 'read_only', 0);
+	}
+
 	validateChamberAllocations(frm);
 }
 

@@ -323,18 +323,24 @@ function add_post_submit_buttons(frm) {
 	if (frm.doc.docstatus !== 1 || frm.doc.is_return) return;
 	if (!kisan_customization.transaction_mode.is_kisan_custom(frm)) return;
 
+	const add_debit_note_buttons = (debitNoteName) => {
+		if (debitNoteName) {
+			frm.add_custom_button(__("View Debit Note"), () => {
+				frappe.set_route("Form", "Purchase Invoice", debitNoteName);
+			});
+			return;
+		}
+		frm.add_custom_button(__("Debit Note"), () => make_kisan_debit_note(frm));
+	};
+
 	frappe.call({
-		method: "kisan_customization.purchase_invoice.debit_note.has_active_debit_note",
+		method: "kisan_customization.purchase_invoice.debit_note.get_debit_note_for_purchase_invoice",
 		args: { purchase_invoice: frm.doc.name },
 		callback(r) {
-			if (r.message) return;
-
-			const add_debit_note = () => {
-				frm.add_custom_button(__("Debit Note"), () => make_kisan_debit_note(frm));
-			};
+			const debitNoteName = r.message;
 
 			if (!frm.doc.custom_broker) {
-				add_debit_note();
+				add_debit_note_buttons(debitNoteName);
 				return;
 			}
 
@@ -348,7 +354,7 @@ function add_post_submit_buttons(frm) {
 							frappe.set_route("Form", "Broker Commission", bc.name);
 						});
 					}
-					add_debit_note();
+					add_debit_note_buttons(debitNoteName);
 				}
 			);
 		},

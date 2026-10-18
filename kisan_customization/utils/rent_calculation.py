@@ -20,16 +20,23 @@ def get_actual_storage_days(aawak_date, jawak_date):
 	return max(0, (end - start).days)
 
 
+def compute_chargeable_total_days(actual_days, min_days, extra_days):
+	"""Total Days / chargeable days: minimum if within min slab, else actual + extra."""
+	min_days = cint(min_days) or 0
+	extra_days = cint(extra_days) or 0
+
+	if actual_days <= min_days:
+		return min_days if min_days else actual_days
+
+	return actual_days + extra_days
+
+
 def compute_general_chargeable_days(actual_days, settings=None):
 	"""General rent: minimum days, else actual days + extra; amount is daily prorated."""
 	settings = settings or get_master_rent_settings()
 	min_days = cint(settings.minimum_chargeable_days) or 15
 	extra_days = cint(settings.extra_days_after_minimum) or 2
-
-	if actual_days <= min_days:
-		return min_days
-
-	return actual_days + extra_days
+	return compute_chargeable_total_days(actual_days, min_days, extra_days)
 
 
 def _specific_rent_threshold(settings):
@@ -39,32 +46,49 @@ def _specific_rent_threshold(settings):
 	return min_days, extra_days, days_per_month, min_days + extra_days
 
 
+def _specific_billing_days_for_months(actual_days, min_days, extra_days, threshold):
+	"""Days counted toward Specific month slabs (not the Total Days display field)."""
+	if actual_days <= min_days:
+		return actual_days + extra_days
+
+	if actual_days < threshold:
+		return actual_days + extra_days
+
+	if actual_days == threshold:
+		return threshold
+
+	return actual_days
+
+
 def compute_specific_chargeable_months(actual_days, settings=None):
 	"""Bill in full months using Specific settings.
 
 	First month covers Minimum Chargeable Days + Extra Days After Minimum
-	(e.g. 30 + 2 = 32 days). Each day after that threshold starts counting
-	toward the next month in blocks of Days Per Month (33–62 → 2 months).
+	(e.g. 30 + 2 = 32 days). When actual exceeds minimum, add extra days
+	(e.g. 31 + 2 = 33 → second month). One day beyond 32 starts next month.
 	"""
 	settings = settings or get_master_rent_settings()
-	_min_days, _extra_days, days_per_month, threshold = _specific_rent_threshold(settings)
-	if actual_days <= threshold:
+	min_days, extra_days, days_per_month, threshold = _specific_rent_threshold(settings)
+	billing_days = _specific_billing_days_for_months(
+		actual_days, min_days, extra_days, threshold
+	)
+
+	if billing_days <= threshold:
 		return 1
 
-	remaining = actual_days - threshold
+	remaining = billing_days - threshold
 	return 1 + math.ceil(remaining / days_per_month)
 
 
-def compute_specific_chargeable_days(actual_days, settings=None):
-	"""Day count shown as Total Days on Specific lines (aligned with month slabs)."""
+def compute_line_total_days(actual_days, rate_type, settings=None):
+	"""Total Days on Jawak lines: actual storage + Extra Days After Minimum."""
 	settings = settings or get_master_rent_settings()
-	min_days, _extra_days, _days_per_month, threshold = _specific_rent_threshold(settings)
-	months = compute_specific_chargeable_months(actual_days, settings)
-
-	if months == 1 and actual_days <= threshold:
-		return max(actual_days, min_days)
-
-	return actual_days
+	rate_type = (rate_type or "General").strip()
+	if rate_type == "Specific":
+		extra_days = cint(settings.specific_extra_days) or 2
+	else:
+		extra_days = cint(settings.extra_days_after_minimum) or 2
+	return actual_days + extra_days
 
 
 def compute_rent_line(
@@ -95,16 +119,16 @@ def compute_rent_line(
 		return result
 
 	rate_type = (rate_type or "General").strip()
+	total_days = compute_line_total_days(actual_days, rate_type, settings)
 
 	if rate_type == "Specific":
 		chargeable_months = compute_specific_chargeable_months(actual_days, settings)
-		chargeable_days = compute_specific_chargeable_days(actual_days, settings)
 		base_amount = qty * rate * chargeable_months
 		result.update(
 			{
 				"chargeable_period": chargeable_months,
 				"chargeable_period_uom": "Months",
-				"total_days": chargeable_days,
+				"total_days": total_days,
 			}
 		)
 	else:
@@ -116,7 +140,7 @@ def compute_rent_line(
 			{
 				"chargeable_period": chargeable_days,
 				"chargeable_period_uom": "Days",
-				"total_days": chargeable_days,
+				"total_days": total_days,
 			}
 		)
 

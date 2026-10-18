@@ -8,7 +8,7 @@ from kisan_customization.kisan_customization.doctype.bag_configuration.naming im
 from kisan_customization.utils.rent_calculation import (
 	compute_general_chargeable_days,
 	compute_rent_line,
-	compute_specific_chargeable_days,
+	compute_line_total_days,
 	compute_specific_chargeable_months,
 )
 
@@ -45,22 +45,38 @@ class TestRentCalculation(FrappeTestCase):
 			settings=settings,
 		)
 		self.assertEqual(result["chargeable_period"], 15)
-		self.assertEqual(result["total_days"], 15)
+		self.assertEqual(result["total_days"], 16)
 
 	def test_specific_month_slabs(self):
 		settings = self._mock_settings()
+		self.assertEqual(compute_specific_chargeable_months(20, settings), 1)
+		self.assertEqual(compute_specific_chargeable_months(31, settings), 2)
 		self.assertEqual(compute_specific_chargeable_months(32, settings), 1)
 		self.assertEqual(compute_specific_chargeable_months(33, settings), 2)
 		self.assertEqual(compute_specific_chargeable_months(34, settings), 2)
 		self.assertEqual(compute_specific_chargeable_months(62, settings), 2)
 		self.assertEqual(compute_specific_chargeable_months(63, settings), 3)
 
-	def test_specific_total_days(self):
+	def test_line_total_days(self):
 		settings = self._mock_settings()
-		self.assertEqual(compute_specific_chargeable_days(10, settings), 30)
-		self.assertEqual(compute_specific_chargeable_days(32, settings), 32)
-		self.assertEqual(compute_specific_chargeable_days(33, settings), 33)
-		self.assertEqual(compute_specific_chargeable_days(63, settings), 63)
+		self.assertEqual(compute_line_total_days(10, "General", settings), 12)
+		self.assertEqual(compute_line_total_days(10, "Specific", settings), 12)
+		self.assertEqual(compute_line_total_days(31, "Specific", settings), 33)
+		self.assertEqual(compute_line_total_days(14, "General", settings), 16)
+
+	def test_specific_short_storage_one_month(self):
+		settings = self._mock_settings()
+		result = compute_rent_line(
+			"Specific",
+			qty=1,
+			rate=50,
+			aawak_date="2026-01-01",
+			jawak_date="2026-01-21",
+			settings=settings,
+		)
+		self.assertEqual(result["actual_storage_days"], 20)
+		self.assertEqual(result["total_days"], 22)
+		self.assertEqual(result["chargeable_period"], 1)
 
 	def test_specific_rent_eggs_crate(self):
 		settings = self._mock_settings()
@@ -75,7 +91,7 @@ class TestRentCalculation(FrappeTestCase):
 		)
 		self.assertEqual(result["chargeable_period"], 2)
 		self.assertEqual(result["chargeable_period_uom"], "Months")
-		self.assertEqual(result["total_days"], 33)
+		self.assertEqual(result["total_days"], 35)
 		self.assertEqual(result["total_amount"], 400)
 
 

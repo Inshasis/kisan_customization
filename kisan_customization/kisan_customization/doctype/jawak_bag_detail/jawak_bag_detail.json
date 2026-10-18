@@ -125,7 +125,7 @@
    "read_only": 1
   },
   {
-   "description": "Chargeable days (General: min/extra from settings; Specific: min+extra first month, then actual days)",
+   "description": "Actual storage days + Extra Days After Minimum (General or Specific settings). Rent amount uses Chargeable Period.",
    "fieldname": "total_days",
    "fieldtype": "Int",
    "label": "Total Days",

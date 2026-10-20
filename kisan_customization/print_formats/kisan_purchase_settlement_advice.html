@@ -10,6 +10,9 @@
 	--kpsa-blue: #b4c6e7;
 	--kpsa-fs: 9.66px;
 	--kpsa-fs-sm: 8.97px;
+	--kpsa-fs-amt: calc(var(--kpsa-fs-sm) * 1.2);
+	--kpsa-fs-amt-quality: calc(8.51px * 1.2);
+	--kpsa-fs-amt-net: calc(13.8px * 1.2);
 	--kpsa-fs-hdr: 11.04px;
 }
 @page { size: A4 portrait; margin: 3mm; }
@@ -44,6 +47,17 @@ html, body { margin: 0; padding: 0; }
 .kpsa .nob { border: none !important; }
 .kpsa .ctr { text-align: center; }
 .kpsa .rgt { text-align: right; }
+.kpsa .amt {
+	font-size: var(--kpsa-fs-amt);
+	font-variant-numeric: tabular-nums;
+	line-height: 1.12;
+}
+.kpsa .data-table.quality-table .amt { font-size: var(--kpsa-fs-amt-quality); }
+.kpsa .net-row td.amt,
+.kpsa .net-row td.net-payable-amt { font-size: var(--kpsa-fs-amt-net); }
+.kpsa .sec-total .amt { font-size: var(--kpsa-fs-amt); }
+.kpsa .meta-line .mv.amt { font-size: var(--kpsa-fs-amt); }
+.kpsa .tax-side td.amt { font-size: var(--kpsa-fs-amt); }
 .kpsa .b { font-weight: 700; }
 .kpsa .sec-bar td {
 	background: var(--kpsa-blue);
@@ -168,7 +182,6 @@ html, body { margin: 0; padding: 0; }
 	padding: 2px 3px;
 }
 .kpsa .net-row td.net-payable-amt {
-	font-size: 13.8px;
 	font-weight: 800;
 	color: #0f172a;
 	padding: 2px 3px;
@@ -315,7 +328,7 @@ html, body { margin: 0; padding: 0; }
 				<div class="meta-line"><span class="mk">Debit Note Date</span><span class="mv">{{ d.debit_note_date or "—" }}</span></div>
 				<div class="meta-line"><span class="mk">Vendor Doc No.</span><span class="mv">{{ d.vendor_doc_no or "—" }}</span></div>
 				<div class="meta-line"><span class="mk">Vendor Doc Date</span><span class="mv">{{ d.vendor_doc_date or "—" }}</span></div>
-				<div class="meta-line"><span class="mk">Vendor Bill Amt</span><span class="mv rgt">{{ d.vendor_bill_amount }}</span></div>
+				<div class="meta-line"><span class="mk">Vendor Bill Amt</span><span class="mv rgt amt">{{ d.vendor_bill_amount }}</span></div>
 				<div class="meta-line"><span class="mk">Lorry No.</span><span class="mv">{{ d.lorry_no or "—" }}</span></div>
 			</td>
 		</tr>
@@ -337,14 +350,14 @@ html, body { margin: 0; padding: 0; }
 			<td>{{ row.item }}</td>
 			<td class="ctr">{{ row.hsn }}</td>
 			<td class="rgt">{{ row.vendor_dis_wt }}</td>
-			<td class="rgt">{{ row.rate }}<span class="rate-uom">{{ row.rate_suffix or "" }}</span></td>
-			<td class="rgt">{{ row.basic }}</td>
-			<td class="rgt">{{ row.gst }}</td>
-			<td class="rgt">{{ row.tds or "—" }}</td>
-			<td class="rgt">{{ row.payable }}</td>
+			<td class="rgt amt">{{ row.rate }}<span class="rate-uom">{{ row.rate_suffix or "" }}</span></td>
+			<td class="rgt amt">{{ row.basic }}</td>
+			<td class="rgt amt">{{ row.gst }}</td>
+			<td class="rgt amt">{{ row.tds or "—" }}</td>
+			<td class="rgt amt">{{ row.payable }}</td>
 		</tr>
 		{% endfor %}
-		<tr class="sec-total"><td colspan="8" class="rgt">Total Payable</td><td class="rgt">{{ d.pi_total_payable }}</td></tr>
+		<tr class="sec-total"><td colspan="8" class="rgt">Total Payable</td><td class="rgt amt">{{ d.pi_total_payable }}</td></tr>
 	</table>
 
 	<table class="block data-table">
@@ -360,12 +373,12 @@ html, body { margin: 0; padding: 0; }
 		{% for row in d.bargain_rows %}
 		<tr>
 			<td>{{ row.lot_no }}</td><td>{{ row.item }}</td>
-			<td class="rgt">{{ row.bags }}</td><td class="rgt">{{ row.get("gross_weight") or row.get("bags_wt") or "" }}</td><td class="rgt">{{ row.sauda_rate }}</td>
+			<td class="rgt">{{ row.bags }}</td><td class="rgt">{{ row.get("gross_weight") or row.get("bags_wt") or "" }}</td><td class="rgt amt">{{ row.sauda_rate }}</td>
 			<td class="rgt">{{ row.arrival_weight }}</td><td class="rgt">{{ row.oil_pct or "—" }}</td><td class="rgt">{{ row.oil_rate or "—" }}</td>
-			<td class="rgt">{{ row.amount }}</td>
+			<td class="rgt amt">{{ row.amount }}</td>
 		</tr>
 		{% endfor %}
-		<tr class="sec-total"><td colspan="8" class="rgt">Total Amount</td><td class="rgt">{{ d.bargain_total }}</td></tr>
+		<tr class="sec-total"><td colspan="8" class="rgt">Total Amount</td><td class="rgt amt">{{ d.bargain_total }}</td></tr>
 	</table>
 
 	<table class="block data-table quality-table">
@@ -381,13 +394,13 @@ html, body { margin: 0; padding: 0; }
 			{% for row in d.quality_rows %}
 			<tr>
 				<td class="ctr">{{ row.sr }}</td><td>{{ row.particulars }}</td>
-				<td class="rgt">{{ row.required }}</td><td class="rgt">{{ row.actual }}</td><td class="rgt">{{ row.diff }}</td><td class="rgt">{{ row.value }}</td>
+				<td class="rgt">{{ row.required }}</td><td class="rgt">{{ row.actual }}</td><td class="rgt">{{ row.diff }}</td><td class="rgt amt">{{ row.value }}</td>
 			</tr>
 			{% endfor %}
 		{% else %}
 			<tr><td colspan="6" class="ctr">—</td></tr>
 		{% endif %}
-		<tr class="sec-total"><td colspan="5" class="rgt">Total Deduction</td><td class="rgt">{{ d.quality_total }}</td></tr>
+		<tr class="sec-total"><td colspan="5" class="rgt">Total Deduction</td><td class="rgt amt">{{ d.quality_total }}</td></tr>
 	</table>
 
 	<table class="nob block data-table">
@@ -409,14 +422,14 @@ html, body { margin: 0; padding: 0; }
 							<td>{{ row.particulars }}</td>
 							<td class="ctr">{{ row.hsn or "—" }}</td>
 							<td class="rgt">{% if row.particulars != "Quality Deduction" %}{{ row["dn_qty"] or row.get("qty") or "—" }}{% endif %}</td>
-							<td class="rgt">{% if row.particulars != "Quality Deduction" %}{{ row["dn_rate"] or row.get("rate") or "—" }}{% endif %}</td>
-							<td class="rgt">{{ row.amount }}</td>
+							<td class="rgt amt">{% if row.particulars != "Quality Deduction" %}{{ row["dn_rate"] or row.get("rate") or "—" }}{% endif %}</td>
+							<td class="rgt amt">{{ row.amount }}</td>
 						</tr>
 						{% endfor %}
 					{% else %}
 						<tr><td colspan="6" class="ctr">—</td></tr>
 					{% endif %}
-					<tr class="sec-total"><td colspan="5" class="rgt">Debit Note Total</td><td class="rgt">{{ d.debit_grand_total }}</td></tr>
+					<tr class="sec-total"><td colspan="5" class="rgt">Debit Note Total</td><td class="rgt amt">{{ d.debit_grand_total }}</td></tr>
 				</table>
 			</td>
 			{% if d.debit_tax_sidebar %}
@@ -426,7 +439,7 @@ html, body { margin: 0; padding: 0; }
 					{% for line in d.debit_tax_sidebar %}
 					<tr>
 						<td class="lbl{% if line.bold %} b{% endif %}">{{ line.label }}</td>
-						<td class="rgt{% if line.bold %} b{% endif %}">{{ line.amount }}</td>
+						<td class="rgt amt{% if line.bold %} b{% endif %}">{{ line.amount }}</td>
 					</tr>
 					{% endfor %}
 				</table>
@@ -446,21 +459,21 @@ html, body { margin: 0; padding: 0; }
 		</tr>
 		<tr>
 			<td>{{ d.summary_pi.document }}</td>
-			<td class="rgt">{{ d.summary_pi.basic_net_tds }}</td>
-			<td class="rgt">{{ d.summary_pi.gst }}</td>
-			<td class="rgt">{{ d.summary_pi.net_payable }}</td>
+			<td class="rgt amt">{{ d.summary_pi.basic_net_tds }}</td>
+			<td class="rgt amt">{{ d.summary_pi.gst }}</td>
+			<td class="rgt amt">{{ d.summary_pi.net_payable }}</td>
 		</tr>
 		<tr>
 			<td>{{ d.summary_debit.document }}</td>
-			<td class="rgt">{{ d.summary_debit.basic_net_tds }}</td>
-			<td class="rgt">{{ d.summary_debit.gst }}</td>
-			<td class="rgt">{{ d.summary_debit.net_payable }}</td>
+			<td class="rgt amt">{{ d.summary_debit.basic_net_tds }}</td>
+			<td class="rgt amt">{{ d.summary_debit.gst }}</td>
+			<td class="rgt amt">{{ d.summary_debit.net_payable }}</td>
 		</tr>
 		<tr class="net-row">
 			<td class="b">{{ sf.document }}</td>
-			<td class="rgt b">{{ sf.basic_net_tds }}</td>
-			<td class="rgt b">{{ sf.gst }}</td>
-			<td class="rgt b net-payable-amt">{{ sf.net_payable }}</td>
+			<td class="rgt b amt">{{ sf.basic_net_tds }}</td>
+			<td class="rgt b amt">{{ sf.gst }}</td>
+			<td class="rgt b amt net-payable-amt">{{ sf.net_payable }}</td>
 		</tr>
 	</table>
 	<table class="kpsa-sign block">

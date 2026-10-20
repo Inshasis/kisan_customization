@@ -10,4 +10,12 @@ frappe.ui.form.on("Kisan Master Settings", {
 			},
 		}));
 	},
+
+	after_save() {
+		frappe.show_alert({
+			message: __("Sidebar rules saved. Reloading desk…"),
+			indicator: "green",
+		});
+		setTimeout(() => window.location.reload(), 600);
+	},
 });

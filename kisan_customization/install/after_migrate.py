@@ -3,6 +3,7 @@
 from kisan_customization.install.deduction_types import ensure_default_deduction_types
 from kisan_customization.install.kisan_logo import ensure_kisan_settlement_logo
 from kisan_customization.install.master_settings import ensure_master_settings_defaults
+from kisan_customization.utils.sidebar_hide import generate_sidebar_assets
 
 
 def after_migrate():
@@ -10,3 +11,4 @@ def after_migrate():
 	ensure_master_settings_defaults()
 	ensure_default_deduction_types()
 	ensure_kisan_settlement_logo()
+	generate_sidebar_assets()

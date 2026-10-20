@@ -67,7 +67,12 @@ fixtures = [
 
 # include js, css files in header of desk.html
 # app_include_css = "/assets/kisan_customization/css/kisan_customization.css"
-app_include_js = "/assets/kisan_customization/js/kisan_master_groups.js"
+app_include_js = [
+	"/assets/kisan_customization/js/kisan_master_groups.js",
+	"/assets/kisan_customization/js/kisan_sidebar_hide.js",
+]
+
+boot_session = "kisan_customization.utils.sidebar_hide.boot_session"
 
 # include js, css files in header of web template
 # web_include_css = "/assets/kisan_customization/css/kisan_customization.css"

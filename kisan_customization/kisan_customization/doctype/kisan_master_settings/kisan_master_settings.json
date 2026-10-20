@@ -27,7 +27,10 @@
   "bag_wise_deduction_section",
   "bag_wise_deductions",
   "column_break_ktjw",
-  "deduction_tier_range"
+  "deduction_tier_range",
+  "hide_sidebar_tab",
+  "hide_sidebar_section",
+  "hide_sidebar_rules"
  ],
  "fields": [
   {
@@ -156,6 +159,23 @@
   {
    "fieldname": "column_break_ktjw",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "hide_sidebar_tab",
+   "fieldtype": "Tab Break",
+   "label": "Hide Sidebar"
+  },
+  {
+   "fieldname": "hide_sidebar_section",
+   "fieldtype": "Section Break",
+   "label": "Hide Sidebar Rules"
+  },
+  {
+   "description": "List View: hide the filter sidebar on list. Details View: hide Assigned To, Attachments, Tags, and Share on the form.",
+   "fieldname": "hide_sidebar_rules",
+   "fieldtype": "Table",
+   "label": "Rules",
+   "options": "Kisan Hide Sidebar Rule"
   }
  ],
  "issingle": 1,

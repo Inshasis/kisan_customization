@@ -11,6 +11,12 @@ from kisan_customization.purchase_invoice.deductions import (
 )
 
 
+def _fmt_print_amount(amount, currency):
+	"""Settlement print: whole currency units (no paise/decimals on print)."""
+	val = int(round(flt(amount or 0)))
+	return fmt_money(val, currency=currency, precision=0)
+
+
 def _load_pi(purchase_invoice):
 	doc = frappe.get_doc("Purchase Invoice", purchase_invoice)
 	if doc.get("is_return") and doc.get("return_against"):
@@ -184,7 +190,7 @@ def _tax_sidebar(doc, currency):
 		sub_total = flt(doc.net_total) or flt(doc.total)
 
 	def _line(label, amount):
-		return {"label": label, "amount": fmt_money(amount, currency=currency)}
+		return {"label": label, "amount": _fmt_print_amount(amount, currency)}
 
 	lines = [_line("Sub Total", sub_total)]
 	if taxes["cgst"] or taxes["cgst_rate"]:
@@ -200,7 +206,7 @@ def _tax_sidebar(doc, currency):
 	lines.append(
 		{
 			"label": "Total",
-			"amount": fmt_money(doc.grand_total if doc else 0, currency=currency),
+			"amount": _fmt_print_amount(doc.grand_total if doc else 0, currency),
 			"bold": True,
 		}
 	)
@@ -215,7 +221,7 @@ def _pi_lines(pi):
 		payable = flt(row.amount) + gst_amt
 		vendor_wt = f"{flt(row.qty):g} {row.uom or ''}".strip()
 		gst_label = _gst_rate_label(row)
-		gst_cell = fmt_money(gst_amt, currency=pi.currency)
+		gst_cell = _fmt_print_amount(gst_amt, pi.currency)
 		if gst_label:
 			gst_cell = f"{gst_cell} / {gst_label}"
 		uom = (row.uom or "Quintal").strip()
@@ -226,18 +232,18 @@ def _pi_lines(pi):
 				"item": row.item_name or row.item_code,
 				"hsn": row.gst_hsn_code or row.get("custom_hsn_code") or "",
 				"vendor_dis_wt": vendor_wt,
-				"rate": fmt_money(row.rate, currency=pi.currency),
+				"rate": _fmt_print_amount(row.rate, pi.currency),
 				"rate_suffix": rate_suffix,
-				"basic": fmt_money(row.amount, currency=pi.currency),
+				"basic": _fmt_print_amount(row.amount, pi.currency),
 				"gst": gst_cell,
 				"tds": "",
-				"payable": fmt_money(payable, currency=pi.currency),
+				"payable": _fmt_print_amount(payable, pi.currency),
 			}
 		)
 	if lines and tds_total:
-		lines[0]["tds"] = fmt_money(tds_total, currency=pi.currency)
+		lines[0]["tds"] = _fmt_print_amount(tds_total, pi.currency)
 	if len(lines) == 1:
-		lines[0]["payable"] = fmt_money(flt(pi.grand_total), currency=pi.currency)
+		lines[0]["payable"] = _fmt_print_amount(pi.grand_total, pi.currency)
 	return lines
 
 
@@ -305,11 +311,11 @@ def _bargain_row_dict(
 		"bags": bags_cell,
 		"gross_weight": _display_kg(gross_kg),
 		"bags_wt": _display_kg(gross_kg),
-		"sauda_rate": fmt_money(sauda_rate, currency=currency),
+		"sauda_rate": _fmt_print_amount(sauda_rate, currency),
 		"arrival_weight": flt(arr_kg),
 		"oil_pct": "",
 		"oil_rate": "",
-		"amount": fmt_money(amount, currency=currency),
+		"amount": _fmt_print_amount(amount, currency),
 		"_amount_raw": amount,
 	}
 
@@ -346,7 +352,7 @@ def _deduction_rate_display(rate, currency):
 	rate = flt(rate)
 	if not rate:
 		return ""
-	formatted = fmt_money(rate, currency=currency) or f"{rate:,.2f}"
+	formatted = _fmt_print_amount(rate, currency) or f"{round(flt(rate)):,}"
 	return f"{formatted} /QT"
 
 
@@ -389,7 +395,7 @@ def _bargain_rows(pi, debit=None):
 		bargain_total += row.pop("_amount_raw")
 		rows.append(row)
 
-	return rows, fmt_money(bargain_total, currency=pi.currency)
+	return rows, _fmt_print_amount(bargain_total, pi.currency)
 
 
 MAX_QUALITY_PRINT_ROWS = 15
@@ -412,7 +418,7 @@ def _quality_rows(pi):
 				"required": row.required_value if row.required_value is not None else "",
 				"actual": row.actual if row.actual is not None else "",
 				"diff": row.difference if row.difference is not None else "",
-				"value": fmt_money(amt, currency=pi.currency),
+				"value": _fmt_print_amount(amt, pi.currency),
 			}
 		)
 	return rows, total
@@ -454,7 +460,7 @@ def _debit_lines(debit, pi):
 				"hsn": "",
 				"dn_qty": f"{weight_kg:g} kg",
 				"dn_rate": _deduction_rate_display(weight_rate, currency),
-				"amount": fmt_money(weight_amt, currency=currency),
+				"amount": _fmt_print_amount(weight_amt, currency),
 				"is_quality_row": 0,
 			}
 		)
@@ -467,7 +473,7 @@ def _debit_lines(debit, pi):
 				"hsn": "",
 				"dn_qty": f"{bag_kg:g} kg",
 				"dn_rate": _deduction_rate_display(bag_rate, currency),
-				"amount": fmt_money(bag_amt, currency=currency),
+				"amount": _fmt_print_amount(bag_amt, currency),
 				"is_quality_row": 0,
 			}
 		)
@@ -489,7 +495,7 @@ def _debit_lines(debit, pi):
 				"hsn": hsn or "—",
 				"dn_qty": "",
 				"dn_rate": "",
-				"amount": fmt_money(quality_amt, currency=currency),
+				"amount": _fmt_print_amount(quality_amt, currency),
 				"is_quality_row": 1,
 			}
 		)
@@ -500,24 +506,27 @@ def _summary_row(label, doc, currency):
 	if not doc:
 		return {
 			"document": label,
-			"basic_net_tds": fmt_money(0, currency=currency),
-			"gst": fmt_money(0, currency=currency),
-			"net_payable": fmt_money(0, currency=currency),
+			"basic_net_tds": _fmt_settlement_amount(0, currency),
+			"gst": _fmt_settlement_amount(0, currency),
+			"net_payable": _fmt_settlement_amount(0, currency),
 		}
 	taxes = _tax_breakup(doc)
 	basic = flt(doc.net_total) or flt(doc.total)
 	basic_net = basic - taxes["tds"]
 	return {
 		"document": label,
-		"basic_net_tds": fmt_money(basic_net, currency=currency),
-		"gst": fmt_money(taxes["gst_total"], currency=currency),
-		"net_payable": fmt_money(doc.grand_total, currency=currency),
+		"basic_net_tds": _fmt_settlement_amount(basic_net, currency),
+		"gst": _fmt_settlement_amount(taxes["gst_total"], currency),
+		"net_payable": _fmt_settlement_amount(doc.grand_total, currency),
 	}
 
 
+def _fmt_settlement_amount(amount, currency):
+	return _fmt_print_amount(amount, currency)
+
+
 def _fmt_rounded_net_payable(amount, currency):
-	"""Settlement footer: whole-currency net payable (standard round-off)."""
-	return fmt_money(round(flt(amount)), currency=currency, precision=0)
+	return _fmt_print_amount(amount, currency)
 
 
 def _summary_footer(pi, debit, currency):
@@ -534,9 +543,9 @@ def _summary_footer(pi, debit, currency):
 		net_payable += flt(doc.grand_total)
 	return {
 		"document": "Net Payable",
-		"basic_net_tds": fmt_money(basic_net, currency=currency),
-		"gst": fmt_money(gst, currency=currency),
-		"net_payable": _fmt_rounded_net_payable(net_payable, currency),
+		"basic_net_tds": _fmt_settlement_amount(basic_net, currency),
+		"gst": _fmt_settlement_amount(gst, currency),
+		"net_payable": _fmt_settlement_amount(net_payable, currency),
 	}
 
 
@@ -620,25 +629,27 @@ def get_settlement_print_data(purchase_invoice):
 		"debit_note_date": frappe.format(debit.posting_date, {"fieldtype": "Date"}) if debit else "",
 		"vendor_doc_no": pi.bill_no or "",
 		"vendor_doc_date": frappe.format(pi.bill_date, {"fieldtype": "Date"}) if pi.bill_date else "",
-		"vendor_bill_amount": fmt_money(
-			pi.get("custom_supplier_invoice_amount") or pi.grand_total, currency=pi.currency
+		"vendor_bill_amount": _fmt_print_amount(
+			pi.get("custom_supplier_invoice_amount") or pi.grand_total, pi.currency
 		),
 		"lorry_no": _lorry_no_from_pi(pi),
 		"pi_lines": _pi_lines(pi),
-		"pi_total_payable": fmt_money(pi.grand_total, currency=pi.currency),
+		"pi_total_payable": _fmt_print_amount(pi.grand_total, pi.currency),
 		"bargain_rows": bargain_rows,
 		"bargain_total": bargain_total,
 		"quality_rows": quality_rows,
-		"quality_total": fmt_money(quality_total, currency=pi.currency),
+		"quality_total": _fmt_print_amount(quality_total, pi.currency),
 		"debit_lines": _debit_lines(debit, pi),
 		"debit_tax": debit_tax,
 		"debit_tax_sidebar": _tax_sidebar(debit, pi.currency) if debit else [],
-		"debit_grand_total": fmt_money(debit.grand_total, currency=pi.currency) if debit else fmt_money(0, currency=pi.currency),
+		"debit_grand_total": _fmt_print_amount(debit.grand_total, pi.currency)
+		if debit
+		else _fmt_print_amount(0, pi.currency),
 		"summary_pi": _summary_row("Purchase Invoice", pi, pi.currency),
 		"summary_debit": _summary_row("Debit Note", debit, pi.currency),
 		"summary_footer": _summary_footer(pi, debit, pi.currency),
 		"net_payable": _fmt_rounded_net_payable(net_payable, pi.currency),
-		"final_rate": fmt_money(final_rate, currency=pi.currency) if final_rate else "",
+		"final_rate": _fmt_print_amount(final_rate, pi.currency) if final_rate else "",
 		"printed_by": frappe.session.user,
 		"printed_on": now_datetime().strftime("%d-%m-%Y %H:%M"),
 	}

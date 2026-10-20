@@ -62,11 +62,9 @@
    "default": "JAWAK-.YYYY.-.####",
    "fieldname": "naming_series",
    "fieldtype": "Select",
-   "hidden": 1,
    "in_list_view": 1,
    "label": "Naming Series",
-   "options": "JAWAK-.YYYY.-.####",
-   "reqd": 1
+   "options": "JAWAK-.YYYY.-.####"
   },
   {
    "fieldname": "lot_number",
@@ -357,7 +355,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-08-25 10:53:16.028124",
+ "modified": "2026-10-20 09:37:02.336494",
  "modified_by": "Administrator",
  "module": "Kisan Customization",
  "name": "Outward Jawak",

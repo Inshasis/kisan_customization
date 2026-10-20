@@ -52,10 +52,8 @@
    "default": "AAWAK-.YYYY.-.####",
    "fieldname": "naming_series",
    "fieldtype": "Select",
-   "hidden": 1,
    "label": "Naming Series",
-   "options": "AAWAK-.YYYY.-.####",
-   "reqd": 1
+   "options": "AAWAK-.YYYY.-.####"
   },
   {
    "fieldname": "lot_number",
@@ -282,7 +280,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-10-18 10:07:25.532672",
+ "modified": "2026-10-20 09:36:13.480388",
  "modified_by": "Administrator",
  "module": "Kisan Customization",
  "name": "Inward Aawak",

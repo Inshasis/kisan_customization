@@ -17,6 +17,14 @@ def _fmt_print_amount(amount, currency):
 	return fmt_money(val, currency=currency, precision=0)
 
 
+def _fmt_print_debit_deduction(amount, currency):
+	"""Debit note line deductions display as negative amounts on print."""
+	val = -int(round(abs(flt(amount or 0))))
+	if not val:
+		return ""
+	return fmt_money(val, currency=currency, precision=0)
+
+
 def _load_pi(purchase_invoice):
 	doc = frappe.get_doc("Purchase Invoice", purchase_invoice)
 	if doc.get("is_return") and doc.get("return_against"):
@@ -460,7 +468,7 @@ def _debit_lines(debit, pi):
 				"hsn": "",
 				"dn_qty": f"{weight_kg:g} kg",
 				"dn_rate": _deduction_rate_display(weight_rate, currency),
-				"amount": _fmt_print_amount(weight_amt, currency),
+				"amount": _fmt_print_debit_deduction(weight_amt, currency),
 				"is_quality_row": 0,
 			}
 		)
@@ -473,7 +481,7 @@ def _debit_lines(debit, pi):
 				"hsn": "",
 				"dn_qty": f"{bag_kg:g} kg",
 				"dn_rate": _deduction_rate_display(bag_rate, currency),
-				"amount": _fmt_print_amount(bag_amt, currency),
+				"amount": _fmt_print_debit_deduction(bag_amt, currency),
 				"is_quality_row": 0,
 			}
 		)

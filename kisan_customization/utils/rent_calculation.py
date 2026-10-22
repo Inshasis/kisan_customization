@@ -21,14 +21,15 @@ def get_actual_storage_days(aawak_date, jawak_date):
 
 
 def compute_chargeable_total_days(actual_days, min_days, extra_days):
-	"""Total Days / chargeable days: minimum if within min slab, else actual + extra."""
+	"""Chargeable days: at least minimum; otherwise actual storage + extra (same as Total Days)."""
 	min_days = cint(min_days) or 0
 	extra_days = cint(extra_days) or 0
+	line_total = actual_days + extra_days
 
-	if actual_days <= min_days:
-		return min_days if min_days else actual_days
+	if min_days:
+		return max(min_days, line_total)
 
-	return actual_days + extra_days
+	return line_total
 
 
 def compute_general_chargeable_days(actual_days, settings=None):
@@ -46,32 +47,16 @@ def _specific_rent_threshold(settings):
 	return min_days, extra_days, days_per_month, min_days + extra_days
 
 
-def _specific_billing_days_for_months(actual_days, min_days, extra_days, threshold):
-	"""Days counted toward Specific month slabs (not the Total Days display field)."""
-	if actual_days <= min_days:
-		return actual_days + extra_days
-
-	if actual_days < threshold:
-		return actual_days + extra_days
-
-	if actual_days == threshold:
-		return threshold
-
-	return actual_days
-
-
 def compute_specific_chargeable_months(actual_days, settings=None):
 	"""Bill in full months using Specific settings.
 
-	First month covers Minimum Chargeable Days + Extra Days After Minimum
-	(e.g. 30 + 2 = 32 days). When actual exceeds minimum, add extra days
-	(e.g. 31 + 2 = 33 → second month). One day beyond 32 starts next month.
+	Month slabs use **Total Days** (calendar storage + Specific extra days), not
+	raw Actual Storage Days alone. First month covers threshold
+	(e.g. 30 + 2 = 32 Total Days).
 	"""
 	settings = settings or get_master_rent_settings()
-	min_days, extra_days, days_per_month, threshold = _specific_rent_threshold(settings)
-	billing_days = _specific_billing_days_for_months(
-		actual_days, min_days, extra_days, threshold
-	)
+	_, _, days_per_month, threshold = _specific_rent_threshold(settings)
+	billing_days = compute_line_total_days(actual_days, "Specific", settings)
 
 	if billing_days <= threshold:
 		return 1

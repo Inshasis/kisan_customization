@@ -4,8 +4,7 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.model.naming import make_autoname
-from frappe.utils import add_months, cint, flt
+from frappe.utils import add_months, cint, cstr, flt
 
 from kisan_customization.inward_aawak.delivery import (
 	STATUS_SUBMITTED,
@@ -14,63 +13,15 @@ from kisan_customization.inward_aawak.delivery import (
 
 
 class InwardAawak(Document):
-	def autoname(self):
-		"""
-		Custom naming to support firm-wise sequences.
-		
-		Each firm gets its own independent sequence.
-		Format: AAWAK-{firm_sequence}-YYYY-####
-		
-		Where:
-		- firm_sequence is the firm's auto-generated number (e.g., FIRM-0001 -> 0001)
-		- YYYY is the year
-		- #### is the sequence number for that firm
-		
-		Example: AAWAK-0001-2025-0001 (Firm FIRM-0001, first aawak of 2025)
-		         AAWAK-0002-2025-0001 (Firm FIRM-0002, first aawak of 2025)
-		"""
-		if self.firm:
-			# Get the firm's sequence number from its name
-			# Firm name format is FIRM-0001, FIRM-0002, etc.
-			firm_parts = self.firm.split('-')
-			if len(firm_parts) >= 2:
-				firm_seq = firm_parts[-1]  # Extract the numeric part (e.g., "0001")
-			else:
-				# Fallback if firm name doesn't follow expected format
-				firm_seq = self.firm.replace('FIRM-', '').replace('FIRM', '')[:4].zfill(4)
-			
-			# Create firm-specific series key
-			# This ensures each firm has its own sequence counter
-			series_key = f"AAWAK-.{self.firm}-.YYYY.-.####"
-			
-			# Get next number from firm-specific series
-			full_name = make_autoname(series_key)
-			
-			# Extract year and sequence number from the generated name
-			# Format will be: AAWAK-FIRM-0001-2025-0001
-			parts = full_name.split('-')
-			
-			if len(parts) >= 2:
-				year = parts[-2]
-				sequence = parts[-1]
-				# Create final name with firm sequence included
-				self.name = f"AAWAK-{firm_seq}-{year}-{sequence}"
-				# Set lot number (sequence only) for printing/receipts
-				self.lot_number = sequence
-			else:
-				# Fallback in case of unexpected format
-				self.name = full_name
-		else:
-			# Fallback for legacy records or if firm is not set
-			# This maintains backward compatibility
-			self.name = make_autoname("AAWAK-.YYYY.-.####")
-			self.lot_number = self.name.split('-')[-1] if '-' in self.name else ""
-	
 	def validate(self):
 		"""Validate the document before saving"""
 		if self.is_new() and not self.firm:
 			frappe.throw(_("Firm is mandatory for new Inward Aawak records"))
 
+		if not self.naming_series:
+			frappe.throw(_("Naming Series is required"))
+
+		self._apply_default_lot_number()
 		self._validate_bag_lorry_weights()
 		self._sync_total_lorry_weight()
 
@@ -83,6 +34,21 @@ class InwardAawak(Document):
 
 		if self.docstatus == 1:
 			self._sync_delivery_totals()
+
+	def after_insert(self):
+		if cstr(self.lot_number).strip():
+			return
+		suffix = self._lot_suffix_from_name()
+		if not suffix:
+			return
+		self.lot_number = suffix
+		frappe.db.set_value(
+			"Inward Aawak",
+			self.name,
+			"lot_number",
+			suffix,
+			update_modified=False,
+		)
 
 	def on_submit(self):
 		self.db_set(
@@ -102,6 +68,19 @@ class InwardAawak(Document):
 			},
 			update_modified=False,
 		)
+
+	def _lot_suffix_from_name(self):
+		if not self.name or str(self.name).startswith("new-") or "-" not in self.name:
+			return ""
+		return self.name.rsplit("-", 1)[-1]
+
+	def _apply_default_lot_number(self):
+		"""Default from naming ID only when empty; user edits are kept on later saves."""
+		if cstr(self.lot_number).strip():
+			return
+		suffix = self._lot_suffix_from_name()
+		if suffix:
+			self.lot_number = suffix
 
 	def _validate_bag_lorry_weights(self):
 		for idx, row in enumerate(self.get("bag_details") or [], start=1):
@@ -132,4 +111,3 @@ class InwardAawak(Document):
 			frappe.db.get_value("Inward Aawak", self.name, "remaining_bags") or 0
 		)
 		self.status = frappe.db.get_value("Inward Aawak", self.name, "status") or STATUS_SUBMITTED
-

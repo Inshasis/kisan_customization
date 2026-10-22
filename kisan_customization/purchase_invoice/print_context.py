@@ -213,7 +213,7 @@ def _tax_sidebar(doc, currency):
 		lines.append(_line("Round Off", taxes["round_off"]))
 	lines.append(
 		{
-			"label": "Total",
+			"label": "Debit Note Total",
 			"amount": _fmt_print_amount(doc.grand_total if doc else 0, currency),
 			"bold": True,
 		}

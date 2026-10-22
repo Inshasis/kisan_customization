@@ -30,7 +30,8 @@ class TestRentCalculation(FrappeTestCase):
 
 	def test_general_minimum_days(self):
 		settings = self._mock_settings()
-		self.assertEqual(compute_general_chargeable_days(14, settings), 15)
+		self.assertEqual(compute_general_chargeable_days(3, settings), 15)
+		self.assertEqual(compute_general_chargeable_days(14, settings), 16)
 		self.assertEqual(compute_general_chargeable_days(20, settings), 22)
 
 	def test_general_rent_example_jaggery(self):
@@ -44,17 +45,17 @@ class TestRentCalculation(FrappeTestCase):
 			jawak_date="2026-01-15",
 			settings=settings,
 		)
-		self.assertEqual(result["chargeable_period"], 15)
+		self.assertEqual(result["chargeable_period"], 16)
 		self.assertEqual(result["total_days"], 16)
 
 	def test_specific_month_slabs(self):
 		settings = self._mock_settings()
 		self.assertEqual(compute_specific_chargeable_months(20, settings), 1)
 		self.assertEqual(compute_specific_chargeable_months(31, settings), 2)
-		self.assertEqual(compute_specific_chargeable_months(32, settings), 1)
+		self.assertEqual(compute_specific_chargeable_months(32, settings), 2)
 		self.assertEqual(compute_specific_chargeable_months(33, settings), 2)
 		self.assertEqual(compute_specific_chargeable_months(34, settings), 2)
-		self.assertEqual(compute_specific_chargeable_months(62, settings), 2)
+		self.assertEqual(compute_specific_chargeable_months(62, settings), 3)
 		self.assertEqual(compute_specific_chargeable_months(63, settings), 3)
 
 	def test_line_total_days(self):

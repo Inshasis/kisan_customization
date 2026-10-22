@@ -11,11 +11,12 @@
   "naming_series",
   "lot_number",
   "section_break_2",
+  "column_break_isms",
   "aawak_date",
-  "column_break_4",
+  "column_break_firm_top",
   "commodities",
   "storage_customer",
-  "column_break_wzcm",
+  "column_break_4",
   "vehicle_number",
   "status",
   "section_break_mkdx",
@@ -38,14 +39,15 @@
   "total_weight",
   "section_break_14",
   "firm",
-  "column_break_firm",
+  "column_break_fuze",
   "godown",
   "section_break_lcxu",
   "chamber_allocations",
   "section_break_16",
   "notes",
   "column_break_18",
-  "amended_from"
+  "amended_from",
+  "column_break_firm"
  ],
  "fields": [
   {
@@ -53,19 +55,24 @@
    "fieldname": "naming_series",
    "fieldtype": "Select",
    "label": "Naming Series",
-   "options": "AAWAK-.YYYY.-.####"
+   "no_copy": 1,
+   "options": "AAWAK-.YYYY.-.####\nINW-.YY.-.####",
+   "reqd": 1
   },
   {
    "fieldname": "lot_number",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Lot Number",
-   "read_only": 1
+   "label": "Lot Number"
   },
   {
    "fieldname": "section_break_2",
    "fieldtype": "Section Break",
    "label": "Basic Information"
+  },
+  {
+   "fieldname": "column_break_firm_top",
+   "fieldtype": "Column Break"
   },
   {
    "default": "now",
@@ -85,10 +92,6 @@
    "label": "Commodities",
    "options": "Inward Commodity",
    "reqd": 1
-  },
-  {
-   "fieldname": "column_break_wzcm",
-   "fieldtype": "Column Break"
   },
   {
    "fieldname": "storage_customer",
@@ -275,12 +278,20 @@
   {
    "fieldname": "column_break_nbpx",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_isms",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_fuze",
+   "fieldtype": "Column Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-10-20 09:36:13.480388",
+ "modified": "2026-10-22 10:03:56.628932",
  "modified_by": "Administrator",
  "module": "Kisan Customization",
  "name": "Inward Aawak",

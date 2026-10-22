@@ -48,10 +48,6 @@ frappe.ui.form.on('Inward Aawak', {
 			});
 		}
 
-		if (frm.doc.naming_series && frm.doc.naming_series.includes('YYYY')) {
-			frm.refresh_field('naming_series');
-		}
-
 		calculateGrandTotals(frm);
 
 		if (frm.fields_dict.bag_details?.grid) {
@@ -61,6 +57,8 @@ frappe.ui.form.on('Inward Aawak', {
 				0
 			);
 		}
+
+		frm.toggle_display('lot_number', !frm.is_new());
 	},
 
 	validate(frm) {

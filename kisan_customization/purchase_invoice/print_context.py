@@ -20,7 +20,7 @@ _PRINT_DEDUCTION_LABELS = {
 	"UNLOADING": "Unloading",
 	"S/S": "Sand Silica",
 	"Moise": "Moisture",
-	"RTGS": "Bank Change",
+	"RTGS": "Bank Charges",
 }
 
 

@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "autoname": "naming_series:",
  "creation": "2026-08-12 09:00:00",
  "doctype": "DocType",
@@ -128,8 +129,6 @@
    "label": "Commodity Details"
   },
   {
-   "cannot_add_rows": 1,
-   "cannot_delete_rows": 1,
    "fieldname": "commodities",
    "fieldtype": "Table",
    "label": "Commodities",
@@ -274,7 +273,7 @@
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2026-08-25 11:24:29.483295",
+ "modified": "2026-10-23 09:40:36.756239",
  "modified_by": "Administrator",
  "module": "Kisan Customization",
  "name": "Aggregator Booking",
@@ -286,6 +285,7 @@
    "delete": 1,
    "email": 1,
    "export": 1,
+   "import": 1,
    "print": 1,
    "read": 1,
    "report": 1,
@@ -312,6 +312,7 @@
    "delete": 1,
    "email": 1,
    "export": 1,
+   "import": 1,
    "print": 1,
    "read": 1,
    "report": 1,

@@ -44,7 +44,6 @@ html, body { margin: 0; padding: 0; }
 	overflow-wrap: anywhere;
 }
 .kpsa .tbl-hdr th { white-space: normal; font-size: var(--kpsa-fs-sm); }
-.kpsa .tbl-hdr th.rgt { text-align: right; }
 .kpsa td:nth-child(2), .kpsa th:nth-child(2) { text-align: left; }
 .kpsa .nob { border: none !important; }
 .kpsa .ctr { text-align: center; }
@@ -313,7 +312,7 @@ html, body { margin: 0; padding: 0; }
 				<div class="meta-line"><span class="mk">Debit Note Date</span><span class="mv">{{ d.debit_note_date or "—" }}</span></div>
 				<div class="meta-line"><span class="mk">Vendor Doc No.</span><span class="mv">{{ d.vendor_doc_no or "—" }}</span></div>
 				<div class="meta-line"><span class="mk">Vendor Doc Date</span><span class="mv">{{ d.vendor_doc_date or "—" }}</span></div>
-				<div class="meta-line"><span class="mk">Vendor Bill Amt</span><span class="mv rgt amt">{{ d.vendor_bill_amount }}</span></div>
+				<div class="meta-line"><span class="mk">Vendor Bill Amt</span><span class="mv b amt" >{{ d.vendor_bill_amount }}</span></div>
 				<div class="meta-line"><span class="mk">Lorry No.</span><span class="mv">{{ d.lorry_no or "—" }}</span></div>
 			</td>
 		</tr>
@@ -327,7 +326,7 @@ html, body { margin: 0; padding: 0; }
 		<tr class="sec-bar"><td colspan="9">Purchase Invoice Details</td></tr>
 		<tr class="tbl-hdr">
 			<th>Sr.</th><th>Item Codes</th><th>HSN</th><th>Vendor Dis Wt.</th><th>Rate</th>
-			<th>Basic value</th><th>GST Amt/Rate</th><th>TDS</th><th class="rgt">Payable Amt</th>
+			<th>Basic value</th><th>GST Amt/Rate</th><th>TDS</th><th style="text-align:right;">Payable Amt</th>
 		</tr>
 		{% for row in d.pi_lines %}
 		<tr>
@@ -342,12 +341,7 @@ html, body { margin: 0; padding: 0; }
 			<td class="rgt amt">{{ row.payable }}</td>
 		</tr>
 		{% endfor %}
-		<tr class="sec-total">
-			<td colspan="7"></td>
-			<td colspan="2" class="rgt b">
-				Total Payable Amount&nbsp;&nbsp;<span class="amt">{{ d.pi_total_payable }}</span>
-			</td>
-		</tr>
+		<tr class="sec-total"><td colspan="8" class="rgt">Total Payable</td><td class="rgt amt" style="text-align:right;">{{ d.pi_total_payable }}</td></tr>
 	</table>
 
 	<table class="block data-table">
@@ -358,17 +352,17 @@ html, body { margin: 0; padding: 0; }
 		<tr class="sec-bar"><td colspan="9">Bargain Details</td></tr>
 		<tr class="tbl-hdr">
 			<th>Lot.</th><th>Item</th><th>Bags</th><th>Gross Weight</th><th>Sauda Rate</th>
-			<th>Arr. Wt.</th><th>Oil %</th><th>Oil Rt.</th><th>Amount</th>
+			<th>Arr. Wt.</th><th>Oil %</th><th>Oil Rt.</th><th style="text-align:right;">Amount</th>
 		</tr>
 		{% for row in d.bargain_rows %}
 		<tr>
 			<td>{{ row.lot_no }}</td><td>{{ row.item }}</td>
 			<td class="rgt">{{ row.bags }}</td><td class="rgt">{{ row.get("gross_weight") or row.get("bags_wt") or "" }}</td><td class="rgt amt">{{ row.sauda_rate }}</td>
-			<td class="rgt">{{ row.arrival_weight }}</td><td class="rgt">{{ row.oil_pct or "—" }}</td><td class="rgt">{{ row.oil_rate or "—" }}</td>
+			<td class="rgt">{{ "%.2f"|format(row.arrival_weight) }}</td><td class="rgt">{{ row.oil_pct or "—" }}</td><td class="rgt">{{ row.oil_rate or "—" }}</td>
 			<td class="rgt amt">{{ row.amount }}</td>
 		</tr>
 		{% endfor %}
-		<tr class="sec-total"><td colspan="8" class="rgt">Total Amount</td><td class="rgt amt">{{ d.bargain_total }}</td></tr>
+		<tr class="sec-total"><td colspan="8" class="rgt">Total Amount</td><td class="rgt amt" style="text-align:right;">{{ d.bargain_total }}</td></tr>
 	</table>
 
 	<table class="block data-table quality-table">
@@ -378,19 +372,19 @@ html, body { margin: 0; padding: 0; }
 		</colgroup>
 		<tr class="sec-bar"><td colspan="6">Quality and other deductions</td></tr>
 		<tr class="tbl-hdr">
-			<th>Sr.</th><th>Particulars</th><th>Req.</th><th>Act.</th><th>Diff</th><th>Value</th>
+			<th>Sr.</th><th>Particulars</th><th>Req.</th><th>Act.</th><th>Diff</th><th style="text-align:right;">Value</th>
 		</tr>
 		{% if d.quality_rows %}
 			{% for row in d.quality_rows %}
 			<tr>
 				<td class="ctr">{{ row.sr }}</td><td>{{ row.particulars }}</td>
-				<td class="rgt">{{ row.required }}</td><td class="rgt">{{ row.actual }}</td><td class="rgt">{{ row.diff }}</td><td class="rgt amt">{{ row.value }}</td>
+				<td class="ctr">{{ row.required }}</td><td class="ctr">{{ row.actual }}</td><td class="ctr">{{ row.diff }}</td><td class="rgt amt">{{ row.value }}</td>
 			</tr>
 			{% endfor %}
 		{% else %}
 			<tr><td colspan="6" class="ctr">—</td></tr>
 		{% endif %}
-		<tr class="sec-total"><td colspan="5" class="rgt">Total Deduction</td><td class="rgt amt">{{ d.quality_total }}</td></tr>
+		<tr class="sec-total"><td colspan="5" class="rgt">Total Deduction</td><td class="rgt amt" style="text-align:right;">{{ d.quality_total }}</td></tr>
 	</table>
 
 	<table class="nob block data-table">
@@ -403,7 +397,7 @@ html, body { margin: 0; padding: 0; }
 					</colgroup>
 					<tr class="sec-bar"><td colspan="6">Debit Note Details</td></tr>
 					<tr class="tbl-hdr">
-						<th>Sr.</th><th>Particulars</th><th>HSN</th><th>Qty/Nos</th><th>Rate</th><th>Amount</th>
+						<th>Sr.</th><th>Particulars</th><th>HSN</th><th>Qty/Nos</th><th>Rate</th><th style="text-align:right;">Amount</th>
 					</tr>
 					{% if d.debit_lines %}
 						{% for row in d.debit_lines %}
@@ -413,7 +407,7 @@ html, body { margin: 0; padding: 0; }
 							<td class="ctr">{{ row.hsn or "—" }}</td>
 							<td class="rgt">{% if not row.is_quality_row %}{{ row["dn_qty"] or row.get("qty") or "—" }}{% endif %}</td>
 							<td class="rgt amt">{% if not row.is_quality_row %}{{ row["dn_rate"] or row.get("rate") or "—" }}{% endif %}</td>
-							<td class="rgt amt">{{ row.amount }}</td>
+							<td class="rgt amt" >{{ row.amount }}</td>
 						</tr>
 						{% endfor %}
 					{% else %}
@@ -428,7 +422,7 @@ html, body { margin: 0; padding: 0; }
 					{% for line in d.debit_tax_sidebar %}
 					<tr>
 						<td class="lbl{% if line.bold %} b{% endif %}">{{ line.label }}</td>
-						<td class="rgt amt{% if line.bold %} b{% endif %}">{{ line.amount }}</td>
+						<td style="text-align:right;" class="rgt amt{% if line.bold %} b{% endif %}">{{ line.amount }}</td>
 					</tr>
 					{% endfor %}
 				</table>
@@ -448,19 +442,19 @@ html, body { margin: 0; padding: 0; }
 		</tr>
 		<tr>
 			<td>{{ d.summary_pi.document }}</td>
-			<td class="rgt amt">{{ d.summary_pi.basic_net_tds }}</td>
+			<td style="text-align:right;" class="rgt amt">{{ d.summary_pi.basic_net_tds }}</td>
 			<td class="rgt amt">{{ d.summary_pi.gst }}</td>
 			<td class="rgt amt">{{ d.summary_pi.net_payable }}</td>
 		</tr>
 		<tr>
 			<td>{{ d.summary_debit.document }}</td>
-			<td class="rgt amt">{{ d.summary_debit.basic_net_tds }}</td>
+			<td style="text-align:right;" class="rgt amt">{{ d.summary_debit.basic_net_tds }}</td>
 			<td class="rgt amt">{{ d.summary_debit.gst }}</td>
 			<td class="rgt amt">{{ d.summary_debit.net_payable }}</td>
 		</tr>
 		<tr class="net-row">
 			<td class="b">{{ sf.document }}</td>
-			<td class="rgt b amt">{{ sf.basic_net_tds }}</td>
+			<td style="text-align:right;" class="rgt b amt">{{ sf.basic_net_tds }}</td>
 			<td class="rgt b amt">{{ sf.gst }}</td>
 			<td class="rgt b amt net-payable-amt">{{ sf.net_payable }}</td>
 		</tr>

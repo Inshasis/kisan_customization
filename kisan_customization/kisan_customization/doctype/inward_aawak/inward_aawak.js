@@ -29,7 +29,7 @@ frappe.ui.form.on('Inward Aawak', {
 		}));
 
 		if (!frm.doc.aawak_date) {
-			frm.set_value('aawak_date', frappe.datetime.now_datetime());
+			frm.set_value('aawak_date', frappe.datetime.get_today());
 		}
 
 		if (frm.doc.docstatus === 1) {
@@ -39,14 +39,7 @@ frappe.ui.form.on('Inward Aawak', {
 
 		setupHierarchyFiltering(frm);
 
-		if (frm.doc.chamber_allocations) {
-			frm.doc.chamber_allocations.forEach((row) => {
-				if (row.allocation_date && !row.valid_to) {
-					const valid_to = frappe.datetime.add_months(row.allocation_date, 6);
-					frappe.model.set_value('Chamber Allocation', row.name, 'valid_to', valid_to);
-				}
-			});
-		}
+		syncChamberAllocationDates(frm);
 
 		calculateGrandTotals(frm);
 
@@ -58,10 +51,23 @@ frappe.ui.form.on('Inward Aawak', {
 			);
 		}
 
-		frm.toggle_display('lot_number', !frm.is_new());
+	},
+
+	aawak_date(frm) {
+		syncChamberAllocationDates(frm);
 	},
 
 	validate(frm) {
+		if (!(frm.doc.lot_number || '').trim()) {
+			frappe.msgprint({
+				title: __('Required Field Missing'),
+				message: __('Lot Number is mandatory'),
+				indicator: 'red',
+			});
+			frappe.validated = false;
+			return;
+		}
+
 		if (!frm.doc.storage_customer) {
 			frappe.msgprint({
 				title: __('Required Field Missing'),
@@ -299,16 +305,6 @@ frappe.ui.form.on('Chamber Allocation', {
 		validateChamberAllocations(frm);
 	},
 
-	allocation_date(frm, cdt, cdn) {
-		const row = locals[cdt][cdn];
-		if (row.allocation_date) {
-			const valid_to = frappe.datetime.add_months(row.allocation_date, 6);
-			frappe.model.set_value(cdt, cdn, 'valid_to', valid_to);
-		} else {
-			frappe.model.set_value(cdt, cdn, 'valid_to', null);
-		}
-	},
-
 	chamber_allocations_remove(frm) {
 		validateChamberAllocations(frm);
 	},
@@ -316,19 +312,30 @@ frappe.ui.form.on('Chamber Allocation', {
 	chamber_allocations_add(frm) {
 		const new_row = frm.doc.chamber_allocations[frm.doc.chamber_allocations.length - 1];
 		if (new_row) {
-			const ref_date = new_row.allocation_date || frappe.datetime.get_today();
-			if (!new_row.allocation_date) {
-				frappe.model.set_value('Chamber Allocation', new_row.name, 'allocation_date', ref_date);
-			}
-			const valid_to = frappe.datetime.add_months(ref_date, 6);
-			frappe.model.set_value('Chamber Allocation', new_row.name, 'valid_to', valid_to);
-
+			syncChamberAllocationDates(frm);
 			if (frm.doc.total_bags) {
 				frappe.model.set_value('Chamber Allocation', new_row.name, 'bags_allocated', frm.doc.total_bags);
 			}
 		}
 	},
 });
+
+function aawakDateOnly(frm) {
+	const value = frm.doc.aawak_date;
+	if (!value) {
+		return frappe.datetime.get_today();
+	}
+	return String(value).split(' ')[0];
+}
+
+function syncChamberAllocationDates(frm) {
+	const allocDate = aawakDateOnly(frm);
+	const validTo = frappe.datetime.add_months(allocDate, 6);
+	(frm.doc.chamber_allocations || []).forEach((row) => {
+		frappe.model.set_value('Chamber Allocation', row.name, 'allocation_date', allocDate);
+		frappe.model.set_value('Chamber Allocation', row.name, 'valid_to', validTo);
+	});
+}
 
 function addCreateJawakButton(frm) {
 	if (cint(frm.doc.remaining_bags) <= 0) {

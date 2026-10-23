@@ -36,11 +36,11 @@
    "reqd": 1
   },
   {
-   "default": "Today",
    "fieldname": "allocation_date",
    "fieldtype": "Date",
    "in_list_view": 1,
    "label": "Allocation Date",
+   "read_only": 1,
    "reqd": 1
   },
   {

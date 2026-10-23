@@ -4,7 +4,7 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import add_months, cint, cstr, flt
+from frappe.utils import add_months, cint, cstr, flt, getdate
 
 from kisan_customization.inward_aawak.delivery import (
 	STATUS_SUBMITTED,
@@ -21,34 +21,13 @@ class InwardAawak(Document):
 		if not self.naming_series:
 			frappe.throw(_("Naming Series is required"))
 
-		self._apply_default_lot_number()
+		self._validate_lot_number()
 		self._validate_bag_lorry_weights()
 		self._sync_total_lorry_weight()
-
-		if self.chamber_allocations:
-			for row in self.chamber_allocations:
-				if row.allocation_date:
-					row.valid_to = add_months(row.allocation_date, 6)
-				else:
-					row.valid_to = None
+		self._sync_chamber_allocation_dates()
 
 		if self.docstatus == 1:
 			self._sync_delivery_totals()
-
-	def after_insert(self):
-		if cstr(self.lot_number).strip():
-			return
-		suffix = self._lot_suffix_from_name()
-		if not suffix:
-			return
-		self.lot_number = suffix
-		frappe.db.set_value(
-			"Inward Aawak",
-			self.name,
-			"lot_number",
-			suffix,
-			update_modified=False,
-		)
 
 	def on_submit(self):
 		self.db_set(
@@ -69,18 +48,33 @@ class InwardAawak(Document):
 			update_modified=False,
 		)
 
-	def _lot_suffix_from_name(self):
-		if not self.name or str(self.name).startswith("new-") or "-" not in self.name:
-			return ""
-		return self.name.rsplit("-", 1)[-1]
+	def _validate_lot_number(self):
+		lot = cstr(self.lot_number).strip()
+		if not lot:
+			frappe.throw(_("Lot Number is mandatory"), title=_("Required Field Missing"))
 
-	def _apply_default_lot_number(self):
-		"""Default from naming ID only when empty; user edits are kept on later saves."""
-		if cstr(self.lot_number).strip():
+		filters = {
+			"lot_number": lot,
+			"name": ["!=", self.name or ""],
+			"docstatus": ["!=", 2],
+		}
+		if self.firm:
+			filters["firm"] = self.firm
+
+		existing = frappe.db.get_value("Inward Aawak", filters, "name")
+		if existing:
+			frappe.throw(
+				_("Lot Number {0} is already used in Inward Aawak {1}.").format(lot, existing),
+				title=_("Duplicate Lot Number"),
+			)
+
+	def _sync_chamber_allocation_dates(self):
+		if not self.chamber_allocations:
 			return
-		suffix = self._lot_suffix_from_name()
-		if suffix:
-			self.lot_number = suffix
+		alloc_date = getdate(self.aawak_date) if self.aawak_date else None
+		for row in self.chamber_allocations:
+			row.allocation_date = alloc_date
+			row.valid_to = add_months(alloc_date, 6) if alloc_date else None
 
 	def _validate_bag_lorry_weights(self):
 		for idx, row in enumerate(self.get("bag_details") or [], start=1):

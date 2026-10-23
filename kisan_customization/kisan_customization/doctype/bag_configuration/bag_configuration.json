@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
  "creation": "2026-08-12 15:00:19.619926",
  "default_view": "List",
@@ -90,6 +91,7 @@
    "print": 1,
    "read": 1,
    "report": 1,
+   "import": 1,
    "role": "System Manager",
    "share": 1,
    "write": 1

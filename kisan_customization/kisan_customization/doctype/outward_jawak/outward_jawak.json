@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "autoname": "naming_series:",
  "creation": "2026-08-12 14:54:43.235729",
  "default_view": "List",
@@ -365,6 +366,7 @@
    "print": 1,
    "read": 1,
    "report": 1,
+   "import": 1,
    "role": "System Manager",
    "share": 1,
    "submit": 1,

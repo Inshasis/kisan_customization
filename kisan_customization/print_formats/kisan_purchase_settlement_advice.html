@@ -4,18 +4,18 @@
 
 <style>
 :root {
+	--kpsa-scale: 1.25;
 	--kpsa-w: 210mm;
 	--kpsa-h: 297mm;
-	--kpsa-m: 3mm;
+	--kpsa-m: 1.5mm;
 	--kpsa-blue: #b4c6e7;
-	--kpsa-fs: 9.66px;
-	--kpsa-fs-sm: 8.97px;
+	--kpsa-fs: calc(9.66px * var(--kpsa-scale));
+	--kpsa-fs-sm: calc(8.97px * var(--kpsa-scale));
 	--kpsa-fs-amt: calc(var(--kpsa-fs-sm) * 1.2);
-	--kpsa-fs-amt-quality: calc(8.51px * 1.2);
-	--kpsa-fs-amt-net: calc(13.8px * 1.2);
-	--kpsa-fs-hdr: 11.04px;
+	--kpsa-fs-amt-net: calc(13.8px * var(--kpsa-scale) * 1.2);
+	--kpsa-fs-hdr: calc(11.04px * var(--kpsa-scale));
 }
-@page { size: A4 portrait; margin: 3mm; }
+@page { size: A4 portrait; margin: 2mm; }
 html, body { margin: 0; padding: 0; }
 .print-format { padding: 0 !important; margin: 0 !important; max-width: none !important; }
 .print-format .print-format-margin { margin: 0 !important; padding: 0 !important; }
@@ -24,6 +24,7 @@ html, body { margin: 0; padding: 0; }
 	box-sizing: border-box;
 	width: var(--kpsa-w);
 	max-width: var(--kpsa-w);
+	min-height: var(--kpsa-h);
 	margin: 0 auto;
 	padding: var(--kpsa-m);
 	background: #fff;
@@ -32,7 +33,7 @@ html, body { margin: 0; padding: 0; }
 	font-family: Arial, Helvetica, sans-serif;
 	font-size: var(--kpsa-fs);
 	color: #111;
-	line-height: 1.15;
+	line-height: 1.08;
 }
 .kpsa table { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .kpsa td, .kpsa th {
@@ -43,6 +44,7 @@ html, body { margin: 0; padding: 0; }
 	overflow-wrap: anywhere;
 }
 .kpsa .tbl-hdr th { white-space: normal; font-size: var(--kpsa-fs-sm); }
+.kpsa .tbl-hdr th.rgt { text-align: right; }
 .kpsa td:nth-child(2), .kpsa th:nth-child(2) { text-align: left; }
 .kpsa .nob { border: none !important; }
 .kpsa .ctr { text-align: center; }
@@ -52,7 +54,6 @@ html, body { margin: 0; padding: 0; }
 	font-variant-numeric: tabular-nums;
 	line-height: 1.12;
 }
-.kpsa .data-table.quality-table .amt { font-size: var(--kpsa-fs-amt-quality); }
 .kpsa .net-row td.amt,
 .kpsa .net-row td.net-payable-amt { font-size: var(--kpsa-fs-amt-net); }
 .kpsa .sec-total .amt { font-size: var(--kpsa-fs-amt); }
@@ -63,7 +64,7 @@ html, body { margin: 0; padding: 0; }
 	background: var(--kpsa-blue);
 	font-weight: 700;
 	text-align: center;
-	padding: 1px;
+	padding: 0 1px;
 	font-size: var(--kpsa-fs-hdr);
 }
 .kpsa .tbl-hdr th {
@@ -73,7 +74,7 @@ html, body { margin: 0; padding: 0; }
 	padding: 1px 2px;
 }
 .kpsa .sec-total td { background: #eef2f8; font-weight: 700; font-size: var(--kpsa-fs-sm); }
-.kpsa .block { margin-top: 1px; }
+.kpsa .block { margin-top: 0; }
 .kpsa .block:first-of-type { margin-top: 0; }
 .kpsa .hdr-band {
 	border: 1px solid #222;
@@ -83,7 +84,7 @@ html, body { margin: 0; padding: 0; }
 .kpsa .hdr-band .logo-cell { vertical-align: middle; padding: 1px 2px; }
 .kpsa .hdr-band .co-cell { vertical-align: middle; padding: 2px; text-align: center; }
 .kpsa .logo-wrap {
-	height: 28px;
+	height: calc(28px * var(--kpsa-scale));
 	width: 20mm;
 	min-width: 20mm;
 	display: flex;
@@ -92,25 +93,25 @@ html, body { margin: 0; padding: 0; }
 	padding: 1px;
 	box-sizing: border-box;
 }
-.kpsa .logo-wrap img { max-height: 26px; max-width: 100%; object-fit: contain; }
-.kpsa .hdr-co { font-size: 13.8px; font-weight: 700; text-align: center; color: #0f172a; line-height: 1.2; }
+.kpsa .logo-wrap img { max-height: calc(26px * var(--kpsa-scale)); max-width: 100%; object-fit: contain; }
+.kpsa .hdr-co { font-size: calc(13.8px * var(--kpsa-scale)); font-weight: 700; text-align: center; color: #0f172a; line-height: 1.15; }
 .kpsa .hdr-addr {
-	font-size: 9.66px;
+	font-size: var(--kpsa-fs);
 	text-align: center;
 	line-height: 1.22;
 	margin-top: 1px;
 	padding: 0 2px;
 	color: #334155;
 }
-.kpsa .hdr-gst { font-size: 9.66px; text-align: center; margin-top: 1px; line-height: 1.2; }
+.kpsa .hdr-gst { font-size: var(--kpsa-fs); text-align: center; margin-top: 0; line-height: 1.12; }
 .kpsa .hdr-title-top {
-	font-size: 11.04px;
+	font-size: var(--kpsa-fs-hdr);
 	font-weight: 700;
 	text-transform: uppercase;
 	border: 1px solid #222;
 	border-top: none;
 	border-bottom: none;
-	padding: 2px 1px;
+	padding: 1px;
 	text-align: center;
 	background: var(--kpsa-blue);
 	letter-spacing: 0.04em;
@@ -124,7 +125,7 @@ html, body { margin: 0; padding: 0; }
 }
 .kpsa .meta-grid > tbody > tr > td {
 	vertical-align: top;
-	padding: 2px 3px;
+	padding: 1px 2px;
 	border: 1px solid #222;
 	font-size: var(--kpsa-fs-sm);
 	line-height: 1.12;
@@ -164,12 +165,7 @@ html, body { margin: 0; padding: 0; }
 	line-height: 1.1;
 	padding: 0 1px;
 }
-.kpsa .data-table.quality-table td,
-.kpsa .data-table.quality-table th {
-	line-height: 1.08;
-	font-size: 8.51px;
-}
-.kpsa .rate-uom { font-size: 7.59px; display: block; text-align: right; line-height: 1.05; color: #444; }
+.kpsa .rate-uom { font-size: calc(7.59px * var(--kpsa-scale)); display: block; text-align: right; line-height: 1.04; color: #444; }
 .kpsa .pair-main { width: 72%; vertical-align: top; padding: 0 !important; }
 .kpsa .pair-side { width: 28%; vertical-align: top; padding: 0 0 0 1px !important; }
 .kpsa .tax-side td { font-size: var(--kpsa-fs-sm); padding: 1px 2px; }
@@ -188,41 +184,30 @@ html, body { margin: 0; padding: 0; }
 	letter-spacing: 0.02em;
 }
 .kpsa-closing {
-	margin-top: 1px;
+	margin-top: 0;
 	page-break-inside: avoid;
 	break-inside: avoid;
 }
-.kpsa-sign {
-	width: 100%;
-	border-collapse: collapse;
-	table-layout: fixed;
-	border: 1px solid #222;
-}
-.kpsa-sign td {
-	border: none;
-	width: 50%;
-	vertical-align: bottom;
-	padding: 0 12px 4px;
-}
-.kpsa-sign .sign-pad {
-	height: 14px;
-	border-bottom: 1px solid #222;
-	margin: 2px 0 1px;
-}
-.kpsa-sign .sign-lbl {
-	font-size: 8.28px;
+.kpsa-foot-computer {
+	margin-top: 2px;
+	padding: 2px 3px;
+	font-size: calc(8.28px * var(--kpsa-scale));
 	font-weight: 700;
-	text-align: center;
 	line-height: 1.2;
+	color: #0f172a;
+	text-align: center;
+	border: 1px solid #222;
+	background: #f8fafc;
 }
 .kpsa-foot-line {
-	margin-top: 1px;
-	padding: 1px 3px;
-	font-size: 8.28px;
-	line-height: 1.25;
+	margin-top: 0;
+	padding: 2px 4px;
+	font-size: calc(8.28px * var(--kpsa-scale));
+	line-height: 1.22;
 	color: #222;
 	text-align: center;
-	border-top: 1px solid #222;
+	border: 1px solid #222;
+	border-top: none;
 }
 
 @media screen {
@@ -336,13 +321,13 @@ html, body { margin: 0; padding: 0; }
 
 	<table class="block data-table">
 		<colgroup>
-			<col style="width:4%"><col style="width:19%"><col style="width:8%"><col style="width:11%">
-			<col style="width:9%"><col style="width:12%"><col style="width:14%"><col style="width:7%"><col style="width:16%">
+			<col style="width:4%"><col style="width:17%"><col style="width:7%"><col style="width:10%">
+			<col style="width:9%"><col style="width:11%"><col style="width:15%"><col style="width:7%"><col style="width:20%">
 		</colgroup>
 		<tr class="sec-bar"><td colspan="9">Purchase Invoice Details</td></tr>
 		<tr class="tbl-hdr">
 			<th>Sr.</th><th>Item Codes</th><th>HSN</th><th>Vendor Dis Wt.</th><th>Rate</th>
-			<th>Basic value</th><th>GST Amt/Rate</th><th>TDS</th><th>Payable Amt</th>
+			<th>Basic value</th><th>GST Amt/Rate</th><th>TDS</th><th class="rgt">Payable Amt</th>
 		</tr>
 		{% for row in d.pi_lines %}
 		<tr>
@@ -357,13 +342,18 @@ html, body { margin: 0; padding: 0; }
 			<td class="rgt amt">{{ row.payable }}</td>
 		</tr>
 		{% endfor %}
-		<tr class="sec-total"><td colspan="8" class="rgt">Total Payable</td><td class="rgt amt">{{ d.pi_total_payable }}</td></tr>
+		<tr class="sec-total">
+			<td colspan="7"></td>
+			<td colspan="2" class="rgt b">
+				Total Payable Amount&nbsp;&nbsp;<span class="amt">{{ d.pi_total_payable }}</span>
+			</td>
+		</tr>
 	</table>
 
 	<table class="block data-table">
 		<colgroup>
-			<col style="width:8%"><col style="width:20%"><col style="width:8%"><col style="width:12%">
-			<col style="width:12%"><col style="width:12%"><col style="width:7%"><col style="width:8%"><col style="width:13%">
+			<col style="width:7%"><col style="width:18%"><col style="width:7%"><col style="width:11%">
+			<col style="width:11%"><col style="width:11%"><col style="width:7%"><col style="width:8%"><col style="width:20%">
 		</colgroup>
 		<tr class="sec-bar"><td colspan="9">Bargain Details</td></tr>
 		<tr class="tbl-hdr">
@@ -383,8 +373,8 @@ html, body { margin: 0; padding: 0; }
 
 	<table class="block data-table quality-table">
 		<colgroup>
-			<col style="width:5%"><col style="width:50%"><col style="width:10%">
-			<col style="width:10%"><col style="width:10%"><col style="width:15%">
+			<col style="width:4%"><col style="width:46%"><col style="width:10%">
+			<col style="width:10%"><col style="width:10%"><col style="width:20%">
 		</colgroup>
 		<tr class="sec-bar"><td colspan="6">Quality and other deductions</td></tr>
 		<tr class="tbl-hdr">
@@ -408,8 +398,8 @@ html, body { margin: 0; padding: 0; }
 			<td class="nob pair-main">
 				<table class="data-table">
 					<colgroup>
-						<col style="width:5%"><col style="width:42%"><col style="width:10%">
-						<col style="width:14%"><col style="width:12%"><col style="width:17%">
+						<col style="width:5%"><col style="width:37%"><col style="width:9%">
+						<col style="width:14%"><col style="width:13%"><col style="width:22%">
 					</colgroup>
 					<tr class="sec-bar"><td colspan="6">Debit Note Details</td></tr>
 					<tr class="tbl-hdr">
@@ -421,8 +411,8 @@ html, body { margin: 0; padding: 0; }
 							<td class="ctr">{% if row.sr %}{{ "%02d"|format(row.sr|int) }}{% endif %}</td>
 							<td>{{ row.particulars }}</td>
 							<td class="ctr">{{ row.hsn or "—" }}</td>
-							<td class="rgt">{% if row.particulars != "Quality Deduction" %}{{ row["dn_qty"] or row.get("qty") or "—" }}{% endif %}</td>
-							<td class="rgt amt">{% if row.particulars != "Quality Deduction" %}{{ row["dn_rate"] or row.get("rate") or "—" }}{% endif %}</td>
+							<td class="rgt">{% if not row.is_quality_row %}{{ row["dn_qty"] or row.get("qty") or "—" }}{% endif %}</td>
+							<td class="rgt amt">{% if not row.is_quality_row %}{{ row["dn_rate"] or row.get("rate") or "—" }}{% endif %}</td>
 							<td class="rgt amt">{{ row.amount }}</td>
 						</tr>
 						{% endfor %}
@@ -450,7 +440,7 @@ html, body { margin: 0; padding: 0; }
 	<div class="kpsa-closing">
 	<table class="block data-table" style="margin-top:0;">
 		<colgroup>
-			<col style="width:22%"><col style="width:26%"><col style="width:26%"><col style="width:26%">
+			<col style="width:24%"><col style="width:25%"><col style="width:25%"><col style="width:26%">
 		</colgroup>
 		<tr class="sec-bar"><td colspan="4">Settlement Summary</td></tr>
 		<tr class="tbl-hdr">
@@ -475,20 +465,11 @@ html, body { margin: 0; padding: 0; }
 			<td class="rgt b amt net-payable-amt">{{ sf.net_payable }}</td>
 		</tr>
 	</table>
-	<table class="kpsa-sign block">
-		<tr>
-			<td>
-				<div class="sign-pad"></div>
-				<div class="sign-lbl">Authorized Signatory</div>
-			</td>
-			<td>
-				<div class="sign-pad"></div>
-				<div class="sign-lbl">Party Acknowledgement</div>
-			</td>
-		</tr>
-	</table>
-	<div class="kpsa-foot-line">
-		Payment subject to realization. Verify qty, rate &amp; deductions. Disputes subject to company jurisdiction.
+	<div class="kpsa-foot-computer block">
+		This is Computer Generated Document not need Signature.
+	</div>
+	<div class="kpsa-foot-line block">
+		This Settlement advice is full on final. In case of any dispate it must be intimated within 5 dasy innoice date of advice otherwise , the settlement will be treated as final.
 	</div>
 	</div>
 

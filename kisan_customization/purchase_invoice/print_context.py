@@ -10,6 +10,36 @@ from kisan_customization.purchase_invoice.deductions import (
 	_calculate_weight_deduction_amount,
 )
 
+# Settlement advice print labels (match demo reference PDF).
+_PRINT_DEDUCTION_LABELS = {
+	"Weight Deduction": "Weight Shortage",
+	"Bag Deduction": "Bag Weight",
+	"Quality Deduction": "Quality And Other Deduction",
+	"Other Deduction": "Other",
+	"Others": "Other",
+	"UNLOADING": "Unloading",
+	"S/S": "Sand Silica",
+	"Moise": "Moisture",
+	"RTGS": "Bank Change",
+}
+
+
+def _print_deduction_particulars(name):
+	"""Map deduction type names for settlement / debit note print."""
+	if not name:
+		return ""
+	raw = str(name).strip()
+	suffix = ""
+	base = raw
+	if " (" in raw:
+		base, rest = raw.split(" (", 1)
+		base = base.strip()
+		suffix = f" ({rest}"
+	mapped = _PRINT_DEDUCTION_LABELS.get(base, base)
+	if mapped == base and base.isupper() and len(base) > 2:
+		mapped = base.title()
+	return f"{mapped}{suffix}"
+
 
 def _fmt_print_amount(amount, currency):
 	"""Settlement print: whole currency units (no paise/decimals on print)."""
@@ -406,7 +436,7 @@ def _bargain_rows(pi, debit=None):
 	return rows, _fmt_print_amount(bargain_total, pi.currency)
 
 
-MAX_QUALITY_PRINT_ROWS = 15
+MAX_QUALITY_PRINT_ROWS = 12
 
 
 def _quality_rows(pi):
@@ -422,7 +452,9 @@ def _quality_rows(pi):
 		rows.append(
 			{
 				"sr": row.idx,
-				"particulars": row.deduction_type_name or row.deduction_type,
+				"particulars": _print_deduction_particulars(
+					row.deduction_type_name or row.deduction_type
+				),
 				"required": row.required_value if row.required_value is not None else "",
 				"actual": row.actual if row.actual is not None else "",
 				"diff": row.difference if row.difference is not None else "",
@@ -464,7 +496,7 @@ def _debit_lines(debit, pi):
 		lines.append(
 			{
 				"sr": sr,
-				"particulars": "Weight Deduction",
+				"particulars": _print_deduction_particulars("Weight Deduction"),
 				"hsn": "",
 				"dn_qty": f"{weight_kg:g} kg",
 				"dn_rate": _deduction_rate_display(weight_rate, currency),
@@ -477,7 +509,7 @@ def _debit_lines(debit, pi):
 		lines.append(
 			{
 				"sr": sr,
-				"particulars": "Bag Deduction",
+				"particulars": _print_deduction_particulars("Bag Deduction"),
 				"hsn": "",
 				"dn_qty": f"{bag_kg:g} kg",
 				"dn_rate": _deduction_rate_display(bag_rate, currency),
@@ -499,7 +531,7 @@ def _debit_lines(debit, pi):
 		lines.append(
 			{
 				"sr": sr,
-				"particulars": "Quality Deduction",
+				"particulars": _print_deduction_particulars("Quality Deduction"),
 				"hsn": hsn or "—",
 				"dn_qty": "",
 				"dn_rate": "",

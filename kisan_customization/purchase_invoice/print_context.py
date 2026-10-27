@@ -333,6 +333,19 @@ def _display_kg(kg):
 	return f"{value:,.2f}"
 
 
+def _pi_total_arrival_kg_for_bargain(pi):
+	"""Bargain Details Arrival Wt. = Purchase Invoice custom_total_arrival_weight (saved value)."""
+	if pi.name and frappe.db.has_column("Purchase Invoice", "custom_total_arrival_weight"):
+		db_val = frappe.db.get_value("Purchase Invoice", pi.name, "custom_total_arrival_weight")
+		if db_val is not None and str(db_val).strip() != "":
+			return flt(db_val)
+
+	if pi.get("custom_total_arrival_weight") is not None:
+		return flt(pi.get("custom_total_arrival_weight"))
+
+	return sum(flt(row.arrival_qty_kg) for row in pi.get("custom_bag_details") or [])
+
+
 def _bargain_row_dict(
 	po_name,
 	item_label,
@@ -350,7 +363,7 @@ def _bargain_row_dict(
 		"gross_weight": _display_kg(gross_kg),
 		"bags_wt": _display_kg(gross_kg),
 		"sauda_rate": _fmt_print_amount(sauda_rate, currency),
-		"arrival_weight": flt(arr_kg),
+		"arrival_weight": _display_kg(arr_kg),
 		"oil_pct": "",
 		"oil_rate": "",
 		"amount": _fmt_print_amount(amount, currency),
@@ -400,13 +413,14 @@ def _bargain_rows(pi, debit=None):
 		get_commodity_items,
 		get_item_line_gross_weight_kg,
 	)
-
-	debit_by_pi_item = _debit_return_kg_by_pi_item(debit)
 	bags_total = flt(pi.get("custom_total_bags"))
+	total_arrival_kg = _pi_total_arrival_kg_for_bargain(pi)
+	commodity_items = list(get_commodity_items(pi))
+	total_gross_all = sum(get_item_line_gross_weight_kg(row) for row in commodity_items)
 	rows = []
 	bargain_total = 0.0
 
-	for idx, pi_row in enumerate(get_commodity_items(pi), start=1):
+	for idx, pi_row in enumerate(commodity_items, start=1):
 		po_line = _po_line_for_pi_item(pi_row)
 		if po_line:
 			lot_no = po_line.parent
@@ -418,8 +432,12 @@ def _bargain_rows(pi, debit=None):
 			sauda_rate = flt(pi_row.rate)
 
 		gross_kg = get_item_line_gross_weight_kg(pi_row)
-		pi_kg = _accepted_qty_kg(pi_row)
-		arr_kg = max(0, pi_kg - flt(debit_by_pi_item.get(pi_row.name, 0)))
+		if len(commodity_items) == 1:
+			arr_kg = total_arrival_kg
+		elif total_gross_all:
+			arr_kg = flt(total_arrival_kg * gross_kg / total_gross_all, 2)
+		else:
+			arr_kg = total_arrival_kg if idx == 1 else 0
 
 		row = _bargain_row_dict(
 			lot_no,
@@ -659,6 +677,7 @@ def get_settlement_print_data(purchase_invoice):
 		"broker": _broker_label(pi.get("custom_broker")),
 		"our_invoice_no": pi.name,
 		"invoice_date": frappe.format(pi.posting_date, {"fieldtype": "Date"}),
+		"custom_aarrival_date": frappe.format(pi.custom_aarrival_date, {"fieldtype": "Date"}),
 		"our_location": our_loc,
 		"our_location_print": _address_for_print(our_loc, skip_gstin=True),
 		"our_location_compact": _address_compact_meta(our_loc),

@@ -1,6 +1,8 @@
 # Copyright (c) 2026, Hidayatali and contributors
 
 import frappe
+from frappe import _
+from frappe.utils import flt
 
 from kisan_customization.purchase_invoice.bags import (
 	recalculate_bag_weights,
@@ -28,15 +30,40 @@ from kisan_customization.purchase_invoice.validation import (
 )
 from kisan_customization.utils.transaction_mode import is_kisan_custom
 
+_REQUIRED_SUBMIT_DEDUCTIONS = frozenset({"Moise", "Damage", "S/S"})
 
-def before_submit(doc, method=None):
-	"""Kisan debit notes must not use Update Outstanding for Self (ERPNext default warning)."""
-	if not doc.get("is_return") or not doc.get("return_against"):
+
+def _deduction_type_base(name):
+	return (name or "").split(" (")[0].strip()
+
+
+def _validate_required_deduction_actuals(doc):
+	if doc.get("is_return") or not is_kisan_custom(doc):
 		return
 
-	source = frappe.get_doc("Purchase Invoice", doc.return_against)
-	if is_kisan_custom(source):
-		doc.update_outstanding_for_self = 0
+	missing = set(_REQUIRED_SUBMIT_DEDUCTIONS)
+	for row in doc.get("custom_deductions") or []:
+		base = _deduction_type_base(row.get("deduction_type_name"))
+		if base in missing and flt(row.get("actual")) > 0:
+			missing.discard(base)
+
+	if missing:
+		frappe.throw(
+			_("Before submit, enter Actual greater than 0 for: {0}").format(
+				", ".join(sorted(missing))
+			),
+			title=_("Deduction Details Required"),
+		)
+
+
+def before_submit(doc, method=None):
+	if doc.get("is_return") and doc.get("return_against"):
+		source = frappe.get_doc("Purchase Invoice", doc.return_against)
+		if is_kisan_custom(source):
+			doc.update_outstanding_for_self = 0
+		return
+
+	_validate_required_deduction_actuals(doc)
 
 
 def validate(doc, method=None):

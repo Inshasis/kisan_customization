@@ -153,10 +153,16 @@ frappe.provide("kisan_customization.sidebar_hide");
 
 	boot();
 
-	frappe.ready(function () {
+	function bindReady() {
 		apply();
 		$(document).on("page-change form-load form-refresh", apply);
-	});
+	}
+
+	if (typeof frappe.ready === "function") {
+		frappe.ready(bindReady);
+	} else {
+		bindReady();
+	}
 
 	kisan_customization.sidebar_hide.apply = apply;
 })();

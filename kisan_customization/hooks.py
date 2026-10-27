@@ -239,7 +239,10 @@ doc_events = {
 			"kisan_customization.purchase_invoice.purchase_invoice.before_submit",
 			"kisan_customization.purchase_invoice.broker_commission.before_submit",
 		],
-		"before_cancel": "kisan_customization.purchase_invoice.broker_commission.before_cancel",
+		"before_cancel": [
+			"kisan_customization.purchase_invoice.debit_note.cancel_linked_debit_note_on_pi_cancel",
+			"kisan_customization.purchase_invoice.broker_commission.before_cancel",
+		],
 		"on_submit": [
 			"kisan_customization.purchase_invoice.broker_commission.on_submit",
 			"kisan_customization.purchase_invoice.debit_note.auto_create_debit_note_on_pi_submit",

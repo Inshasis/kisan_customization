@@ -64,7 +64,7 @@ def calculate_weight_deduction(doc):
 
 	accepted_qty_kg = get_accepted_qty_kg(doc)
 	gross_weight = get_pi_total_gross_weight(doc)
-	weight_deduction = max(0, flt(accepted_qty_kg) - flt(gross_weight))
+	weight_deduction = flt(accepted_qty_kg) - flt(gross_weight)
 	item_rate = get_pi_item_rate(doc)
 	amount = flt(weight_deduction * item_rate / 100, 2)
 	return weight_deduction, item_rate, amount
@@ -138,6 +138,18 @@ def validate_bag_details(doc):
 		)
 
 
+def _apply_jute_charges_rule(row, bags):
+	"""Jute bag lines: if deduct weight exceeds 65 kg, use charges = 1."""
+	if (row.bag_type or "").strip().lower() != "jute":
+		return flt(row.charges)
+	charges = flt(row.charges)
+	deduct = bags * charges
+	if deduct > 65:
+		row.charges = 1
+		return 1
+	return charges
+
+
 def recalculate_bag_weights(doc):
 	total_bags = flt(doc.custom_total_bags)
 	total_gross = flt(doc.custom_total_gross_weight)
@@ -150,7 +162,7 @@ def recalculate_bag_weights(doc):
 
 	for row in doc.get("custom_bag_details") or []:
 		bags = flt(row.no_of_bags)
-		charges = flt(row.charges)
+		charges = _apply_jute_charges_rule(row, bags)
 		row.deduct_weight_kg = bags * charges
 		row.gross_weight_kg = bags * average_weight
 		row.arrival_qty_kg = max(0, flt(row.gross_weight_kg) - flt(row.deduct_weight_kg))

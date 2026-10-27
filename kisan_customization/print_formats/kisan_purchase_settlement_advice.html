@@ -12,8 +12,6 @@
     {% set kpsa_density = "" %}
 {% endif %}
 
-doc = frappe.get_doc("Purchase Invoice", docname)
-
 <style>
 /* ------------------------------------------------------------------
    PAGE MARGINS
@@ -420,7 +418,7 @@ html body .print-format .print-format-margin {
             <td class="rgt">{{ row.bags }}</td>
             <td class="rgt">{{ row.get("gross_weight") or row.get("bags_wt") or "" }}</td>
             <td class="rgt amt">{{ row.sauda_rate }}</td>
-            <td class="rgt">{{ "%.2f"|format((row.arrival_weight or 0)|float) }}</td>
+            <td class="rgt">{{ row.arrival_weight or "" }}</td>
             <td class="rgt">{{ row.oil_pct or "—" }}</td>
             <td class="rgt">{{ row.oil_rate or "—" }}</td>
             <td class="rgt amt">{{ row.amount }}</td>

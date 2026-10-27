@@ -138,6 +138,23 @@ def auto_create_debit_note_on_pi_submit(doc, method=None):
 	_create_and_submit_debit_note_doc(doc)
 
 
+def cancel_linked_debit_note_on_pi_cancel(doc, method=None):
+	"""Cancel submitted debit note when the source Kisan Purchase Invoice is cancelled."""
+	if doc.get("is_return") or not is_kisan_custom(doc):
+		return
+
+	debit_name = get_submitted_debit_note(doc.name)
+	if not debit_name:
+		return
+
+	debit = frappe.get_doc("Purchase Invoice", debit_name)
+	if debit.docstatus != 1:
+		return
+
+	debit.flags.ignore_permissions = True
+	debit.cancel()
+
+
 @frappe.whitelist()
 def create_and_submit_debit_note(purchase_invoice):
 	"""Create Kisan debit note from a submitted PI and submit (no form / outstanding prompt)."""
@@ -207,7 +224,7 @@ def _apply_debit_note_settings(doc, source):
 
 
 def _calculate_return_deductions(source):
-	"""Always recalculate from source PI (total qty × 100 − gross weight, bag gross − arrival)."""
+	"""Recalculate bag/weight kg from source PI (weight kg may be negative when gross exceeds invoice qty)."""
 	weight_kg, _, weight_amt = _calculate_weight_deduction_amount(source)
 	bag_kg, _, bag_amt = _calculate_bag_deduction_amount(source)
 	return flt(weight_kg), flt(bag_kg), flt(weight_amt), flt(bag_amt)
@@ -276,7 +293,7 @@ def _item_line_gross_kg(source_item):
 def _calculate_item_weight_deduction_kg(source_item):
 	accepted_kg = _item_accepted_qty_kg(source_item)
 	line_gross = _item_line_gross_kg(source_item)
-	return max(0, flt(accepted_kg) - flt(line_gross))
+	return flt(accepted_kg) - flt(line_gross)
 
 
 def _get_debit_note_commodity_items(doc):

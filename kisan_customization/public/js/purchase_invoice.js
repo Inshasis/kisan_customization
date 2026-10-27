@@ -29,6 +29,7 @@ function patch_purchase_invoice_controller() {
 		const result = original_refresh.apply(this, args);
 		if (kisan_customization.transaction_mode.is_kisan_custom(this.frm)) {
 			hide_purchase_invoice_create_options(this.frm);
+			toggle_kisan_submit_button(this.frm);
 		}
 		return result;
 	};
@@ -174,6 +175,46 @@ frappe.ui.form.on("Purchase Invoice", {
 		}
 
 		style_deduction_section_button(frm);
+		toggle_kisan_submit_button(frm);
+	},
+
+	custom_deductions(frm) {
+		toggle_kisan_submit_button(frm);
+	},
+
+	before_save(frm) {
+		if (
+			!kisan_customization.transaction_mode.is_kisan_custom(frm) ||
+			frm.doc.is_return ||
+			frm.doc.__accept_gross_over_invoice
+		) {
+			if (frm.doc.__accept_gross_over_invoice) {
+				delete frm.doc.__accept_gross_over_invoice;
+			}
+			return;
+		}
+
+		if (!has_item_gross_over_invoice_qty(frm)) {
+			return;
+		}
+
+		return new Promise((resolve) => {
+			frappe.confirm(
+				__(
+					"Gross wt more than invoice wt, do you wish to accept and proceed?",
+					null,
+					"Gross weight confirmation on Purchase Invoice save"
+				),
+				() => {
+					frm.doc.__accept_gross_over_invoice = 1;
+					resolve();
+				},
+				() => {
+					frappe.validated = false;
+					resolve();
+				}
+			);
+		});
 	},
 
 	custom_total_bags(frm) {
@@ -222,10 +263,19 @@ frappe.ui.form.on("Purchase Invoice", {
 	},
 
 	before_submit(frm) {
-		if (!kisan_customization.transaction_mode.is_kisan_custom(frm)) {
+		if (!kisan_customization.transaction_mode.is_kisan_custom(frm) || frm.doc.is_return) {
 			return;
 		}
-		return confirm_deductions_before_submit(frm);
+		if (!has_required_quality_deduction_actuals(frm)) {
+			frappe.msgprint({
+				title: __("Deduction Details Required"),
+				message: __(
+					"Before submit, enter Actual greater than 0 for Moise, Damage and S/S in Deduction Details."
+				),
+				indicator: "red",
+			});
+			frappe.validated = false;
+		}
 	},
 });
 
@@ -445,24 +495,43 @@ function can_show_deduction_button(frm) {
 	);
 }
 
-function confirm_deductions_before_submit(frm) {
-	if (frm.doc.is_return || !can_show_deduction_button(frm)) {
+const REQUIRED_SUBMIT_DEDUCTIONS = ["Moise", "Damage", "S/S"];
+
+function deduction_type_base(name) {
+	return (name || "").split(" (")[0].trim();
+}
+
+function has_required_quality_deduction_actuals(frm) {
+	const found = new Set();
+	(frm.doc.custom_deductions || []).forEach((row) => {
+		const base = deduction_type_base(row.deduction_type_name);
+		if (REQUIRED_SUBMIT_DEDUCTIONS.includes(base) && flt(row.actual) > 0) {
+			found.add(base);
+		}
+	});
+	return REQUIRED_SUBMIT_DEDUCTIONS.every((name) => found.has(name));
+}
+
+function toggle_kisan_submit_button(frm) {
+	if (
+		!kisan_customization.transaction_mode.is_kisan_custom(frm) ||
+		frm.doc.is_return ||
+		cint(frm.doc.docstatus) !== 0
+	) {
 		return;
 	}
+	const show = has_required_quality_deduction_actuals(frm);
+	const $submit = frm.page?.menu?.find('[data-label="Submit"]');
+	if ($submit?.length) {
+		$submit.parent().toggle(show);
+	}
+}
 
-	return new Promise((resolve) => {
-		frappe.confirm(
-			__(
-				"Have all deductions been entered and verified correctly?",
-				null,
-				"Deduction confirmation before Purchase Invoice submit"
-			),
-			() => resolve(),
-			() => {
-				frappe.validated = false;
-				resolve();
-			}
-		);
+function has_item_gross_over_invoice_qty(frm) {
+	return (frm.doc.items || []).some((row) => {
+		const invoice_kg = flt(row.qty) * 100;
+		const gross = flt(row.custom_gross_weight_kg);
+		return invoice_kg > 0 && gross > invoice_kg;
 	});
 }
 
@@ -505,6 +574,17 @@ function validate_bag_count(frm, cdt, cdn) {
 	return true;
 }
 
+function apply_jute_charges_rule(row, bags) {
+	if ((row.bag_type || "").trim().toLowerCase() !== "jute") {
+		return flt(row.charges);
+	}
+	let charges = flt(row.charges);
+	if (bags * charges > 65) {
+		charges = 1;
+	}
+	return charges;
+}
+
 function calculate_bag_row(frm, cdt, cdn) {
 	const row = locals[cdt][cdn];
 	const total_bags = flt(frm.doc.custom_total_bags);
@@ -512,15 +592,17 @@ function calculate_bag_row(frm, cdt, cdn) {
 	const average_weight = total_bags ? total_gross / total_bags : 0;
 
 	const bags = flt(row.no_of_bags);
-	const deduct = bags * flt(row.charges);
+	const charges = apply_jute_charges_rule(row, bags);
+	const deduct = bags * charges;
 	const gross = bags * average_weight;
 	const arrival = Math.max(0, gross - deduct);
 
-	frappe.model.set_value(cdt, cdn, "deduct_weight_kg", deduct);
-	frappe.model.set_value(cdt, cdn, "gross_weight_kg", gross);
-	frappe.model.set_value(cdt, cdn, "arrival_qty_kg", arrival).then(() => {
-		update_arrival_total(frm);
-	});
+	Promise.all([
+		frappe.model.set_value(cdt, cdn, "charges", charges),
+		frappe.model.set_value(cdt, cdn, "deduct_weight_kg", deduct),
+		frappe.model.set_value(cdt, cdn, "gross_weight_kg", gross),
+		frappe.model.set_value(cdt, cdn, "arrival_qty_kg", arrival),
+	]).then(() => update_arrival_total(frm));
 }
 
 function recalculate_all_bag_rows(frm) {
@@ -576,7 +658,7 @@ function update_deduction_header_fields(frm) {
 		flt(frm.doc.total_qty) ||
 		(frm.doc.items || []).reduce((sum, row) => sum + flt(row.qty), 0);
 	const accepted_qty_kg = total_qty * 100;
-	const weight_deduction = Math.max(0, accepted_qty_kg - gross);
+	const weight_deduction = accepted_qty_kg - gross;
 	const weight_amount = flt((weight_deduction * avg_rate) / 100, 2);
 
 	if (frm.fields_dict.custom_weight_deduction) {

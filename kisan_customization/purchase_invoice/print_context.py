@@ -659,6 +659,7 @@ def get_settlement_print_data(purchase_invoice):
 		"broker": _broker_label(pi.get("custom_broker")),
 		"our_invoice_no": pi.name,
 		"invoice_date": frappe.format(pi.posting_date, {"fieldtype": "Date"}),
+		"custom_aarrival_date": frappe.format(pi.custom_aarrival_date, {"fieldtype": "Date"}),
 		"our_location": our_loc,
 		"our_location_print": _address_for_print(our_loc, skip_gstin=True),
 		"our_location_compact": _address_compact_meta(our_loc),

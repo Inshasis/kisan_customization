@@ -1,0 +1,471 @@
+{# GOODS RECEIPT NOTE / PURCHASE SETTLEMENT ADVICE — single-page A4 #}
+{% set d = get_kisan_settlement_print_data(doc.name) %}
+{% set sf = d.summary_footer %}
+
+<style>
+:root {
+	--kpsa-scale: 1.25;
+	--kpsa-w: 210mm;
+	--kpsa-h: 297mm;
+	--kpsa-m: 1.5mm;
+	--kpsa-blue: #b4c6e7;
+	--kpsa-fs: calc(9.66px * var(--kpsa-scale));
+	--kpsa-fs-sm: calc(8.97px * var(--kpsa-scale));
+	--kpsa-fs-amt: calc(var(--kpsa-fs-sm) * 1.2);
+	--kpsa-fs-amt-net: calc(13.8px * var(--kpsa-scale) * 1.2);
+	--kpsa-fs-hdr: calc(11.04px * var(--kpsa-scale));
+}
+@page { size: A4 portrait; margin: 2mm; }
+html, body { margin: 0; padding: 0; }
+.print-format { padding: 0 !important; margin: 0 !important; max-width: none !important; }
+.print-format .print-format-margin { margin: 0 !important; padding: 0 !important; }
+
+.kpsa-a4 {
+	box-sizing: border-box;
+	width: var(--kpsa-w);
+	max-width: var(--kpsa-w);
+	min-height: var(--kpsa-h);
+	margin: 0 auto;
+	padding: var(--kpsa-m);
+	background: #fff;
+}
+.kpsa {
+	font-family: Arial, Helvetica, sans-serif;
+	font-size: var(--kpsa-fs);
+	color: #111;
+	line-height: 1.08;
+}
+.kpsa table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.kpsa td, .kpsa th {
+	border: 1px solid #222;
+	padding: 0 1px;
+	vertical-align: middle;
+	word-wrap: break-word;
+	overflow-wrap: anywhere;
+}
+.kpsa .tbl-hdr th { white-space: normal; font-size: var(--kpsa-fs-sm); }
+.kpsa td:nth-child(2), .kpsa th:nth-child(2) { text-align: left; }
+.kpsa .nob { border: none !important; }
+.kpsa .ctr { text-align: center; }
+.kpsa .rgt { text-align: right; }
+.kpsa .amt {
+	font-size: var(--kpsa-fs-amt);
+	font-variant-numeric: tabular-nums;
+	line-height: 1.12;
+}
+.kpsa .net-row td.amt,
+.kpsa .net-row td.net-payable-amt { font-size: var(--kpsa-fs-amt-net); }
+.kpsa .sec-total .amt { font-size: var(--kpsa-fs-amt); }
+.kpsa .meta-line .mv.amt { font-size: var(--kpsa-fs-amt); }
+.kpsa .tax-side td.amt { font-size: var(--kpsa-fs-amt); }
+.kpsa .b { font-weight: 700; }
+.kpsa .sec-bar td {
+	background: var(--kpsa-blue);
+	font-weight: 700;
+	text-align: center;
+	padding: 0 1px;
+	font-size: var(--kpsa-fs-hdr);
+}
+.kpsa .tbl-hdr th {
+	background: var(--kpsa-blue);
+	font-weight: 700;
+	text-align: center;
+	padding: 1px 2px;
+}
+.kpsa .sec-total td { background: #eef2f8; font-weight: 700; font-size: var(--kpsa-fs-sm); }
+.kpsa .block { margin-top: 0; }
+.kpsa .block:first-of-type { margin-top: 0; }
+.kpsa .hdr-band {
+	border: 1px solid #222;
+	border-bottom: 2px solid var(--kpsa-blue);
+	background: #fff;
+}
+.kpsa .hdr-band .logo-cell { vertical-align: middle; padding: 1px 2px; }
+.kpsa .hdr-band .co-cell { vertical-align: middle; padding: 2px; text-align: center; }
+.kpsa .logo-wrap {
+	height: calc(28px * var(--kpsa-scale));
+	width: 20mm;
+	min-width: 20mm;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 1px;
+	box-sizing: border-box;
+}
+.kpsa .logo-wrap img { max-height: calc(26px * var(--kpsa-scale)); max-width: 100%; object-fit: contain; }
+.kpsa .hdr-co { font-size: calc(13.8px * var(--kpsa-scale)); font-weight: 700; text-align: center; color: #0f172a; line-height: 1.15; }
+.kpsa .hdr-addr {
+	font-size: var(--kpsa-fs);
+	text-align: center;
+	line-height: 1.22;
+	margin-top: 1px;
+	padding: 0 2px;
+	color: #334155;
+}
+.kpsa .hdr-gst { font-size: var(--kpsa-fs); text-align: center; margin-top: 0; line-height: 1.12; }
+.kpsa .hdr-title-top {
+	font-size: var(--kpsa-fs-hdr);
+	font-weight: 700;
+	text-transform: uppercase;
+	border: 1px solid #222;
+	border-top: none;
+	border-bottom: none;
+	padding: 1px;
+	text-align: center;
+	background: var(--kpsa-blue);
+	letter-spacing: 0.04em;
+	margin: 0;
+}
+.kpsa .meta-grid {
+	width: 100%;
+	border-collapse: collapse;
+	table-layout: fixed;
+	margin-top: 0;
+}
+.kpsa .meta-grid > tbody > tr > td {
+	vertical-align: top;
+	padding: 1px 2px;
+	border: 1px solid #222;
+	font-size: var(--kpsa-fs-sm);
+	line-height: 1.12;
+}
+.kpsa .meta-grid > tbody > tr > td + td { border-left: 1px solid #222; }
+.kpsa .meta-line {
+	display: table;
+	width: 100%;
+	table-layout: fixed;
+	margin: 0;
+	padding: 0;
+}
+.kpsa .meta-line + .meta-line { margin-top: 1px; }
+.kpsa .meta-line .mk,
+.kpsa .meta-line .mv {
+	display: table-cell;
+	vertical-align: top;
+	padding: 0;
+}
+.kpsa .meta-line .mk {
+	width: 42%;
+	font-weight: 700;
+	padding-right: 3px;
+	white-space: normal;
+}
+.kpsa .meta-line .mv {
+	width: 58%;
+	word-break: break-word;
+}
+.kpsa .meta-line.addr .mv {
+	font-size: calc(var(--kpsa-fs-sm) * 0.96);
+	line-height: 1.1;
+}
+.kpsa .data-table td,
+.kpsa .data-table th {
+	font-size: var(--kpsa-fs-sm);
+	line-height: 1.1;
+	padding: 0 1px;
+}
+.kpsa .rate-uom { font-size: calc(7.59px * var(--kpsa-scale)); display: block; text-align: right; line-height: 1.04; color: #444; }
+.kpsa .pair-main { width: 72%; vertical-align: top; padding: 0 !important; }
+.kpsa .pair-side { width: 28%; vertical-align: top; padding: 0 0 0 1px !important; }
+.kpsa .tax-side td { font-size: var(--kpsa-fs-sm); padding: 1px 2px; }
+.kpsa .tax-side .lbl { font-weight: 700; width: 54%; }
+.kpsa .tax-side .tax-hdr td { background: var(--kpsa-blue); font-weight: 700; text-align: center; font-size: var(--kpsa-fs-sm); }
+.kpsa .net-row td {
+	background: #dce6f2;
+	font-weight: 700;
+	font-size: var(--kpsa-fs-sm);
+	padding: 2px 3px;
+}
+.kpsa .net-row td.net-payable-amt {
+	font-weight: 800;
+	color: #0f172a;
+	padding: 2px 3px;
+	letter-spacing: 0.02em;
+}
+.kpsa-closing {
+	margin-top: 0;
+	page-break-inside: avoid;
+	break-inside: avoid;
+}
+.kpsa-foot-computer {
+	margin-top: 2px;
+	padding: 2px 3px;
+	font-size: calc(8.28px * var(--kpsa-scale));
+	font-weight: 700;
+	line-height: 1.2;
+	color: #0f172a;
+	text-align: center;
+	border: 1px solid #222;
+	background: #f8fafc;
+}
+.kpsa-foot-line {
+	margin-top: 0;
+	padding: 2px 4px;
+	font-size: calc(8.28px * var(--kpsa-scale));
+	line-height: 1.22;
+	color: #222;
+	text-align: center;
+	border: 1px solid #222;
+	border-top: none;
+}
+
+@media screen {
+	html, body {
+		background: #b8bcc4 !important;
+	}
+	body[data-route="print"],
+	body[data-route^="print"] {
+		background: #b8bcc4 !important;
+	}
+	.layout-main-section-wrapper,
+	.print-preview-wrapper,
+	.print-format-gutter {
+		background: #b8bcc4 !important;
+		max-width: none !important;
+		width: 100% !important;
+	}
+	.print-format,
+	body[data-route="print"] .print-format {
+		box-sizing: border-box !important;
+		width: var(--kpsa-w) !important;
+		min-width: var(--kpsa-w) !important;
+		max-width: var(--kpsa-w) !important;
+		min-height: auto !important;
+		height: auto !important;
+		margin: 12px auto !important;
+		padding: 0 !important;
+		background: #fff !important;
+		box-shadow: 0 2px 14px rgba(0, 0, 0, 0.18) !important;
+		transform: none !important;
+		zoom: 1 !important;
+	}
+	.print-format .print-format-margin {
+		width: 100% !important;
+		max-width: none !important;
+		margin: 0 !important;
+		padding: 0 !important;
+	}
+	.kpsa-a4 {
+		width: var(--kpsa-w) !important;
+		min-height: auto !important;
+		margin: 0 auto !important;
+		box-shadow: none !important;
+	}
+}
+@media print {
+	.print-format, .print-format .print-format-margin { background: transparent !important; padding: 0 !important; }
+	.print-format .page-break, .print-format .print-heading { display: none !important; }
+	.kpsa-a4 {
+		width: 100%;
+		max-width: 100%;
+		padding: 0;
+		box-shadow: none !important;
+	}
+	.kpsa-closing { page-break-inside: avoid; break-inside: avoid; }
+	.kpsa .sec-bar td, .kpsa .tbl-hdr th, .kpsa .tax-side .tax-hdr td, .kpsa .net-row td, .kpsa .sec-total td {
+		-webkit-print-color-adjust: exact;
+		print-color-adjust: exact;
+	}
+}
+</style>
+
+<div class="kpsa-a4">
+<div class="kpsa">
+	<table class="nob block hdr-band" style="margin-top:0;">
+		<colgroup><col style="width:20%"><col style="width:80%"></colgroup>
+		<tr>
+			<td class="nob logo-cell">
+				<div class="logo-wrap">
+					<img src="/files/kisan_logo.jpeg" alt="{{ d.company_name | e }}">
+				</div>
+			</td>
+			<td class="nob co-cell">
+				<div class="hdr-co">{{ d.company_name }}</div>
+				{% if d.company_address_print or d.company_address_line %}
+				<div class="hdr-addr">{{ (d.company_address_print or d.company_address_line) | safe }}</div>
+				{% endif %}
+				{% if d.company_gstin %}<div class="hdr-gst"><span class="b">GSTIN:</span> {{ d.company_gstin }}</div>{% endif %}
+			</td>
+		</tr>
+	</table>
+
+	<div class="hdr-title-top">Goods Receipt Note &middot; Purchase Settlement Advice</div>
+
+	<table class="meta-grid block">
+		<colgroup><col style="width:33.33%"><col style="width:33.33%"><col style="width:33.34%"></colgroup>
+		<tr>
+			<td>
+				<div class="meta-line"><span class="mk">Party</span><span class="mv">{{ d.party }}</span></div>
+				<div class="meta-line addr"><span class="mk">Location</span><span class="mv">{{ d.party_location_compact or "—" }}</span></div>
+				<div class="meta-line"><span class="mk">Party GSTIN</span><span class="mv">{{ d.party_gstin or "—" }}</span></div>
+				{% if d.broker %}<div class="meta-line"><span class="mk">Broker</span><span class="mv">{{ d.broker }}</span></div>{% endif %}
+			</td>
+			<td>
+				<div class="meta-line"><span class="mk">Our Invoice No.</span><span class="mv">{{ d.our_invoice_no }}</span></div>
+				<div class="meta-line"><span class="mk">Date</span><span class="mv">{{ d.invoice_date }} &nbsp;|&nbsp; Arr: {{ d.arrival_date }}</span></div>
+				<div class="meta-line addr"><span class="mk">Our Location</span><span class="mv">{{ d.our_location_compact or "—" }}</span></div>
+				<div class="meta-line"><span class="mk">Our GSTIN</span><span class="mv">{{ d.our_gstin or "—" }}</span></div>
+				<div class="meta-line"><span class="mk">PO No.</span><span class="mv">{{ d.po_no or "—" }}</span></div>
+			</td>
+			<td>
+				<div class="meta-line"><span class="mk">Debit Note No.</span><span class="mv">{{ d.debit_note_no or "—" }}</span></div>
+				<div class="meta-line"><span class="mk">Debit Note Date</span><span class="mv">{{ d.debit_note_date or "—" }}</span></div>
+				<div class="meta-line"><span class="mk">Vendor Doc No.</span><span class="mv">{{ d.vendor_doc_no or "—" }}</span></div>
+				<div class="meta-line"><span class="mk">Vendor Doc Date</span><span class="mv">{{ d.vendor_doc_date or "—" }}</span></div>
+				<div class="meta-line"><span class="mk">Vendor Bill Amt</span><span class="mv b amt" >{{ d.vendor_bill_amount }}</span></div>
+				<div class="meta-line"><span class="mk">Lorry No.</span><span class="mv">{{ d.lorry_no or "—" }}</span></div>
+			</td>
+		</tr>
+	</table>
+
+	<table class="block data-table">
+		<colgroup>
+			<col style="width:4%"><col style="width:17%"><col style="width:7%"><col style="width:10%">
+			<col style="width:9%"><col style="width:11%"><col style="width:15%"><col style="width:7%"><col style="width:20%">
+		</colgroup>
+		<tr class="sec-bar"><td colspan="9">Purchase Invoice Details</td></tr>
+		<tr class="tbl-hdr">
+			<th>Sr.</th><th>Item Codes</th><th>HSN</th><th>Vendor Dis Wt.</th><th>Rate</th>
+			<th>Basic value</th><th>GST Amt/Rate</th><th>TDS</th><th style="text-align:right;">Payable Amt</th>
+		</tr>
+		{% for row in d.pi_lines %}
+		<tr>
+			<td class="ctr">{{ row.sr }}</td>
+			<td>{{ row.item }}</td>
+			<td class="ctr">{{ row.hsn }}</td>
+			<td class="rgt">{{ row.vendor_dis_wt }}</td>
+			<td class="rgt amt">{{ row.rate }}<span class="rate-uom">{{ row.rate_suffix or "" }}</span></td>
+			<td class="rgt amt">{{ row.basic }}</td>
+			<td class="rgt amt">{{ row.gst }}</td>
+			<td class="rgt amt">{{ row.tds or "—" }}</td>
+			<td class="rgt amt">{{ row.payable }}</td>
+		</tr>
+		{% endfor %}
+		<tr class="sec-total"><td colspan="8" class="rgt">Total Payable</td><td class="rgt amt" style="text-align:right;">{{ d.pi_total_payable }}</td></tr>
+	</table>
+
+	<table class="block data-table">
+		<colgroup>
+			<col style="width:7%"><col style="width:18%"><col style="width:7%"><col style="width:11%">
+			<col style="width:11%"><col style="width:11%"><col style="width:7%"><col style="width:8%"><col style="width:20%">
+		</colgroup>
+		<tr class="sec-bar"><td colspan="9">Bargain Details</td></tr>
+		<tr class="tbl-hdr">
+			<th>Lot.</th><th>Item</th><th>Bags</th><th>Gross Weight</th><th>Sauda Rate</th>
+			<th>Arr. Wt.</th><th>Oil %</th><th>Oil Rt.</th><th style="text-align:right;">Amount</th>
+		</tr>
+		{% for row in d.bargain_rows %}
+		<tr>
+			<td>{{ row.lot_no }}</td><td>{{ row.item }}</td>
+			<td class="rgt">{{ row.bags }}</td><td class="rgt">{{ row.get("gross_weight") or row.get("bags_wt") or "" }}</td><td class="rgt amt">{{ row.sauda_rate }}</td>
+			<td class="rgt">{{ "%.2f"|format(row.arrival_weight) }}</td><td class="rgt">{{ row.oil_pct or "—" }}</td><td class="rgt">{{ row.oil_rate or "—" }}</td>
+			<td class="rgt amt">{{ row.amount }}</td>
+		</tr>
+		{% endfor %}
+		<tr class="sec-total"><td colspan="8" class="rgt">Total Amount</td><td class="rgt amt" style="text-align:right;">{{ d.bargain_total }}</td></tr>
+	</table>
+
+	<table class="block data-table quality-table">
+		<colgroup>
+			<col style="width:4%"><col style="width:46%"><col style="width:10%">
+			<col style="width:10%"><col style="width:10%"><col style="width:20%">
+		</colgroup>
+		<tr class="sec-bar"><td colspan="6">Quality and other deductions</td></tr>
+		<tr class="tbl-hdr">
+			<th>Sr.</th><th>Particulars</th><th>Req.</th><th>Act.</th><th>Diff</th><th style="text-align:right;">Value</th>
+		</tr>
+		{% if d.quality_rows %}
+			{% for row in d.quality_rows %}
+			<tr>
+				<td class="ctr">{{ row.sr }}</td><td>{{ row.particulars }}</td>
+				<td class="ctr">{{ row.required }}</td><td class="ctr">{{ row.actual }}</td><td class="ctr">{{ row.diff }}</td><td class="rgt amt">{{ row.value }}</td>
+			</tr>
+			{% endfor %}
+		{% else %}
+			<tr><td colspan="6" class="ctr">—</td></tr>
+		{% endif %}
+		<tr class="sec-total"><td colspan="5" class="rgt">Total Deduction</td><td class="rgt amt" style="text-align:right;">{{ d.quality_total }}</td></tr>
+	</table>
+
+	<table class="nob block data-table">
+		<tr>
+			<td class="nob pair-main">
+				<table class="data-table">
+					<colgroup>
+						<col style="width:5%"><col style="width:37%"><col style="width:9%">
+						<col style="width:14%"><col style="width:13%"><col style="width:22%">
+					</colgroup>
+					<tr class="sec-bar"><td colspan="6">Debit Note Details</td></tr>
+					<tr class="tbl-hdr">
+						<th>Sr.</th><th>Particulars</th><th>HSN</th><th>Qty/Nos</th><th>Rate</th><th style="text-align:right;">Amount</th>
+					</tr>
+					{% if d.debit_lines %}
+						{% for row in d.debit_lines %}
+						<tr>
+							<td class="ctr">{% if row.sr %}{{ "%02d"|format(row.sr|int) }}{% endif %}</td>
+							<td>{{ row.particulars }}</td>
+							<td class="ctr">{{ row.hsn or "—" }}</td>
+							<td class="rgt">{% if not row.is_quality_row %}{{ row["dn_qty"] or row.get("qty") or "—" }}{% endif %}</td>
+							<td class="rgt amt">{% if not row.is_quality_row %}{{ row["dn_rate"] or row.get("rate") or "—" }}{% endif %}</td>
+							<td class="rgt amt" >{{ row.amount }}</td>
+						</tr>
+						{% endfor %}
+					{% else %}
+						<tr><td colspan="6" class="ctr">—</td></tr>
+					{% endif %}
+				</table>
+			</td>
+			{% if d.debit_tax_sidebar %}
+			<td class="nob pair-side">
+				<table class="tax-side">
+					<tr class="tax-hdr"><td colspan="2">Tax Summary</td></tr>
+					{% for line in d.debit_tax_sidebar %}
+					<tr>
+						<td class="lbl{% if line.bold %} b{% endif %}">{{ line.label }}</td>
+						<td style="text-align:right;" class="rgt amt{% if line.bold %} b{% endif %}">{{ line.amount }}</td>
+					</tr>
+					{% endfor %}
+				</table>
+			</td>
+			{% endif %}
+		</tr>
+	</table>
+
+	<div class="kpsa-closing">
+	<table class="block data-table" style="margin-top:0;">
+		<colgroup>
+			<col style="width:24%"><col style="width:25%"><col style="width:25%"><col style="width:26%">
+		</colgroup>
+		<tr class="sec-bar"><td colspan="4">Settlement Summary</td></tr>
+		<tr class="tbl-hdr">
+			<th>Document</th><th>Basic Net of TDS</th><th>GST Amt</th><th>Net Payable</th>
+		</tr>
+		<tr>
+			<td>{{ d.summary_pi.document }}</td>
+			<td style="text-align:right;" class="rgt amt">{{ d.summary_pi.basic_net_tds }}</td>
+			<td class="rgt amt">{{ d.summary_pi.gst }}</td>
+			<td class="rgt amt">{{ d.summary_pi.net_payable }}</td>
+		</tr>
+		<tr>
+			<td>{{ d.summary_debit.document }}</td>
+			<td style="text-align:right;" class="rgt amt">{{ d.summary_debit.basic_net_tds }}</td>
+			<td class="rgt amt">{{ d.summary_debit.gst }}</td>
+			<td class="rgt amt">{{ d.summary_debit.net_payable }}</td>
+		</tr>
+		<tr class="net-row">
+			<td class="b">{{ sf.document }}</td>
+			<td style="text-align:right;" class="rgt b amt">{{ sf.basic_net_tds }}</td>
+			<td class="rgt b amt">{{ sf.gst }}</td>
+			<td class="rgt b amt net-payable-amt">{{ sf.net_payable }}</td>
+		</tr>
+	</table>
+	<div class="kpsa-foot-computer block">
+		This is Computer Generated Document not need Signature.
+	</div>
+	<div class="kpsa-foot-line block">
+		This Settlement advice is full on final. In case of any dispate it must be intimated within 5 dasy innoice date of advice otherwise , the settlement will be treated as final.
+	</div>
+	</div>
+
+</div>
+</div>

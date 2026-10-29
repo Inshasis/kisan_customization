@@ -138,16 +138,23 @@ def validate_bag_details(doc):
 		)
 
 
-def _apply_jute_charges_rule(row, bags):
-	"""Jute bag lines: if deduct weight exceeds 65 kg, use charges = 1."""
+def _apply_jute_charges_rule(row, bags, gross_weight_kg):
+	"""Jute lines: if gross kg per bag exceeds 65, deduct 1 kg/bag instead of master rate (e.g. 0.6)."""
 	if (row.bag_type or "").strip().lower() != "jute":
 		return flt(row.charges)
-	charges = flt(row.charges)
-	deduct = bags * charges
-	if deduct > 65:
+
+	base = flt(get_bag_charges("jute")) or flt(row.charges)
+	if not bags:
+		row.charges = base
+		return base
+
+	avg_gross_per_bag = flt(gross_weight_kg) / bags
+	if avg_gross_per_bag > 65:
 		row.charges = 1
 		return 1
-	return charges
+
+	row.charges = base
+	return base
 
 
 def recalculate_bag_weights(doc):
@@ -162,9 +169,9 @@ def recalculate_bag_weights(doc):
 
 	for row in doc.get("custom_bag_details") or []:
 		bags = flt(row.no_of_bags)
-		charges = _apply_jute_charges_rule(row, bags)
-		row.deduct_weight_kg = bags * charges
 		row.gross_weight_kg = bags * average_weight
+		charges = _apply_jute_charges_rule(row, bags, flt(row.gross_weight_kg))
+		row.deduct_weight_kg = bags * charges
 		row.arrival_qty_kg = max(0, flt(row.gross_weight_kg) - flt(row.deduct_weight_kg))
 		total_arrival += flt(row.arrival_qty_kg)
 

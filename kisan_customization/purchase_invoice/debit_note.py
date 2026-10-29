@@ -209,8 +209,9 @@ def _apply_debit_note_settings(doc, source):
 	weight_kg, bag_kg, weight_amt, bag_amt = _calculate_return_deductions(source)
 	_sync_return_deduction_fields(doc, weight_kg, bag_kg, weight_amt, bag_amt)
 
-	# Per item: weight deduction (accepted kg − line gross) + bag deduction (total split by gross %).
 	_set_return_item_qty_per_line(doc, source, flt(bag_kg))
+	_remove_zero_qty_commodity_rows(doc)
+	_merge_debit_note_commodity_rows(doc, source)
 
 	clear_broker_commission_fields(doc)
 	_clear_return_payment_term_fields(doc)
@@ -228,6 +229,22 @@ def _calculate_return_deductions(source):
 	weight_kg, _, weight_amt = _calculate_weight_deduction_amount(source)
 	bag_kg, _, bag_amt = _calculate_bag_deduction_amount(source)
 	return flt(weight_kg), flt(bag_kg), flt(weight_amt), flt(bag_amt)
+
+
+def sync_kisan_debit_note_items(doc):
+	"""Recompute return line qty from source PI (bag + weight net kg, split by gross share)."""
+	if not doc.get("is_return") or not doc.get("return_against"):
+		return
+
+	source = frappe.get_doc("Purchase Invoice", doc.return_against)
+	if not is_kisan_custom(source):
+		return
+
+	weight_kg, bag_kg, weight_amt, bag_amt = _calculate_return_deductions(source)
+	_sync_return_deduction_fields(doc, weight_kg, bag_kg, weight_amt, bag_amt)
+	_set_return_item_qty_per_line(doc, source, flt(bag_kg))
+	_remove_zero_qty_commodity_rows(doc)
+	_merge_debit_note_commodity_rows(doc, source)
 
 
 def _clear_return_payment_term_fields(doc):
@@ -305,11 +322,23 @@ def _get_debit_note_commodity_items(doc):
 	]
 
 
+def _net_return_kg_from_source(source, total_bag_kg):
+	"""Net stock return kg = invoice accepted kg − arrival kg = weight deduction + bag deduction."""
+	weight_kg, _, _ = _calculate_weight_deduction_amount(source)
+	return max(0, flt(weight_kg) + flt(total_bag_kg))
+
+
 def _set_return_item_qty_per_line(doc, source, total_bag_kg):
-	"""Item return qty (quintal) = (line weight deduction + bag share) / 100."""
+	"""Return qty (quintal) = net return kg split by line gross share (not per-line weight + bag)."""
 	source_items = {item.name: item for item in source.get("items") or []}
 	commodity_items = _get_debit_note_commodity_items(doc)
 	if not commodity_items:
+		return
+
+	total_return_kg = _net_return_kg_from_source(source, total_bag_kg)
+	if not total_return_kg:
+		for item in commodity_items:
+			_apply_return_item_qty(doc, item, 0)
 		return
 
 	total_gross = flt(get_pi_total_gross_weight(source))
@@ -326,29 +355,125 @@ def _set_return_item_qty_per_line(doc, source, total_bag_kg):
 		if not source_item:
 			continue
 		line_gross = _item_line_gross_kg(source_item)
-		weight_ded_kg = _calculate_item_weight_deduction_kg(source_item)
-		lines.append((item, line_gross, weight_ded_kg))
+		if not line_gross:
+			_apply_return_item_qty(doc, item, 0)
+			continue
+		lines.append((item, line_gross))
 
 	if not lines:
 		return
 
-	remaining_bag_kg = flt(total_bag_kg)
-	for index, (item, line_gross, weight_ded_kg) in enumerate(lines):
-		if total_bag_kg and total_gross and line_gross:
-			if index == len(lines) - 1:
-				bag_ded_kg = remaining_bag_kg
-			else:
-				bag_ded_kg = flt(total_bag_kg * line_gross / total_gross, 6)
-				remaining_bag_kg = flt(remaining_bag_kg - bag_ded_kg, 6)
+	remaining_kg = total_return_kg
+	for index, (item, line_gross) in enumerate(lines):
+		if index == len(lines) - 1:
+			return_kg = remaining_kg
 		else:
-			bag_ded_kg = 0
-
-		return_kg = flt(weight_ded_kg) + flt(bag_ded_kg)
-		if return_kg <= 0:
-			_apply_return_item_qty(doc, item, 0)
-			continue
+			return_kg = flt(total_return_kg * line_gross / total_gross, 6)
+			remaining_kg = flt(remaining_kg - return_kg, 6)
 
 		_apply_return_item_qty(doc, item, -flt(return_kg / QUINTAL_TO_KG, 3))
+
+
+def _remove_zero_qty_commodity_rows(doc):
+	"""Return invoices with stock cannot keep commodity rows at qty 0."""
+	deduction_item_code = get_deduction_item_code()
+	keep = []
+	for row in doc.get("items") or []:
+		if deduction_item_code and row.item_code == deduction_item_code:
+			keep.append(row)
+			continue
+		if flt(row.qty):
+			keep.append(row)
+	doc.set("items", keep)
+
+
+def _source_qty_weighted_rate(source, item_code):
+	"""Average rate from source PI lines (weighted by accepted qty), e.g. 10@1500 + 10@1385 → 1442.50."""
+	deduction_item_code = get_deduction_item_code()
+	total_qty = 0.0
+	weighted_sum = 0.0
+	for row in source.get("items") or []:
+		if deduction_item_code and row.item_code == deduction_item_code:
+			continue
+		if row.item_code != item_code:
+			continue
+		qty = flt(row.qty)
+		if qty <= 0:
+			continue
+		total_qty += qty
+		weighted_sum += qty * flt(row.rate)
+	if not total_qty:
+		return 0.0
+	return flt(weighted_sum / total_qty, 2)
+
+
+def _apply_source_commodity_rates(doc, source):
+	"""Set merged debit-note commodity rate from source PI (not gross-share return split)."""
+	if not source:
+		return
+	conversion_rate = flt(doc.conversion_rate) or 1
+	for row in _get_debit_note_commodity_items(doc):
+		rate = _source_qty_weighted_rate(source, row.item_code)
+		if not rate:
+			continue
+		row.rate = rate
+		row.amount = flt(flt(row.qty) * rate, 2)
+		row.base_rate = flt(rate) * conversion_rate
+		row.base_amount = flt(row.amount) * conversion_rate
+
+
+def _merge_debit_note_commodity_rows(doc, source=None):
+	"""One debit-note row per item code; qty summed, rate from source PI qty-weighted average."""
+	deduction_item_code = get_deduction_item_code()
+	commodity_rows = []
+	other_rows = []
+	for row in doc.get("items") or []:
+		if deduction_item_code and row.item_code == deduction_item_code:
+			other_rows.append(row)
+		else:
+			commodity_rows.append(row)
+
+	if len(commodity_rows) <= 1:
+		doc.set("items", commodity_rows + other_rows)
+		_apply_source_commodity_rates(doc, source)
+		return
+
+	child_meta = frappe.get_meta(commodity_rows[0].doctype)
+	has_line_gross = child_meta.has_field("custom_gross_weight_kg")
+
+	merged_rows = []
+	seen_order = []
+	groups = {}
+	for row in commodity_rows:
+		code = row.item_code
+		if code not in groups:
+			groups[code] = []
+			seen_order.append(code)
+		groups[code].append(row)
+
+	for code in seen_order:
+		rows = groups[code]
+		if len(rows) == 1:
+			merged_rows.append(rows[0])
+			continue
+
+		primary = rows[0]
+		total_qty = sum(flt(r.qty) for r in rows)
+		total_stock_qty = sum(flt(r.stock_qty) for r in rows)
+
+		primary.qty = total_qty
+		primary.received_qty = total_qty
+		primary.stock_qty = total_stock_qty
+
+		if has_line_gross:
+			primary.custom_gross_weight_kg = sum(
+				flt(r.get("custom_gross_weight_kg")) for r in rows
+			)
+
+		merged_rows.append(primary)
+
+	doc.set("items", merged_rows + other_rows)
+	_apply_source_commodity_rates(doc, source)
 
 
 def _apply_return_item_qty(doc, item, qty):

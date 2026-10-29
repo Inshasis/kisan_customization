@@ -21,6 +21,7 @@ from kisan_customization.purchase_invoice.item_gross_weight import validate_item
 from kisan_customization.purchase_invoice.sauda_qty import validate_sauda_qty_range
 from kisan_customization.purchase_invoice.debit_note import (
 	clear_kisan_debit_note_tax_withholding,
+	sync_kisan_debit_note_items,
 	validate_unique_debit_note,
 )
 from kisan_customization.purchase_invoice.validation import (
@@ -61,6 +62,9 @@ def before_submit(doc, method=None):
 		source = frappe.get_doc("Purchase Invoice", doc.return_against)
 		if is_kisan_custom(source):
 			doc.update_outstanding_for_self = 0
+			sync_kisan_debit_note_items(doc)
+			if hasattr(doc, "calculate_taxes_and_totals"):
+				doc.calculate_taxes_and_totals()
 		return
 
 	_validate_required_deduction_actuals(doc)
@@ -72,7 +76,10 @@ def validate(doc, method=None):
 		recalculate_bag_weights(doc)
 		remove_deduction_item_rows(doc)
 		validate_unique_debit_note(doc)
+		sync_kisan_debit_note_items(doc)
 		sync_deduction_item_row(doc)
+		if hasattr(doc, "calculate_taxes_and_totals"):
+			doc.calculate_taxes_and_totals()
 	elif is_kisan_custom(doc):
 		validate_bag_details(doc)
 		validate_item_gross_weights(doc)

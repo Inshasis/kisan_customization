@@ -419,6 +419,8 @@ def _bargain_rows(pi, debit=None):
 	total_gross_all = sum(get_item_line_gross_weight_kg(row) for row in commodity_items)
 	rows = []
 	bargain_total = 0.0
+	total_gross_kg = 0.0
+	total_arrival_kg_sum = 0.0
 
 	for idx, pi_row in enumerate(commodity_items, start=1):
 		po_line = _po_line_for_pi_item(pi_row)
@@ -449,9 +451,16 @@ def _bargain_rows(pi, debit=None):
 			pi.currency,
 		)
 		bargain_total += row.pop("_amount_raw")
+		total_gross_kg += flt(gross_kg)
+		total_arrival_kg_sum += flt(arr_kg)
 		rows.append(row)
 
-	return rows, _fmt_print_amount(bargain_total, pi.currency)
+	return (
+		rows,
+		_fmt_print_amount(bargain_total, pi.currency),
+		_display_kg(total_gross_kg),
+		_display_kg(total_arrival_kg_sum),
+	)
 
 
 MAX_QUALITY_PRINT_ROWS = 12
@@ -653,7 +662,9 @@ def get_settlement_print_data(purchase_invoice):
 	our_loc = company_address
 	quality_rows, quality_total = _quality_rows(pi)
 	debit_tax = _tax_breakup(debit) if debit else _tax_breakup(None)
-	bargain_rows, bargain_total = _bargain_rows(pi, debit)
+	bargain_rows, bargain_total, bargain_gross_total, bargain_arrival_total = _bargain_rows(
+		pi, debit
+	)
 	net_payable = flt(pi.grand_total) + flt(debit.grand_total if debit else 0)
 	arrival = flt(pi.get("custom_total_arrival_weight"))
 	final_rate = 0.0
@@ -696,6 +707,8 @@ def get_settlement_print_data(purchase_invoice):
 		"pi_total_payable": _fmt_print_amount(pi.grand_total, pi.currency),
 		"bargain_rows": bargain_rows,
 		"bargain_total": bargain_total,
+		"bargain_gross_total": bargain_gross_total,
+		"bargain_arrival_total": bargain_arrival_total,
 		"quality_rows": quality_rows,
 		"quality_total": _fmt_print_amount(quality_total, pi.currency),
 		"debit_lines": _debit_lines(debit, pi),

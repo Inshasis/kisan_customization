@@ -574,15 +574,22 @@ function validate_bag_count(frm, cdt, cdn) {
 	return true;
 }
 
-function apply_jute_charges_rule(row, bags) {
+function get_master_bag_charges(frm, bagType) {
+	return flt(frm._kisan_bag_charges_by_type?.[bagType]);
+}
+
+function apply_jute_charges_rule(row, bags, grossKg, frm) {
 	if ((row.bag_type || "").trim().toLowerCase() !== "jute") {
 		return flt(row.charges);
 	}
-	let charges = flt(row.charges);
-	if (bags * charges > 65) {
-		charges = 1;
+	const base = get_master_bag_charges(frm, "jute") || flt(row.charges);
+	if (!bags) {
+		return base;
 	}
-	return charges;
+	if (flt(grossKg) / bags > 65) {
+		return 1;
+	}
+	return base;
 }
 
 function calculate_bag_row(frm, cdt, cdn) {
@@ -592,9 +599,9 @@ function calculate_bag_row(frm, cdt, cdn) {
 	const average_weight = total_bags ? total_gross / total_bags : 0;
 
 	const bags = flt(row.no_of_bags);
-	const charges = apply_jute_charges_rule(row, bags);
-	const deduct = bags * charges;
 	const gross = bags * average_weight;
+	const charges = apply_jute_charges_rule(row, bags, gross, frm);
+	const deduct = bags * charges;
 	const arrival = Math.max(0, gross - deduct);
 
 	Promise.all([
@@ -689,6 +696,11 @@ function load_bag_type_options(frm) {
 		method: "kisan_customization.purchase_invoice.bags.get_bag_type_options",
 		callback(r) {
 			if (!r.message?.length) return;
+
+			frm._kisan_bag_charges_by_type = {};
+			r.message.forEach((row) => {
+				frm._kisan_bag_charges_by_type[row.bag_type] = flt(row.charges);
+			});
 
 			const options = r.message.map((row) => row.bag_type).join("\n");
 			if (frm.fields_dict.custom_bag_details?.grid) {

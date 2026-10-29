@@ -250,7 +250,10 @@ doc_events = {
 		"on_trash": "kisan_customization.purchase_invoice.aggregator_booking.on_trash",
 	},
 	"Purchase Order": {
-		"validate": "kisan_customization.purchase_order.broker_commission.validate",
+		"validate": [
+			"kisan_customization.purchase_order.sauda_qty.validate",
+			"kisan_customization.purchase_order.broker_commission.validate",
+		],
 		"before_submit": "kisan_customization.purchase_order.broker_commission.before_submit",
 	},
 	"Sales Order": {

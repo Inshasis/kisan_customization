@@ -424,7 +424,14 @@ html body .print-format .print-format-margin {
             <td class="rgt amt">{{ row.amount }}</td>
         </tr>
         {% endfor %}
-        <tr class="sec-total"><td colspan="8" class="rgt">Total Amount</td><td class="rgt amt">{{ d.bargain_total }}</td></tr>
+        <tr class="sec-total">
+            <td colspan="3" class="rgt b">Total</td>
+            <td class="rgt b">{{ d.bargain_gross_total or "" }}</td>
+            <td></td>
+            <td class="rgt b">{{ d.bargain_arrival_total or "" }}</td>
+            <td colspan="2"></td>
+            <td class="rgt amt b">{{ d.bargain_total }}</td>
+        </tr>
     </table>
 
     {# ================= QUALITY AND OTHER DEDUCTIONS ================= #}

@@ -73,7 +73,7 @@ def create_sales_invoice_for_jawak(doc):
 	update_outward_jawak_status(doc.name)
 
 	frappe.msgprint(
-		_("Created draft Sales Invoice {0}").format(get_link_to_form("Sales Invoice", si.name)),
+		_("Created Draft Sales Invoice"),
 		indicator="green",
 	)
 

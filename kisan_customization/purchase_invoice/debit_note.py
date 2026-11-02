@@ -387,35 +387,30 @@ def _remove_zero_qty_commodity_rows(doc):
 	doc.set("items", keep)
 
 
-def _source_qty_weighted_rate(source, item_code):
-	"""Average rate from source PI lines (weighted by accepted qty), e.g. 10@1500 + 10@1385 → 1442.50."""
-	deduction_item_code = get_deduction_item_code()
-	total_qty = 0.0
-	weighted_sum = 0.0
-	for row in source.get("items") or []:
-		if deduction_item_code and row.item_code == deduction_item_code:
-			continue
-		if row.item_code != item_code:
-			continue
-		qty = flt(row.qty)
-		if qty <= 0:
-			continue
-		total_qty += qty
-		weighted_sum += qty * flt(row.rate)
-	if not total_qty:
+def _debit_note_blended_deduction_rate(source):
+	"""
+	Debit note commodity rate (₹/quintal):
+	(Bag Deduction Amount + Weight Deduction Amount)
+	÷ ((Weight Deduction kg + Bag Deduction kg) / 100)
+	"""
+	weight_kg, bag_kg, weight_amt, bag_amt = _calculate_return_deductions(source)
+	total_kg = flt(weight_kg) + flt(bag_kg)
+	if not total_kg:
 		return 0.0
-	return flt(weighted_sum / total_qty, 2)
+	total_quintal = total_kg / QUINTAL_TO_KG
+	total_amt = flt(weight_amt) + flt(bag_amt)
+	return flt(total_amt / total_quintal, 2)
 
 
 def _apply_source_commodity_rates(doc, source):
-	"""Set merged debit-note commodity rate from source PI (not gross-share return split)."""
+	"""Apply blended bag+weight deduction rate; qty on lines is unchanged."""
 	if not source:
+		return
+	rate = _debit_note_blended_deduction_rate(source)
+	if not rate:
 		return
 	conversion_rate = flt(doc.conversion_rate) or 1
 	for row in _get_debit_note_commodity_items(doc):
-		rate = _source_qty_weighted_rate(source, row.item_code)
-		if not rate:
-			continue
 		row.rate = rate
 		row.amount = flt(flt(row.qty) * rate, 2)
 		row.base_rate = flt(rate) * conversion_rate
@@ -423,7 +418,7 @@ def _apply_source_commodity_rates(doc, source):
 
 
 def _merge_debit_note_commodity_rows(doc, source=None):
-	"""One debit-note row per item code; qty summed, rate from source PI qty-weighted average."""
+	"""One debit-note row per item code; qty summed; rate from blended deduction amounts/kg."""
 	deduction_item_code = get_deduction_item_code()
 	commodity_rows = []
 	other_rows = []

@@ -3,6 +3,8 @@
 import frappe
 from frappe.utils import flt
 
+QUINTAL_TO_KG = 100
+
 
 def _get_deduction_item_code():
 	settings_meta = frappe.get_meta("Kisan Master Settings", cached=True)
@@ -71,3 +73,69 @@ def sync_total_gross_weight_from_items(doc):
 
 def validate_item_gross_weights(doc):
 	sync_total_gross_weight_from_items(doc)
+
+
+def _pi_item_field_by_label(label):
+	meta = frappe.get_meta("Purchase Invoice Item")
+	for df in meta.fields:
+		if (df.label or "").strip() == label:
+			return df.fieldname
+	return None
+
+
+def get_pi_item_weight_deduction_fieldnames():
+	"""Use existing Custom Fields on Purchase Invoice Item (no patch creates them)."""
+	meta = frappe.get_meta("Purchase Invoice Item")
+	kg_field = None
+	amount_field = None
+
+	if meta.has_field("custom_weight_deduction_kg"):
+		kg_field = "custom_weight_deduction_kg"
+	else:
+		kg_field = _pi_item_field_by_label("Weight Deduction (kg)")
+
+	if meta.has_field("custom_weight_deduction_amount"):
+		amount_field = "custom_weight_deduction_amount"
+	else:
+		amount_field = _pi_item_field_by_label("Weight Deduction Amount")
+
+	return kg_field, amount_field
+
+
+def get_item_line_weight_deduction_kg(item):
+	"""Accepted qty (kg) − line gross: qty (quintal) × 100 − custom_gross_weight_kg."""
+	return flt(flt(item.get("qty")) * QUINTAL_TO_KG - get_item_line_gross_weight_kg(item))
+
+
+def get_item_line_weight_deduction_amount(item):
+	"""Line weight deduction (kg) × line rate (rate is per quintal)."""
+	line_kg = get_item_line_weight_deduction_kg(item)
+	return flt(line_kg * flt(item.get("rate")) / QUINTAL_TO_KG, 2)
+
+
+def sync_item_weight_deductions(doc):
+	"""Per commodity item row → sum into PI Weight Deduction (kg) / Amount."""
+	if doc.get("is_return"):
+		return
+	if not doc.meta.has_field("custom_weight_deduction"):
+		return
+
+	kg_field, amount_field = get_pi_item_weight_deduction_fieldnames()
+	if not kg_field:
+		return
+
+	total_kg = 0.0
+	total_amount = 0.0
+
+	for row in get_commodity_items(doc):
+		line_kg = get_item_line_weight_deduction_kg(row)
+		line_amount = get_item_line_weight_deduction_amount(row)
+		row.set(kg_field, line_kg)
+		if amount_field:
+			row.set(amount_field, line_amount)
+		total_kg += line_kg
+		total_amount += line_amount
+
+	doc.custom_weight_deduction = flt(total_kg)
+	if doc.meta.has_field("custom_weight_deduction_amount"):
+		doc.custom_weight_deduction_amount = flt(total_amount, 2)

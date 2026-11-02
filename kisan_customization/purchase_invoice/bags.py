@@ -60,14 +60,14 @@ def calculate_bag_deduction(doc):
 
 
 def calculate_weight_deduction(doc):
-	from kisan_customization.utils.deduction_utils import get_pi_total_gross_weight
+	from kisan_customization.purchase_invoice.item_gross_weight import sync_item_weight_deductions
 
-	accepted_qty_kg = get_accepted_qty_kg(doc)
-	gross_weight = get_pi_total_gross_weight(doc)
-	weight_deduction = flt(accepted_qty_kg) - flt(gross_weight)
-	item_rate = get_pi_item_rate(doc)
-	amount = flt(weight_deduction * item_rate / 100, 2)
-	return weight_deduction, item_rate, amount
+	sync_item_weight_deductions(doc)
+	return (
+		flt(doc.get("custom_weight_deduction")),
+		get_pi_item_rate(doc),
+		flt(doc.get("custom_weight_deduction_amount")),
+	)
 
 
 def get_child_bag_sum(doc):

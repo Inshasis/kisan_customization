@@ -118,7 +118,11 @@ frappe.ui.form.on("Purchase Invoice", {
 
 	onload(frm) {
 		toggle_return_pi_sections(frm);
-		toggle_pi_item_gross_weight_column(frm);
+		if (kisan_customization.transaction_mode.is_kisan_custom(frm)) {
+			load_kisan_pi_item_weight_config(frm);
+		} else {
+			toggle_pi_item_gross_weight_column(frm);
+		}
 		if (
 			kisan_customization.transaction_mode.is_kisan_custom(frm) &&
 			frm.doc[kisan_customization.transaction_mode.FIELD]
@@ -296,17 +300,33 @@ frappe.ui.form.on("Purchase Invoice Item", {
 	},
 });
 
+function toggle_pi_item_weight_columns(frm, show) {
+	if (!frm.fields_dict.items?.grid) {
+		return;
+	}
+	const fields = ["custom_gross_weight_kg"];
+	if (frm._pi_item_weight_kg_field) {
+		fields.push(frm._pi_item_weight_kg_field);
+	}
+	if (frm._pi_item_weight_amount_field) {
+		fields.push(frm._pi_item_weight_amount_field);
+	}
+	fields.forEach((fieldname) => {
+		frm.fields_dict.items.grid.update_docfield_property(
+			fieldname,
+			"hidden",
+			show ? 0 : 1
+		);
+	});
+}
+
 function toggle_pi_item_gross_weight_column(frm) {
 	if (!frm.fields_dict.items?.grid) {
 		return;
 	}
 	const show =
 		kisan_customization.transaction_mode.is_kisan_custom(frm) && !cint(frm.doc.is_return);
-	frm.fields_dict.items.grid.update_docfield_property(
-		"custom_gross_weight_kg",
-		"hidden",
-		show ? 0 : 1
-	);
+	toggle_pi_item_weight_columns(frm, show);
 	if (frm.fields_dict.custom_total_gross_weight) {
 		frm.set_df_property(
 			"custom_total_gross_weight",
@@ -316,8 +336,72 @@ function toggle_pi_item_gross_weight_column(frm) {
 	}
 	if (show) {
 		sync_total_gross_weight_from_items(frm);
+		sync_item_weight_deductions(frm);
 	}
 	frm.refresh_field("items");
+}
+
+function is_pi_commodity_item_row(frm, row) {
+	const deductionItem = frm._kisan_deduction_item_code;
+	if (deductionItem && row.item_code === deductionItem) {
+		return false;
+	}
+	return true;
+}
+
+function sync_item_weight_deductions(frm) {
+	if (frm.doc.is_return || !kisan_customization.transaction_mode.is_kisan_custom(frm)) {
+		return;
+	}
+	const kgField = frm._pi_item_weight_kg_field;
+	if (!kgField) {
+		return;
+	}
+	const amountField = frm._pi_item_weight_amount_field;
+
+	let total_kg = 0;
+	let total_amount = 0;
+
+	(frm.doc.items || []).forEach((row) => {
+		if (!is_pi_commodity_item_row(frm, row)) {
+			return;
+		}
+		const line_kg = flt(row.qty) * 100 - flt(row.custom_gross_weight_kg);
+		const line_amount = flt((line_kg * flt(row.rate)) / 100, 2);
+
+		row[kgField] = line_kg;
+		if (amountField) {
+			row[amountField] = line_amount;
+		}
+
+		total_kg += line_kg;
+		total_amount += line_amount;
+	});
+
+	if (frm.fields_dict.custom_weight_deduction) {
+		frm.set_value("custom_weight_deduction", total_kg);
+	}
+	if (frm.fields_dict.custom_weight_deduction_amount) {
+		frm.set_value("custom_weight_deduction_amount", flt(total_amount, 2));
+	}
+}
+
+function load_kisan_pi_item_weight_config(frm) {
+	frappe.call({
+		method: "kisan_customization.purchase_invoice.deductions.get_pi_item_weight_deduction_fieldnames",
+		callback(r) {
+			frm._pi_item_weight_kg_field = r.message?.kg_field || "";
+			frm._pi_item_weight_amount_field = r.message?.amount_field || "";
+			toggle_pi_item_gross_weight_column(frm);
+		},
+	});
+	frappe.call({
+		method: "kisan_customization.purchase_invoice.deductions.get_kisan_deduction_item_code",
+		callback(r) {
+			frm._kisan_deduction_item_code = r.message || "";
+			sync_item_weight_deductions(frm);
+		},
+	});
 }
 
 function sync_total_gross_weight_from_items(frm) {
@@ -337,6 +421,7 @@ function sync_total_gross_weight_from_items(frm) {
 }
 
 kisan_customization.transaction_mode.init_kisan_purchase_invoice_ui = function (frm) {
+	load_kisan_pi_item_weight_config(frm);
 	load_bag_type_options(frm);
 	if (frm.is_new() && !frm.doc.is_return && !frm.doc.custom_bag_details?.length) {
 		load_default_bag_rows(frm);
@@ -661,20 +746,10 @@ function update_deduction_header_fields(frm) {
 		frm.set_value("custom_bag_deduction_amount", bag_amount);
 	}
 
-	const total_qty =
-		flt(frm.doc.total_qty) ||
-		(frm.doc.items || []).reduce((sum, row) => sum + flt(row.qty), 0);
-	const accepted_qty_kg = total_qty * 100;
-	const weight_deduction = accepted_qty_kg - gross;
-	const weight_amount = flt((weight_deduction * avg_rate) / 100, 2);
+	sync_item_weight_deductions(frm);
 
-	if (frm.fields_dict.custom_weight_deduction) {
-		frm.set_value("custom_weight_deduction", weight_deduction);
-	}
 	if (frm.fields_dict.custom_weight_deduction_amount) {
-		frm.set_value("custom_weight_deduction_amount", weight_amount).then(() => {
-			kisan_customization.broker_commission.calculate(frm);
-		});
+		kisan_customization.broker_commission.calculate(frm);
 		return;
 	}
 

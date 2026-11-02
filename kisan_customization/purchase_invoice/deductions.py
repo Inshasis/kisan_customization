@@ -1003,6 +1003,21 @@ def get_deduction_item_code():
 	return None
 
 
+@frappe.whitelist()
+def get_kisan_deduction_item_code():
+	return get_deduction_item_code() or ""
+
+
+@frappe.whitelist()
+def get_pi_item_weight_deduction_fieldnames():
+	from kisan_customization.purchase_invoice.item_gross_weight import (
+		get_pi_item_weight_deduction_fieldnames as _fields,
+	)
+
+	kg_field, amount_field = _fields()
+	return {"kg_field": kg_field or "", "amount_field": amount_field or ""}
+
+
 def get_return_against_deduction_total(doc):
 	if not doc.get("is_return") or not doc.get("return_against"):
 		return 0

@@ -122,18 +122,18 @@ frappe.ui.form.on('Inward Aawak', {
 				return;
 			}
 
-			if (row.bag_configuration) {
-				if (config_keys[row.bag_configuration]) {
-					frappe.msgprint({
-						title: __('Bag Details Error'),
-						message: __('Row {0}: Duplicate Bag Configuration line', [index + 1]),
-						indicator: 'red',
-					});
-					frappe.validated = false;
-					return;
-				}
-				config_keys[row.bag_configuration] = true;
-			}
+			// if (row.bag_configuration) {
+			// 	if (config_keys[row.bag_configuration]) {
+			// 		frappe.msgprint({
+			// 			title: __('Bag Details Error'),
+			// 			message: __('Row {0}: Duplicate Bag Configuration line', [index + 1]),
+			// 			indicator: 'red',
+			// 		});
+			// 		frappe.validated = false;
+			// 		return;
+			// 	}
+			// 	config_keys[row.bag_configuration] = true;
+			// }
 
 			if (!row.number_of_bags || row.number_of_bags <= 0) {
 				frappe.msgprint({

@@ -41,18 +41,34 @@ def _print_deduction_particulars(name):
 	return f"{mapped}{suffix}"
 
 
+# def _fmt_print_amount(amount, currency):
+# 	"""Settlement print: whole currency units (no paise/decimals on print)."""
+# 	val = int(round(flt(amount or 0)))
+# 	return fmt_money(val, currency=currency, precision=0)
+
+
 def _fmt_print_amount(amount, currency):
-	"""Settlement print: whole currency units (no paise/decimals on print)."""
-	val = int(round(flt(amount or 0)))
+	"""Settlement print: positive whole currency units (no decimals)."""
+	val = int(round(abs(flt(amount or 0))))
 	return fmt_money(val, currency=currency, precision=0)
+
+
+
+# def _fmt_print_debit_deduction(amount, currency):
+# 	"""Debit note line deductions display as negative amounts on print."""
+# 	val = int(round(abs(flt(amount or 0))))
+# 	if not val:
+# 		return ""
+# 	return fmt_money(val, currency=currency, precision=0)
 
 
 def _fmt_print_debit_deduction(amount, currency):
-	"""Debit note line deductions display as negative amounts on print."""
-	val = -int(round(abs(flt(amount or 0))))
+	"""Debit note line deductions display without negative signs on print."""
+	val = int(round(abs(flt(amount or 0))))
 	if not val:
 		return ""
 	return fmt_money(val, currency=currency, precision=0)
+
 
 
 def _load_pi(purchase_invoice):
@@ -218,6 +234,40 @@ def _tax_breakup(doc):
 	}
 
 
+# def _tax_sidebar(doc, currency):
+# 	"""Right-hand tax block (Sub Total, CGST/SGST/IGST lines) like settlement PDF."""
+# 	if not doc:
+# 		taxes = _tax_breakup(None)
+# 		sub_total = 0.0
+# 	else:
+# 		taxes = _tax_breakup(doc)
+# 		sub_total = flt(doc.net_total) or flt(doc.total)
+
+# 	def _line(label, amount):
+# 		return {"label": label, "amount": _fmt_print_amount(amount, currency)}
+
+# 	lines = [_line("Sub Total", sub_total)]
+# 	if taxes["cgst"] or taxes["cgst_rate"]:
+# 		pct = f" @ {taxes['cgst_rate']:g}%" if taxes["cgst_rate"] else ""
+# 		lines.append(_line(f"CGST +{pct}", taxes["cgst"]))
+# 	if taxes["sgst"] or taxes["sgst_rate"]:
+# 		pct = f" @ {taxes['sgst_rate']:g}%" if taxes["sgst_rate"] else ""
+# 		lines.append(_line(f"SGST +{pct}", taxes["sgst"]))
+# 	pct = f" @ {taxes['igst_rate']:g}%" if taxes["igst_rate"] else " @ 0%"
+# 	lines.append(_line(f"IGST +{pct}", taxes["igst"]))
+# 	if taxes["round_off"]:
+# 		lines.append(_line("Round Off", taxes["round_off"]))
+# 	lines.append(
+# 		{
+# 			"label": "Debit Note Total",
+# 			"amount": _fmt_print_amount(doc.grand_total if doc else 0, currency),
+# 			"bold": True,
+# 		}
+# 	)
+# 	return lines
+
+
+
 def _tax_sidebar(doc, currency):
 	"""Right-hand tax block (Sub Total, CGST/SGST/IGST lines) like settlement PDF."""
 	if not doc:
@@ -228,26 +278,36 @@ def _tax_sidebar(doc, currency):
 		sub_total = flt(doc.net_total) or flt(doc.total)
 
 	def _line(label, amount):
-		return {"label": label, "amount": _fmt_print_amount(amount, currency)}
+		return {
+			"label": label,
+			"amount": _fmt_print_amount(abs(flt(amount)), currency)
+		}
 
 	lines = [_line("Sub Total", sub_total)]
+
 	if taxes["cgst"] or taxes["cgst_rate"]:
 		pct = f" @ {taxes['cgst_rate']:g}%" if taxes["cgst_rate"] else ""
 		lines.append(_line(f"CGST +{pct}", taxes["cgst"]))
+
 	if taxes["sgst"] or taxes["sgst_rate"]:
 		pct = f" @ {taxes['sgst_rate']:g}%" if taxes["sgst_rate"] else ""
 		lines.append(_line(f"SGST +{pct}", taxes["sgst"]))
+
 	pct = f" @ {taxes['igst_rate']:g}%" if taxes["igst_rate"] else " @ 0%"
 	lines.append(_line(f"IGST +{pct}", taxes["igst"]))
+
 	if taxes["round_off"]:
 		lines.append(_line("Round Off", taxes["round_off"]))
-	lines.append(
-		{
-			"label": "Debit Note Total",
-			"amount": _fmt_print_amount(doc.grand_total if doc else 0, currency),
-			"bold": True,
-		}
-	)
+
+	lines.append({
+		"label": "Debit Note Total",
+		"amount": _fmt_print_amount(
+			abs(flt(doc.grand_total)) if doc else 0,
+			currency
+		),
+		"bold": True,
+	})
+
 	return lines
 
 
@@ -569,6 +629,26 @@ def _debit_lines(debit, pi):
 	return lines
 
 
+# def _summary_row(label, doc, currency):
+# 	if not doc:
+# 		return {
+# 			"document": label,
+# 			"basic_net_tds": _fmt_settlement_amount(0, currency),
+# 			"gst": _fmt_settlement_amount(0, currency),
+# 			"net_payable": _fmt_settlement_amount(0, currency),
+# 		}
+# 	taxes = _tax_breakup(doc)
+# 	basic = flt(doc.net_total) or flt(doc.total)
+# 	basic_net = basic - taxes["tds"]
+# 	return {
+# 		"document": label,
+# 		"basic_net_tds": _fmt_settlement_amount(basic_net, currency),
+# 		"gst": _fmt_settlement_amount(taxes["gst_total"], currency),
+# 		"net_payable": _fmt_settlement_amount(doc.grand_total, currency),
+# 	}
+
+
+
 def _summary_row(label, doc, currency):
 	if not doc:
 		return {
@@ -577,14 +657,16 @@ def _summary_row(label, doc, currency):
 			"gst": _fmt_settlement_amount(0, currency),
 			"net_payable": _fmt_settlement_amount(0, currency),
 		}
+
 	taxes = _tax_breakup(doc)
-	basic = flt(doc.net_total) or flt(doc.total)
-	basic_net = basic - taxes["tds"]
+	basic = abs(flt(doc.net_total) or flt(doc.total))
+	basic_net = abs(basic - flt(taxes["tds"]))
+
 	return {
 		"document": label,
 		"basic_net_tds": _fmt_settlement_amount(basic_net, currency),
-		"gst": _fmt_settlement_amount(taxes["gst_total"], currency),
-		"net_payable": _fmt_settlement_amount(doc.grand_total, currency),
+		"gst": _fmt_settlement_amount(abs(flt(taxes["gst_total"])), currency),
+		"net_payable": _fmt_settlement_amount(abs(flt(doc.grand_total)), currency),
 	}
 
 

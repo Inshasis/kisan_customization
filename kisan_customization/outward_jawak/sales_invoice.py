@@ -33,10 +33,19 @@ def create_sales_invoice_for_jawak(doc):
 
 	jawak_posting_date = getdate(doc.jawak_date)
 	jawak_datetime = get_datetime(doc.jawak_date)
+	company_naming_series = {
+		"Kisanmitra Agriventures Private Limited": "R/AGRI/.YY./.MM./.###",
+		"Kisanmitra Agro Industries Private Limited": "R/AGRO/.YY./.MM./.###",
+	}
+
+	naming = company_naming_series.get(doc.firm)
+
+	if not naming:
+		frappe.throw(_("Naming Series is not configured for company {0}").format(doc.firm))
 
 	si = frappe.new_doc("Sales Invoice")
 	si.customer = doc.storage_customer
-	si.naming_series = "R/AGRO/.YY./.MM./.###"
+	si.naming_series = naming
 	si.company = doc.firm
 	si.set_posting_time = 1
 	si.posting_date = jawak_posting_date

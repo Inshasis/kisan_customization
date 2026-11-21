@@ -69,6 +69,16 @@ def create_sales_invoice_for_jawak(doc):
 	si.set_missing_values()
 	si.set_posting_time = 1
 	si.posting_date = jawak_posting_date
+	# Rental invoice from Jawak must not update stock / set warehouses.
+	si.update_stock = 0
+	if si.meta.has_field("set_warehouse"):
+		si.set_warehouse = None
+	if si.meta.has_field("set_target_warehouse"):
+		si.set_target_warehouse = None
+	for row in si.get("items") or []:
+		row.warehouse = None
+		if row.meta.has_field("target_warehouse"):
+			row.target_warehouse = None
 	si.flags.ignore_permissions = True
 	si.insert()
 

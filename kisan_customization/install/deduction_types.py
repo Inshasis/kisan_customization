@@ -70,7 +70,17 @@ def _sync_deduction_type(company, row, update_existing=False):
 	)
 	_copy_related_account_from_existing(doc, type_name)
 	doc.flags.ignore_mandatory = True
-	doc.insert(ignore_permissions=True)
+	savepoint = f"deduction_type_{frappe.generate_hash(length=8)}"
+	frappe.db.savepoint(savepoint)
+	try:
+		doc.insert(ignore_permissions=True)
+	except (frappe.ValidationError, frappe.DuplicateEntryError):
+		# Skip invalid company/account pairs or existing names so after_migrate does not abort.
+		frappe.db.rollback(save_point=savepoint)
+		frappe.log_error(
+			title=f"Deduction Type sync skipped: {type_name} / {company}",
+			message=frappe.get_traceback(),
+		)
 
 
 def _find_existing_deduction_type(company, type_name):
@@ -82,12 +92,16 @@ def _find_existing_deduction_type(company, type_name):
 	if name:
 		return name
 
+	# Deduction Type is autonamed by deduction_type_name (globally unique).
+	# If it already exists for any company, treat as present and do not insert again.
 	if frappe.db.exists("Deduction Type", type_name):
-		doc_company = frappe.db.get_value("Deduction Type", type_name, "company")
-		if doc_company == company:
-			return type_name
+		return type_name
 
-	return None
+	return frappe.db.get_value(
+		"Deduction Type",
+		{"deduction_type_name": type_name},
+		"name",
+	)
 
 
 def _update_if_changed(name, values):
@@ -120,10 +134,45 @@ def _copy_related_account_from_existing(doc, type_name):
 	if doc.get("related_account"):
 		return
 
+	# Prefer an account already linked for this same company.
 	related_account = frappe.db.get_value(
+		"Deduction Type",
+		{
+			"deduction_type_name": type_name,
+			"company": doc.company,
+			"related_account": ("is", "set"),
+		},
+		"related_account",
+	)
+	if related_account and _account_belongs_to_company(related_account, doc.company):
+		doc.related_account = related_account
+		return
+
+	# Map account from another company's Deduction Type by account_name.
+	other_account = frappe.db.get_value(
 		"Deduction Type",
 		{"deduction_type_name": type_name, "related_account": ("is", "set")},
 		"related_account",
 	)
-	if related_account:
-		doc.related_account = related_account
+	mapped = _map_account_to_company(other_account, doc.company) if other_account else None
+	if mapped:
+		doc.related_account = mapped
+
+
+def _account_belongs_to_company(account, company):
+	return bool(frappe.db.exists("Account", {"name": account, "company": company}))
+
+
+def _map_account_to_company(account, company):
+	if _account_belongs_to_company(account, company):
+		return account
+
+	account_name = frappe.db.get_value("Account", account, "account_name")
+	if not account_name:
+		return None
+
+	return frappe.db.get_value(
+		"Account",
+		{"account_name": account_name, "company": company},
+		"name",
+	)

@@ -1135,6 +1135,55 @@ def _apply_deduction_item_values(doc, item_row, qty, rate):
 	if item_row.meta.has_field("base_net_amount"):
 		item_row.base_net_amount = item_row.base_amount
 
+	_apply_deduction_item_gst(doc, item_row)
+
+
+def _get_first_commodity_item_row(doc, exclude_row=None):
+	deduction_code = get_deduction_item_code()
+	for row in doc.get("items") or []:
+		if exclude_row is not None and row is exclude_row:
+			continue
+		if deduction_code and row.item_code == deduction_code:
+			continue
+		return row
+	return None
+
+
+def _apply_deduction_item_gst(doc, item_row):
+	"""Ensure Quality & Other gets HSN + Taxable GST (not Nil-Rated with blank HSN)."""
+	if not item_row.meta.has_field("gst_hsn_code"):
+		return
+
+	hsn = frappe.db.get_value("Item", item_row.item_code, "gst_hsn_code")
+	if hsn:
+		item_row.gst_hsn_code = hsn
+
+	commodity = _get_first_commodity_item_row(doc, exclude_row=item_row)
+
+	if item_row.meta.has_field("gst_treatment"):
+		treatment = (commodity.get("gst_treatment") if commodity else None) or "Taxable"
+		if treatment in ("Nil-Rated", "Exempted", "Non-GST", "Zero-Rated"):
+			treatment = "Taxable"
+		item_row.gst_treatment = treatment
+
+	# Do not keep Nil-Rated template — it zeros taxable_value in GST Breakup.
+	if item_row.meta.has_field("item_tax_template"):
+		template = commodity.get("item_tax_template") if commodity else None
+		current = item_row.get("item_tax_template") or ""
+		if template:
+			item_row.item_tax_template = template
+		elif current.startswith("Nil-Rated"):
+			item_row.item_tax_template = None
+
+	for fieldname in ("igst_rate", "cgst_rate", "sgst_rate", "cess_rate"):
+		if not item_row.meta.has_field(fieldname):
+			continue
+		if commodity and commodity.get(fieldname) is not None:
+			item_row.set(fieldname, flt(commodity.get(fieldname)))
+
+	if item_row.meta.has_field("taxable_value"):
+		item_row.taxable_value = flt(item_row.amount)
+
 
 def _set_deduction_item_details(doc, item_row):
 	_apply_deduction_item_values(doc, item_row, item_row.qty, item_row.rate)

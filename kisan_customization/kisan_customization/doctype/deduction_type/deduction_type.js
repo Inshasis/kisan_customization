@@ -1,8 +1,23 @@
 // Copyright (c) 2026, Hidayatali and contributors
 
 frappe.ui.form.on("Deduction Type", {
+	setup(frm) {
+		frm.set_query("related_account", () => ({
+			filters: {
+				company: frm.doc.company || "",
+				is_group: 0,
+			},
+		}));
+	},
+
 	refresh(frm) {
 		toggle_calculation_fields(frm);
+	},
+
+	company(frm) {
+		if (frm.doc.related_account) {
+			frm.set_value("related_account", "");
+		}
 	},
 
 	qty_deducation(frm) {

@@ -263,8 +263,8 @@ html body .print-format .print-format-margin {
     {# Company + e-Waybill / Date + e-Invoice QR (only when IRN exists) #}
     <table class="party-grid block">
         <colgroup>
-            <col style="width:{% if doc.irn %}58%{% else %}100%{% endif %}">
-            {% if doc.irn %}<col style="width:42%">{% endif %}
+            <col style="width:{% if doc.irn %}55%{% else %}100%{% endif %}">
+            {% if doc.irn %}<col style="width:45%">{% endif %}
         </colgroup>
         <tr>
             <td>
@@ -333,7 +333,7 @@ html body .print-format .print-format-margin {
 
     {# Customer / Bill To | Ship To / Vehicle / Place of Supply #}
     <table class="party-grid block">
-        <colgroup><col style="width:50%"><col style="width:50%"></colgroup>
+        <colgroup><col style="width:55%"><col style="width:45%"></colgroup>
         <tr>
             <td>
                 <table class="kv">
@@ -383,8 +383,8 @@ html body .print-format .print-format-margin {
     <table class="block data-table">
         <colgroup>
             <col style="width:4%">
-            <col style="width:54%">
-            <col style="width:12%">
+            <col style="width:51%">
+            <col style="width:15%">
             <col style="width:15%">
             <col style="width:15%">
         </colgroup>

@@ -1,0 +1,479 @@
+{# GST Sales — Tax Invoice / Credit Note for Sales Invoice (A4). Uses doc only (no Jinja helpers). #}
+{% set currency = doc.currency or "INR" %}
+{% set title = "Credit Note" if doc.is_return else "Tax Invoice" %}
+{% set company_gstin = doc.company_gstin or frappe.db.get_value("Company", doc.company, "gstin") or "" %}
+{% set customer_gstin = doc.billing_address_gstin or frappe.db.get_value("Customer", doc.customer, "gstin") or "" %}
+{% set rounded = doc.rounded_total if doc.rounded_total is not none else doc.grand_total %}
+{# Credit Note / return: print absolute amounts (no leading minus). #}
+{% macro money(val) -%}
+{{ frappe.format(val|abs if doc.is_return else val, {"fieldtype": "Currency", "options": currency}) }}
+{%- endmacro %}
+{% macro qty(val) -%}
+{{ val|abs if doc.is_return else val }}
+{%- endmacro %}
+
+<style>
+.print-format {
+    margin-top: 8mm;
+    margin-bottom: 8mm;
+    margin-left: 18mm;
+    margin-right: 8mm;
+}
+@page {
+    size: A4 portrait;
+    margin: 8mm 8mm 8mm 18mm;
+}
+html, body {
+    margin: 0;
+    padding: 0;
+    background: #fff;
+    font-family: Arial, Helvetica, sans-serif;
+    color: #111;
+}
+html body .print-format {
+    box-sizing: border-box !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+html body .print-format .print-format-margin {
+    width: auto !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+.kgs {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 9pt;
+    line-height: 1.25;
+    color: #111;
+}
+.kgs table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+.kgs td, .kgs th {
+    border: 1px solid #222;
+    padding: 3px 4px;
+    vertical-align: middle;
+}
+.kgs .nob, .kgs td.nob, .kgs th.nob { border: none !important; }
+.kgs .ctr { text-align: center; }
+.kgs .rgt { text-align: right; }
+.kgs .lft { text-align: left; }
+.kgs .b { font-weight: bold; }
+.kgs .wrap { white-space: normal; word-wrap: break-word; }
+.kgs .amt { font-variant-numeric: tabular-nums; }
+.kgs .block { margin-top: 4px; }
+
+.kgs table.hdr { border: 1px solid #222; }
+.kgs table.hdr td { border: none; }
+.kgs .hdr .logo-cell {
+    text-align: center;
+    vertical-align: middle;
+    padding: 4px;
+    width: 18%;
+}
+.kgs .hdr .logo-cell img {
+    max-width: 20mm;
+    max-height: 15mm;
+    width: auto;
+    height: auto;
+}
+.kgs .hdr .co-cell {
+    text-align: center;
+    vertical-align: middle;
+    padding: 4px 6px;
+}
+.kgs .hdr-co {
+    font-size: 12pt;
+    font-weight: bold;
+    color: #0f172a;
+    line-height: 1.2;
+}
+.kgs .hdr-addr {
+    margin-top: 3px;
+    font-size: 7.5pt;
+    line-height: 1.35;
+    color: #1e293b;
+    font-weight: normal;
+}
+.kgs .hdr-addr .gstin {
+    font-weight: bold;
+}
+.kgs .hdr .hdr-title {
+    border-top: 1px solid #222;
+    background: #b4c6e7;
+    font-size: 10pt;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    text-align: center;
+    padding: 3px;
+}
+.kgs .hdr .hdr-sub {
+    font-size: 8.5pt;
+    font-weight: bold;
+    text-align: center;
+    padding: 2px 3px;
+    border-top: 1px solid #222;
+}
+
+.kgs table.party-grid { border: 1px solid #222; }
+.kgs table.party-grid > tbody > tr > td {
+    vertical-align: top;
+    padding: 5px 6px;
+    border: 1px solid #222;
+}
+.kgs table.kv td, .kgs table.kv th {
+    border: none !important;
+    padding: 1.5px 2px;
+    font-size: 8.5pt;
+    vertical-align: top;
+    text-align: left;
+}
+.kgs table.kv th { font-weight: bold; width: 28%; white-space: nowrap; }
+.kgs table.kv td.addr { font-size: 8pt; line-height: 1.3; }
+
+.kgs .einv-qr {
+    text-align: right;
+    padding-bottom: 3px;
+}
+.kgs .einv-qr img,
+.kgs .einv-qr svg,
+.kgs .einv-qr canvas {
+    display: block;
+    margin-left: auto !important;
+    margin-right: 0 !important;
+    width: 42mm !important;
+    height: 42mm !important;
+    max-width: 42mm !important;
+    max-height: 42mm !important;
+}
+.kgs .einv-meta {
+    font-size: 7.5pt;
+    line-height: 1.35;
+    word-break: break-all;
+    text-align: left;
+}
+.kgs .einv-meta .mk { font-weight: bold; }
+
+.kgs .data-table th, .kgs .data-table td { font-size: 8.5pt; padding: 3px 4px; }
+.kgs .sec-bar td {
+    background: #b4c6e7;
+    font-weight: bold;
+    text-align: center;
+    font-size: 8pt;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 2px;
+}
+.kgs .tbl-hdr th {
+    background: #dce6f2;
+    font-weight: bold;
+    text-align: center;
+}
+.kgs .sec-total td { background: #eef2f8; font-weight: bold; }
+.kgs .bank-box {
+    text-align: left;
+    font-size: 8pt;
+    line-height: 1.45;
+    vertical-align: top;
+    font-weight: normal;
+    background: #fff !important;
+}
+
+.kgs .totals-grid td, .kgs .totals-grid th {
+    border: 1px solid #222;
+    font-size: 8.5pt;
+    padding: 3px 5px;
+}
+.kgs .totals-grid .lbl { font-weight: bold; background: #f8fafc; width: 15%; }
+.kgs .totals-grid .val { width: 85%; }
+.kgs .foot-note {
+    margin-top: 8px;
+    text-align: center;
+    font-size: 8pt;
+    color: #334155;
+    line-height: 1.4;
+}
+.kgs .foot-computer {
+    margin-top: 2px;
+    text-align: center;
+    font-size: 7.5pt;
+    color: #64748b;
+}
+
+@media print {
+    html body .print-format,
+    html body .print-format .print-format-margin {
+        background: transparent !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+    }
+    .print-format .page-break, .print-format .print-heading { display: none !important; }
+    .kgs .sec-bar td, .kgs .tbl-hdr th, .kgs .hdr .hdr-title, .kgs .sec-total td {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    .kgs .einv-qr img, .kgs .einv-qr svg, .kgs .einv-qr canvas {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}
+</style>
+
+{% set e_invoice_log = None %}
+{% set invoice_data = None %}
+{% if doc.irn %}
+    {% set e_invoice_log = frappe.db.get_value("e-Invoice Log", doc.irn, ("invoice_data", "signed_qr_code"), as_dict=True) %}
+    {% if e_invoice_log and e_invoice_log.invoice_data %}
+        {% set invoice_data = json.loads(e_invoice_log.invoice_data) %}
+    {% endif %}
+{% endif %}
+{% set date_format = (frappe.db.get_single_value("System Settings", "date_format") or "dd-mm-yyyy").replace("mm", "MM") %}
+
+<div class="kgs">
+
+    <table class="hdr">
+        <colgroup><col style="width:18%"><col></colgroup>
+        <tr>
+            <td class="logo-cell">
+                <img src="/files/kisan_logo.jpeg" alt="{{ doc.company | e }}">
+            </td>
+            <td class="co-cell wrap">
+                <div class="hdr-co">{{ doc.company }}</div>
+                <div class="hdr-addr">
+                    D-72, MIDC Latur, Latur<br>
+                    Maharashtra, State Code: 27, PIN Code: 413531, India<br>
+                    <span class="gstin">GSTIN: 27AAECK0739R1ZZ</span>
+                </div>
+            </td>
+        </tr>
+        <tr>
+            <td colspan="2" class="hdr-title">{{ title }}</td>
+        </tr>
+    </table>
+
+    {# Company + e-Waybill / Date + e-Invoice QR (only when IRN exists) #}
+    <table class="party-grid block">
+        <colgroup>
+            <col style="width:{% if doc.irn %}58%{% else %}100%{% endif %}">
+            {% if doc.irn %}<col style="width:42%">{% endif %}
+        </colgroup>
+        <tr>
+            <td>
+                <table class="kv">
+                    <tr>
+                        <th>Company</th>
+                        <td class="b wrap">{{ doc.company }}</td>
+                    </tr>
+                    {% if doc.company_address_display %}
+                    <tr>
+                        <th>Address</th>
+                        <td class="wrap addr">{{ doc.company_address_display | safe }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if company_gstin %}
+                    <tr>
+                        <th>GSTIN</th>
+                        <td>{{ company_gstin }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if doc.ewaybill %}
+                    <tr>
+                        <th>e-Waybill No.</th>
+                        <td class="b">{{ doc.ewaybill }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if doc.po_no %}
+                    <tr>
+                        <th>Customer's Purchase Order</th>
+                        <td>{{ doc.po_no }}{% if doc.po_date %} ({{ frappe.format(doc.po_date, {"fieldtype": "Date"}) }}){% endif %}</td>
+                    </tr>
+                    {% endif %}
+                    <tr>
+                        <th>Invoice No</th>
+                        <td class="b">{{ doc.name }}</td>
+                    </tr>
+                    <tr>
+                        <th>Invoice Date</th>
+                        <td>{{ frappe.format(doc.posting_date, {"fieldtype": "Date"}) }}</td>
+                    </tr>
+                </table>
+            </td>
+            {% if doc.irn %}
+            <td>
+                {% if e_invoice_log and e_invoice_log.signed_qr_code %}
+                <div class="einv-qr">
+                    {{ web_block("e-Invoice QR", values={"e_invoice_qr_text": e_invoice_log.signed_qr_code}) }}
+                </div>
+                {% endif %}
+                <div class="einv-meta">
+                    <div><span class="mk">IRN :</span> {{ doc.irn }}</div>
+                    {% if invoice_data %}
+                    <div><span class="mk">Ack No.</span> {{ invoice_data.get("AckNo") or "" }}</div>
+                    <div>
+                        <span class="mk">Ack Dt.</span>
+                        {% if invoice_data.get("AckDt") %}
+                            {{ frappe.utils.format_datetime(invoice_data.get("AckDt"), date_format) }}
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </td>
+            {% endif %}
+        </tr>
+    </table>
+
+    {# Customer / Bill To | Ship To / Vehicle / Place of Supply #}
+    <table class="party-grid block">
+        <colgroup><col style="width:50%"><col style="width:50%"></colgroup>
+        <tr>
+            <td>
+                <table class="kv">
+                    <tr>
+                        <th>Customer</th>
+                        <td class="b wrap">{{ doc.customer_name or doc.customer }}</td>
+                    </tr>
+                    {% if doc.address_display %}
+                    <tr>
+                        <th>Bill To</th>
+                        <td class="wrap addr">{{ doc.address_display | safe }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if customer_gstin %}
+                    <tr>
+                        <th>GSTIN</th>
+                        <td>{{ customer_gstin }}</td>
+                    </tr>
+                    {% endif %}
+                </table>
+            </td>
+            <td>
+                <table class="kv">
+                    {% if doc.shipping_address %}
+                    <tr>
+                        <th>Ship To</th>
+                        <td class="wrap addr">{{ doc.shipping_address | safe }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if doc.vehicle_no %}
+                    <tr>
+                        <th>Vehicle No</th>
+                        <td class="b">{{ doc.vehicle_no }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if doc.place_of_supply %}
+                    <tr>
+                        <th>Place of Supply</th>
+                        <td>{{ doc.place_of_supply }}</td>
+                    </tr>
+                    {% endif %}
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <table class="block data-table">
+        <colgroup>
+            <col style="width:4%">
+            <col style="width:54%">
+            <col style="width:12%">
+            <col style="width:15%">
+            <col style="width:15%">
+        </colgroup>
+        <tr class="sec-bar"><td colspan="5">Item Details</td></tr>
+        <tr class="tbl-hdr">
+            <th>Sr</th>
+            <th class="lft">Item</th>
+            <th>Quantity</th>
+            <th>Rate</th>
+            <th>Amount</th>
+        </tr>
+        {% for row in doc.items %}
+        <tr>
+            <td class="ctr">{{ loop.index }}</td>
+            <td class="lft wrap">{{ row.item_name or row.item_code }}</td>
+            <td class="ctr">{{ qty(row.qty) }}{% if row.uom %} {{ row.uom }}{% endif %}</td>
+            <td class="rgt amt">{{ money(row.rate) }}</td>
+            <td class="rgt amt">{{ money(row.amount) }}</td>
+        </tr>
+        {% endfor %}
+        <tr class="sec-total">
+            <td colspan="3" rowspan="3" class="bank-box">
+                Kisanmitra Agro Industries Pvt Ltd<br>
+                Union Bank of India<br>
+                Latur Branch<br>
+                A/c No – 342805010050677<br>
+                IFSC Code – UBIN0579386
+            </td>
+            <td class="rgt">Net Total</td>
+            <td class="rgt amt">{{ money(doc.net_total) }}</td>
+        </tr>
+        <tr>
+            <td class="rgt">GST Total</td>
+            <td class="rgt amt">{{ money(doc.total_taxes_and_charges) }}</td>
+        </tr>
+        <tr class="sec-total">
+            <td class="rgt">Grand Total</td>
+            <td class="rgt amt">{{ money(doc.grand_total) }}</td>
+        </tr>
+    </table>
+
+    <table class="block totals-grid">
+        <colgroup><col style="width:15%"><col style="width:85%"></colgroup>
+        <tr>
+            <td class="lbl">Amount in Words</td>
+            <td class="val wrap b">{{ doc.in_words or "" }}</td>
+        </tr>
+    </table>
+
+    {# Same GST Breakup as Sales Invoice form (item tax amounts via india_compliance). #}
+    {% set gst_rows = get_gst_breakup(doc) %}
+    <table class="block data-table">
+        <tr class="sec-bar"><td colspan="5">GST Breakup</td></tr>
+        <tr class="tbl-hdr">
+            <th style="width:18%">HSN/SAC</th>
+            <th style="width:22%">Taxable Amount</th>
+            <th style="width:20%">CGST</th>
+            <th style="width:20%">SGST</th>
+            <th style="width:20%">IGST</th>
+        </tr>
+        {% if gst_rows %}
+        {% for row in gst_rows %}
+        {% set cgst = row.get("CGST") %}
+        {% set sgst = row.get("SGST") %}
+        {% set igst = row.get("IGST") %}
+        <tr>
+            <td class="ctr">{{ row.get("HSN/SAC") or row.get("Item") or "—" }}</td>
+            <td class="ctr amt">{{ money(row.get("Taxable Amount") or 0) }}</td>
+            <td class="ctr amt">
+                {% if cgst and (cgst.tax_rate or cgst.tax_amount) %}
+                ({{ cgst.tax_rate }}%) {{ money(cgst.tax_amount) }}
+                {% else %}—{% endif %}
+            </td>
+            <td class="ctr amt">
+                {% if sgst and (sgst.tax_rate or sgst.tax_amount) %}
+                ({{ sgst.tax_rate }}%) {{ money(sgst.tax_amount) }}
+                {% else %}—{% endif %}
+            </td>
+            <td class="ctr amt">
+                {% if igst and (igst.tax_rate or igst.tax_amount) %}
+                ({{ igst.tax_rate }}%) {{ money(igst.tax_amount) }}
+                {% else %}—{% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+        {% endif %}
+    </table>
+
+    <div class="foot-note">Subject to Latur Jurisdiction</div>
+    <div class="foot-computer">This is computer-generated Invoice</div>
+
+</div>

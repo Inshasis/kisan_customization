@@ -159,6 +159,7 @@ doctype_list_js = {
 jinja = {
 	"methods": [
 		"kisan_customization.purchase_invoice.print_context.get_kisan_settlement_print_data",
+		"kisan_customization.sales_invoice.print_context.get_gst_sales_print_data",
 	]
 }
 

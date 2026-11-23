@@ -10,6 +10,7 @@ from kisan_customization.purchase_invoice.bags import (
 )
 from kisan_customization.purchase_invoice.deductions import (
 	recalculate_existing_deductions,
+	refresh_item_gst_details,
 	remove_deduction_item_rows,
 	sync_deduction_item_row,
 )
@@ -60,14 +61,32 @@ def _validate_required_deduction_actuals(doc):
 		)
 
 
+def onload(doc, method=None):
+	"""Keep GST Breakup in sync with Tax Breakup when item GST amounts are stale."""
+	if not doc.get("taxes") or not doc.get("items"):
+		return
+	needs_refresh = False
+	for item in doc.items:
+		for tax in ("igst", "cgst", "sgst"):
+			if flt(item.get(f"{tax}_rate")) and not flt(item.get(f"{tax}_amount")):
+				needs_refresh = True
+				break
+		if needs_refresh:
+			break
+	if needs_refresh:
+		refresh_item_gst_details(doc)
+
+
 def before_submit(doc, method=None):
 	if doc.get("is_return") and doc.get("return_against"):
 		source = frappe.get_doc("Purchase Invoice", doc.return_against)
 		if is_kisan_custom(source):
 			doc.update_outstanding_for_self = 0
 			sync_kisan_debit_note_items(doc)
+			sync_deduction_item_row(doc)
 			if hasattr(doc, "calculate_taxes_and_totals"):
 				doc.calculate_taxes_and_totals()
+			refresh_item_gst_details(doc)
 		return
 
 	_validate_required_deduction_actuals(doc)
@@ -83,6 +102,7 @@ def validate(doc, method=None):
 		sync_deduction_item_row(doc)
 		if hasattr(doc, "calculate_taxes_and_totals"):
 			doc.calculate_taxes_and_totals()
+		refresh_item_gst_details(doc)
 	elif is_kisan_custom(doc):
 		validate_bag_details(doc)
 		validate_item_gross_weights(doc)
@@ -96,4 +116,5 @@ def validate(doc, method=None):
 		apply_payment_days_to_invoice(doc)
 		if hasattr(doc, "calculate_taxes_and_totals"):
 			doc.calculate_taxes_and_totals()
+		refresh_item_gst_details(doc)
 		validate_supplier_invoice_amount(doc)

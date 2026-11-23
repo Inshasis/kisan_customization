@@ -12,6 +12,7 @@ from kisan_customization.purchase_invoice.deductions import (
 	_calculate_bag_deduction_amount,
 	_calculate_weight_deduction_amount,
 	get_deduction_item_code,
+	refresh_item_gst_details,
 	sync_deduction_item_row,
 )
 from kisan_customization.utils.deduction_utils import get_pi_total_gross_weight
@@ -222,6 +223,7 @@ def _apply_debit_note_settings(doc, source):
 
 	if hasattr(doc, "calculate_taxes_and_totals"):
 		doc.calculate_taxes_and_totals()
+	refresh_item_gst_details(doc)
 
 
 def _calculate_return_deductions(source):

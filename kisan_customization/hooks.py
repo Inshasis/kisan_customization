@@ -229,6 +229,7 @@ override_doctype_class = {
 
 doc_events = {
 	"Purchase Invoice": {
+		"onload": "kisan_customization.purchase_invoice.purchase_invoice.onload",
 		"validate": [
 			"kisan_customization.purchase_invoice.purchase_invoice.validate",
 			"kisan_customization.purchase_invoice.broker_commission.validate",

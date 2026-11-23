@@ -1154,11 +1154,14 @@ def _apply_deduction_item_gst(doc, item_row):
 	if not item_row.meta.has_field("gst_hsn_code"):
 		return
 
-	hsn = frappe.db.get_value("Item", item_row.item_code, "gst_hsn_code")
+	commodity = _get_first_commodity_item_row(doc, exclude_row=item_row)
+
+	# Prefer commodity HSN so Tax Breakup / GST Breakup stay consistent.
+	hsn = (commodity.get("gst_hsn_code") if commodity else None) or frappe.db.get_value(
+		"Item", item_row.item_code, "gst_hsn_code"
+	)
 	if hsn:
 		item_row.gst_hsn_code = hsn
-
-	commodity = _get_first_commodity_item_row(doc, exclude_row=item_row)
 
 	if item_row.meta.has_field("gst_treatment"):
 		treatment = (commodity.get("gst_treatment") if commodity else None) or "Taxable"
@@ -1181,8 +1184,84 @@ def _apply_deduction_item_gst(doc, item_row):
 		if commodity and commodity.get(fieldname) is not None:
 			item_row.set(fieldname, flt(commodity.get(fieldname)))
 
+	if commodity and item_row.meta.has_field("item_tax_rate") and commodity.get("item_tax_rate"):
+		item_row.item_tax_rate = commodity.get("item_tax_rate")
+
 	if item_row.meta.has_field("taxable_value"):
 		item_row.taxable_value = flt(item_row.amount)
+
+	# Interim amounts so GST Breakup is never rate>0 / amount=0 before tax refresh.
+	for tax in ("igst", "cgst", "sgst", "cess"):
+		rate_field = f"{tax}_rate"
+		amount_field = f"{tax}_amount"
+		if not item_row.meta.has_field(amount_field):
+			continue
+		rate = flt(item_row.get(rate_field))
+		if rate:
+			precision = item_row.precision(amount_field) or 2
+			item_row.set(amount_field, flt(flt(item_row.taxable_value) * rate / 100, precision))
+
+
+def refresh_item_gst_details(doc):
+	"""
+	Recalculate item GST amounts + GST Breakup after taxes are computed.
+
+	calculate_taxes_and_totals updates taxes.item_wise_tax_detail (Tax Breakup)
+	but does not refresh item.*_amount used by GST Breakup — call this after it.
+	"""
+	try:
+		from india_compliance.gst_india.overrides.transaction import (
+			set_gst_breakup,
+			update_item_gst_details,
+			update_taxable_values,
+		)
+	except ImportError:
+		return
+
+	if not doc.get("items"):
+		return
+
+	update_taxable_values(doc)
+	update_item_gst_details(doc)
+	_sync_item_gst_amounts_from_tax_rows(doc)
+	set_gst_breakup(doc)
+
+
+def _sync_item_gst_amounts_from_tax_rows(doc):
+	"""Align item GST amounts with taxes.item_wise_tax_detail (Tax Breakup source)."""
+	from collections import defaultdict
+
+	amounts = defaultdict(lambda: defaultdict(float))
+	rates = defaultdict(dict)
+
+	for tax in doc.get("taxes") or []:
+		tax_type = tax.get("gst_tax_type")
+		if not tax_type:
+			continue
+		detail = frappe.parse_json(tax.get("item_wise_tax_detail") or "{}")
+		if not isinstance(detail, dict):
+			continue
+		for item_key, values in detail.items():
+			if not values or len(values) < 2:
+				continue
+			rate, amount = values[0], values[1]
+			rates[item_key][tax_type] = flt(rate)
+			amounts[item_key][tax_type] += flt(amount)
+
+	if not amounts:
+		return
+
+	for item in doc.get("items") or []:
+		key = item.item_code or item.item_name
+		if key not in amounts:
+			continue
+		for tax_type, amount in amounts[key].items():
+			amount_field = f"{tax_type}_amount"
+			rate_field = f"{tax_type}_rate"
+			if item.meta.has_field(amount_field):
+				item.set(amount_field, flt(amount, item.precision(amount_field) or 2))
+			if tax_type in rates[key] and item.meta.has_field(rate_field):
+				item.set(rate_field, flt(rates[key][tax_type]))
 
 
 def _set_deduction_item_details(doc, item_row):

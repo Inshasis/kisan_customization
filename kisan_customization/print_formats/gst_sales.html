@@ -406,12 +406,21 @@ html body .print-format .print-format-margin {
         </tr>
         {% endfor %}
         <tr class="sec-total">
+            {% set bank = frappe.db.get_value(
+                "Bank Account",
+                {
+                    "name": "Kisanmitra Agro Industries Pvt Ltd - Union Bank",
+                    
+                },
+                ["bank", "bank_account_no", "branch_code","custom_branch_name"],
+                as_dict=True
+            ) %}
+            
             <td colspan="3" rowspan="3" class="bank-box">
                 Kisanmitra Agro Industries Pvt Ltd<br>
-                Union Bank of India<br>
-                Latur Branch<br>
-                A/c No – 342805010050677<br>
-                IFSC Code – UBIN0579386
+                {{ bank.bank if bank else "" }}<br>
+                A/c No – {{ bank.bank_account_no if bank else "" }}<br>
+                IFSC Code – {{ bank.branch_code if bank else "" }} ({{ bank.custom_branch_name if bank else "" }})
             </td>
             <td class="rgt">Net Total</td>
             <td class="rgt amt">{{ money(doc.net_total) }}</td>

@@ -1,4 +1,4 @@
-{# GOODS RECEIPT NOTE / PURCHASE SETTLEMENT ADVICE — single-page A4 (wkhtmltopdf) #}
+{# PURCHASE SETTLEMENT ADVICE — single-page A4 #}
 {% set d = get_kisan_settlement_print_data(doc.name) %}
 {% set sf = d.summary_footer %}
 
@@ -58,9 +58,16 @@ html body .print-format .print-format-margin {
 }
 
 /* ------------------------------------------------------------------
-   BASE
+   BASEs
    ------------------------------------------------------------------ */
-.kpsa-a4 { width: 100%; background: #fff; }
+.kpsa-a4 {
+    width: 100% !important;
+    max-width: 100% !important;
+    zoom: 0.88;
+    background: #fff;
+    box-sizing: border-box;
+}
+.kpsa-closing { page-break-inside: avoid; }
 .kpsa {
     font-family: Arial, Helvetica, sans-serif;
     font-size: 8pt;
@@ -97,7 +104,7 @@ html body .print-format .print-format-margin {
 .kpsa .amt { font-variant-numeric: tabular-nums; }
 
 /* ------------------------------------------------------------------
-   HEADER
+   HEADERs
    ------------------------------------------------------------------ */
 .kpsa table.hdr { border: 1px solid #222; }
 .kpsa table.hdr td { border: none; }
@@ -145,7 +152,7 @@ html body .print-format .print-format-margin {
 }
 
 /* ------------------------------------------------------------------
-   TOP SECTION (Party / Invoice / Vendor) — a little more breathing room
+   TOP SECTIONs (Party / Invoice / Vendor) — a little more breathing room
    ------------------------------------------------------------------ */
 .kpsa table.meta-grid > tbody > tr > td.meta-col {
     vertical-align: top;
@@ -311,6 +318,16 @@ html body .print-format .print-format-margin {
         print-color-adjust: exact;
     }
 }
+
+/* Keep the scaled content inside the printable A4 width. */
+.kpsa-a4, .kpsa {
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+}
+.kpsa-a4 table {
+    max-width: 100%;
+}
+
 </style>
 
 <div class="kpsa-a4">
